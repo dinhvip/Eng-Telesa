@@ -1,0 +1,61 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# editors/OS
+.DS_Store
+.idea/
+.vscode/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+*.pem
+*.key
+*.crt
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (do not commit secrets)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+#! Keep this tracked; it's auto-generated but stable
+# and recommended to commit for consistent editor tooling
+# across machines/CI.
+# See: https://nextjs.org/docs/app/building-your-application/configuring/typescript
+# (If you prefer to re-generate locally, you can ignore it again.)
+
+# lint/cache
+.eslintcache

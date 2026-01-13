@@ -1,0 +1,338 @@
+"use client";
+
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+
+type MenuVariant = "kid" | "adult";
+
+type MobileMenuDrawerProps = {
+  open: boolean;
+  variant: MenuVariant;
+  logoSrc: string;
+  activeKey?: string;
+  onClose: () => void;
+  onNavigate?: (key: string) => void;
+};
+
+const CloseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+    <path
+      d="M6 6l12 12M18 6L6 18"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const ChevronDownIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+    <path
+      d="M6 9l6 6 6-6"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const MenuIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
+    <path
+      d="M4 7h16M4 12h16M4 17h16"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const MobileMenuButton = ({
+  onClick,
+  className,
+}: {
+  onClick: () => void;
+  className?: string;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label="Open menu"
+    className={
+      className ??
+      "fixed right-4 top-4 z-40 rounded-full bg-white/85 p-2 text-slate-900 shadow-sm ring-1 ring-black/5 backdrop-blur md:hidden"
+    }
+  >
+    <MenuIcon className="h-6 w-6" />
+  </button>
+);
+
+export default function MobileMenuDrawer({
+  open,
+  variant,
+  logoSrc,
+  activeKey,
+  onClose,
+  onNavigate,
+}: MobileMenuDrawerProps) {
+  const [language, setLanguage] = useState<"vi" | "en">("vi");
+  const [isAccountExpanded, setIsAccountExpanded] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+
+  const items = useMemo(
+    () => [
+      { key: "home", label: "Trang chủ" },
+      { key: "product", label: "Sản phẩm" },
+      { key: "teacher", label: "Học kèm với giáo viên" },
+      { key: "about", label: "Về Telesa" },
+      { key: "library", label: "Thư viện" },
+      { key: "career", label: "Tuyển dụng" },
+    ],
+    [],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (open) {
+      setIsMounted(true);
+      const raf = requestAnimationFrame(() => setIsVisible(true));
+      return () => cancelAnimationFrame(raf);
+    }
+
+    setIsVisible(false);
+    const t = window.setTimeout(() => setIsMounted(false), 420);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  if (!isMounted) return null;
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 md:hidden transition-opacity duration-400 ${
+        isVisible ? "opacity-100" : "pointer-events-none opacity-0"
+      }`}
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        className={`absolute inset-0 bg-black/20 transition-opacity duration-400 ${
+          isVisible ? "opacity-100" : "opacity-0"
+        }`}
+        aria-label="Close menu"
+        onClick={onClose}
+      />
+
+      <div
+        className={`absolute inset-0 bg-white transition-[transform,opacity] duration-400 ease-out ${
+          isVisible ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0"
+        }`}
+      >
+        <div className="mx-auto flex h-full max-w-md flex-col">
+          <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+12px)]">
+            <div className="flex items-center gap-3">
+              <div className="relative h-10 w-10">
+                <Image
+                  src={logoSrc}
+                  alt={variant === "kid" ? "Telesa English Kids" : "Telesa English"}
+                  fill
+                  sizes="40px"
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close menu"
+              className="rounded-full p-2 text-slate-600 hover:bg-slate-100 active:bg-slate-200"
+            >
+              <CloseIcon className="h-5 w-5" />
+            </button>
+          </header>
+
+          <div className="flex-1 overflow-y-auto px-5 pb-24 pt-6">
+            <nav className="space-y-4">
+              {items.map((item) => {
+                const isActive = item.key === activeKey;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      onNavigate?.(item.key);
+                      onClose();
+                    }}
+                    className={`block w-full text-left text-[18px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                      isActive
+                        ? "text-[#D40887]"
+                        : "text-slate-900 hover:text-[#D40887]"
+                    }`}
+                    aria-current={isActive ? "page" : undefined}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="mt-6 border-t border-slate-200 pt-4">
+              <button
+                type="button"
+                className="flex w-full items-center gap-3 text-left"
+                aria-expanded={isAccountExpanded}
+                aria-controls="mobile-menu-account"
+                onClick={() => setIsAccountExpanded((prev) => !prev)}
+              >
+                <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-[12px] font-semibold text-slate-700">
+                  AN
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-medium text-slate-800">
+                    An Nguyễn
+                  </p>
+                  <p className="truncate text-[12px] text-slate-500">
+                    annguyen@gmail.com
+                  </p>
+                </div>
+                <ChevronDownIcon
+                  className={`h-4 w-4 text-slate-500 transition-transform ${
+                    isAccountExpanded ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+              </button>
+
+              <div
+                id="mobile-menu-account"
+                className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
+                  isAccountExpanded ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <button
+                  type="button"
+                  className="mt-3 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left text-[14px] font-medium text-slate-800 hover:bg-slate-50 active:bg-slate-100"
+                >
+                  <Image
+                    src="/assets/svg/user-pen-alt.svg"
+                    alt=""
+                    width={16}
+                    height={16}
+                    className="h-4 w-4"
+                    unoptimized
+                  />
+                  <span>Cập nhật thông tin cá nhân</span>
+                </button>
+
+                <div
+                  className="mt-3 flex gap-4"
+                  role="radiogroup"
+                  aria-label="Language"
+                >
+                  <label className="flex flex-1 cursor-pointer items-center justify-between rounded-[16px] border border-slate-200 bg-white px-4 py-3 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
+                    <input
+                      type="radio"
+                      name="language"
+                      value="vi"
+                      checked={language === "vi"}
+                      onChange={() => setLanguage("vi")}
+                      className="sr-only"
+                    />
+                    <span className="relative h-9 w-9 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
+                      <Image
+                        src="/assets/svg/vn.svg"
+                        alt="Vietnamese"
+                        fill
+                        sizes="36px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${
+                        language === "vi"
+                          ? "bg-[var(--primary)] ring-[var(--primary)]"
+                          : "bg-white ring-slate-400/70"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {language === "vi" && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                      )}
+                    </span>
+                  </label>
+
+                  <label className="flex flex-1 cursor-pointer items-center justify-between rounded-[16px] border border-slate-200 bg-white px-4 py-3 shadow-[0_2px_10px_rgba(15,23,42,0.08)]">
+                    <input
+                      type="radio"
+                      name="language"
+                      value="en"
+                      checked={language === "en"}
+                      onChange={() => setLanguage("en")}
+                      className="sr-only"
+                    />
+                    <span className="relative h-9 w-9 overflow-hidden rounded-full bg-white ring-1 ring-slate-200">
+                      <Image
+                        src="/assets/svg/en.svg"
+                        alt="English"
+                        fill
+                        sizes="36px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${
+                        language === "en"
+                          ? "bg-[var(--primary)] ring-[var(--primary)]"
+                          : "bg-white ring-slate-400/70"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {language === "en" && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-white" />
+                      )}
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <footer className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-md bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-4">
+            <button
+              type="button"
+              className="w-full rounded-[16px] bg-[#D40887] px-6 py-3 text-center text-[14px] font-semibold text-white shadow-[0_12px_28px_rgba(212,8,135,0.35)] active:opacity-90"
+            >
+              Góc học tập
+            </button>
+            <button
+              type="button"
+              className="mt-3 flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-6 py-3 text-center text-[14px] font-semibold text-red-500 active:bg-red-50"
+            >
+              <Image
+                src="/assets/svg/logout.svg"
+                alt=""
+                width={16}
+                height={16}
+                className="h-4 w-4"
+                unoptimized
+              />
+              Đăng xuất
+            </button>
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
