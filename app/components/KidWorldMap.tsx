@@ -2,7 +2,7 @@
 
 import { geoMercator, geoPath } from "d3-geo";
 import type { FeatureCollection } from "geojson";
-import { memo, useMemo, useState } from "react";
+import { memo, useId, useMemo, useState } from "react";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
 
@@ -60,10 +60,17 @@ const COUNTRY_HIGHLIGHT = "#FFCD33";
 
 type KidWorldMapProps = {
   highlightColor?: string;
+  variant?: "mobile" | "desktop";
+  className?: string;
 };
 
-function KidWorldMapInner({ highlightColor = COUNTRY_HIGHLIGHT }: KidWorldMapProps) {
+function KidWorldMapInner({
+  highlightColor = COUNTRY_HIGHLIGHT,
+  variant = "mobile",
+  className,
+}: KidWorldMapProps) {
   const [activeCountry, setActiveCountry] = useState<CountryInfo | null>(countries[0]);
+  const glowId = useId();
 
   const { geo, path, projectPoint } = useMemo(() => {
     const topo = worldCountries110m as unknown as Topology<any>;
@@ -94,10 +101,34 @@ function KidWorldMapInner({ highlightColor = COUNTRY_HIGHLIGHT }: KidWorldMapPro
     };
   }, [activePoint]);
 
+  const outerClassName = [
+    variant === "desktop" ? "flex h-full w-full justify-center" : "w-full max-w-md",
+    className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const mapWrapperClassName =
+    variant === "desktop"
+      ? "relative h-full w-auto max-w-full aspect-[343/188] min-h-[188px] rounded-[28px] bg-transparent shadow-[0_24px_70px_rgba(0,0,0,0.28)] overflow-visible"
+      : "relative w-full aspect-[343/188] min-h-[188px] rounded-[28px] bg-transparent shadow-lg overflow-visible";
+
+  const tooltipClassName =
+    variant === "desktop"
+      ? "relative w-[220px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-5 py-4 text-slate-900 shadow-[0_22px_60px_rgba(0,0,0,0.22)]"
+      : "relative w-[200px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-4 py-3 text-slate-900 shadow-[0_18px_40px_rgba(0,0,0,0.18)]";
+
+  const flagBoxClassName =
+    variant === "desktop"
+      ? "flex h-11 w-12 items-center justify-center rounded-2xl bg-[#ffe4a3] text-[24px]"
+      : "flex h-10 w-11 items-center justify-center rounded-2xl bg-[#ffe4a3] text-[22px]";
+
+  const mapGlowFilter = variant === "desktop" ? `url(#${glowId}-continentGlow)` : undefined;
+
   return (
-    <div className="w-full max-w-md">
+    <div className={outerClassName}>
       <div
-        className="relative w-full aspect-[343/188] rounded-[28px] bg-transparent shadow-lg overflow-visible"
+        className={mapWrapperClassName}
         onPointerDown={() => {
           if (activeCountry) setActiveCountry(null);
         }}
@@ -112,13 +143,19 @@ function KidWorldMapInner({ highlightColor = COUNTRY_HIGHLIGHT }: KidWorldMapPro
             style={{ background: MAP_BG }}
           >
             <defs>
-              <filter id="continentGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#ffffff" flood-opacity="0.6" />
+              <filter id={`${glowId}-continentGlow`} x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow
+                  dx="0"
+                  dy="0"
+                  stdDeviation="2.5"
+                  floodColor="#ffffff"
+                  floodOpacity="0.6"
+                />
               </filter>
             </defs>
 
             {/* World map */}
-            <g opacity={0.98} filter="url(#continentGlow)">
+            <g opacity={0.98} filter={mapGlowFilter}>
               {geo.features.map((f) => {
                 const d = path(f);
                 if (!d) return null;
@@ -147,7 +184,7 @@ function KidWorldMapInner({ highlightColor = COUNTRY_HIGHLIGHT }: KidWorldMapPro
               const pt = projectPoint(country.coordinates);
               if (!pt) return null;
               const [x, y] = pt;
-              const isActive = country.id === activeCountry?.id;
+              const dotR = 2.35;
 
               return (
                 <g
@@ -164,16 +201,14 @@ function KidWorldMapInner({ highlightColor = COUNTRY_HIGHLIGHT }: KidWorldMapPro
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") setActiveCountry(country);
                   }}
+                  className="focus:outline-none focus-visible:outline-none"
                   style={{ cursor: "pointer" }}
                 >
-                  {isActive && (
-                    <circle r={14} fill={highlightColor} fillOpacity={0.28} />
-                  )}
                   <circle
-                    r={7}
+                    r={dotR}
                     fill={highlightColor}
                     stroke={MAP_BG}
-                    strokeWidth={2}
+                    strokeWidth={0.75}
                   />
                 </g>
               );
@@ -192,12 +227,10 @@ function KidWorldMapInner({ highlightColor = COUNTRY_HIGHLIGHT }: KidWorldMapPro
               transform: "translate(-50%, calc(-100% - 18px))",
             }}
           >
-            <div className="relative w-[200px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-4 py-3 text-slate-900 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <div className={tooltipClassName}>
               <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-l-[10px] border-r-[10px] border-t-[14px] border-l-transparent border-r-transparent border-t-white" />
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-11 items-center justify-center rounded-2xl bg-[#ffe4a3] text-[22px]">
-                  {activeCountry.flag}
-                </div>
+                <div className={flagBoxClassName}>{activeCountry.flag}</div>
                 <div className="min-w-0">
                   <p className="truncate text-base font-semibold">{activeCountry.name}</p>
                   <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-600">

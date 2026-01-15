@@ -2,12 +2,24 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import DesktopFloatingActions from "./components/DesktopFloatingActions";
+import DesktopNavbar from "./components/DesktopNavbar";
 import { KidWorldMap } from "./components/KidWorldMap";
+import FooterContactView from "./components/FooterContactView";
 import MobileMenuDrawer from "./components/MobileMenuDrawer";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
-  "onTouchStart" | "onTouchMove" | "onTouchEnd" | "onTouchCancel" | "onMouseDown" | "onMouseUp"
+  | "onTouchStart"
+  | "onTouchMove"
+  | "onTouchEnd"
+  | "onTouchCancel"
+  | "onMouseDown"
+  | "onMouseUp"
+  | "onPointerDown"
+  | "onPointerMove"
+  | "onPointerUp"
+  | "onPointerCancel"
 >;
 
 function useHorizontalSwipe<T extends HTMLElement>(options: {
@@ -78,7 +90,46 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
     else options.onSwipeRight();
   };
 
-  return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel, onMouseDown, onMouseUp };
+  const onPointerDown: React.PointerEventHandler<T> = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
+    triggeredRef.current = false;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const onPointerMove: React.PointerEventHandler<T> = (e) => {
+    if (triggeredRef.current) return;
+    if (startXRef.current == null || startYRef.current == null) return;
+
+    const dx = e.clientX - startXRef.current;
+    const dy = e.clientY - startYRef.current;
+
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    if (Math.abs(dy) > restraintPx) return;
+    if (Math.abs(dx) < thresholdPx) return;
+
+    e.preventDefault();
+    triggeredRef.current = true;
+    if (dx < 0) options.onSwipeLeft();
+    else options.onSwipeRight();
+  };
+
+  const onPointerUp: React.PointerEventHandler<T> = () => reset();
+  const onPointerCancel: React.PointerEventHandler<T> = () => reset();
+
+  return {
+    onTouchStart,
+    onTouchMove,
+    onTouchEnd,
+    onTouchCancel,
+    onMouseDown,
+    onMouseUp,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+  };
 }
 
 export default function LandingPage() {
@@ -88,6 +139,8 @@ export default function LandingPage() {
   const [activeSnapIndex, setActiveSnapIndex] = useState(0);
   const [kidSlideIndex, setKidSlideIndex] = useState(0);
   const [kidTextVisible, setKidTextVisible] = useState(true);
+  const [kidQuestionIndex, setKidQuestionIndex] = useState(0);
+  const [kidQuestionVisible, setKidQuestionVisible] = useState(true);
   const [kidView8Index, setKidView8Index] = useState(0);
   const [kidView8TextVisible, setKidView8TextVisible] = useState(true);
   const [adultView8Index, setAdultView8Index] = useState(0);
@@ -144,6 +197,45 @@ export default function LandingPage() {
     },
   ] as const;
 
+  const kidTestimonials = [
+    {
+      content:
+        "Ngay từ những ngày đầu, mình đã cảm thấy ấn tượng với môi trường học tập tuyệt vời nơi đây. Các giáo viên không chỉ có chuyên môn cao mà còn rất tâm huyết. Các bạn học nhóm cùng mình cũng rất dễ thương ạ!",
+      name: "Võ Minh Khôi",
+      date: "14/03/2025",
+    },
+    {
+      content:
+        "Trung tâm anh ngữ Telesa mang đến trải nghiệm học vừa nghiêm túc nhưng cũng rất thoải mái. Giáo viên ở Telesa là những người vừa tận tâm trong việc dạy học cũng rất thân thiện với học viên.",
+      name: "Thy",
+      date: "14/03/2025",
+    },
+    {
+      content:
+        "Mình đã học ở Telesa được 2 khóa, mọi thứ ở đây thực sự rất tuyệt vời. Lộ trình học chi tiết, được tích hợp trên app học tập để mình có thể chủ động theo dõi, làm bài tập và chấm chữa bài ngay trên APP.",
+      name: "Lộc Đoàn",
+      date: "14/03/2025",
+    },
+    {
+      content:
+        "Em đã học tại Telesa và đang trên hành trình nâng band 6.5. Em cảm thấy học tại Telesa có nhiều yếu tố phát triển toàn diện, học vui mà vẫn tiến bộ rõ rệt.",
+      name: "Thảo",
+      date: "14/03/2025",
+    },
+  ] as const;
+
+  const kidQuestionSlides = [
+    { title: "Telesa có những\nkhóa học nào ?", bg: "/assets/bg-question.jpg" },
+    {
+      title: "Có nhiều hoạt động\nngiải trí để trẻ em\nhứng thú học không",
+      bg: "/assets/8-1-kid.jpg",
+    },
+    {
+      title: "Trẻ em từ bao nhiêu\ntuổi mới học tiếng\nanh ở Telesa được ?",
+      bg: "/assets/8-2-kid.jpg",
+    },
+  ] as const;
+
   const adultSlides = [
     {
       image: "/assets/3-adult.png",
@@ -163,12 +255,27 @@ export default function LandingPage() {
     setTimeout(() => {
       setKidSlideIndex(nextIndex);
       setKidTextVisible(true);
-    }, 150);
+    }, 220);
+  };
+
+  const changeKidQuestionSlide = (nextIndex: number) => {
+    if (nextIndex === kidQuestionIndex) return;
+    if (nextIndex < 0 || nextIndex >= kidQuestionSlides.length) return;
+    setKidQuestionVisible(false);
+    setTimeout(() => {
+      setKidQuestionIndex(nextIndex);
+      setKidQuestionVisible(true);
+    }, 220);
   };
 
   const kidCarouselSwipe = useHorizontalSwipe<HTMLDivElement>({
     onSwipeLeft: () => changeKidSlide(kidSlideIndex + 1),
     onSwipeRight: () => changeKidSlide(kidSlideIndex - 1),
+  });
+
+  const kidQuestionSwipe = useHorizontalSwipe<HTMLElement>({
+    onSwipeLeft: () => changeKidQuestionSlide(kidQuestionIndex + 1),
+    onSwipeRight: () => changeKidQuestionSlide(kidQuestionIndex - 1),
   });
 
   const changeKidView8Slide = (nextIndex: number) => {
@@ -188,34 +295,16 @@ export default function LandingPage() {
 
   const adultView8Slides = [
     {
-      image: "/assets/8-1-adult.jpg",
-      objectPositionClass: "object-center",
-      title: "Lộ trình tinh gọn",
-      description: "Tập trung đúng mục tiêu để tiến bộ nhanh và bền vững.",
+      bg: "/assets/8-6-adult.jpg",
+      title: "T.E.S là gì ? Hiệu quả\nnhư thế nào",
     },
     {
-      image: "/assets/8-2-adult.jpg",
-      objectPositionClass: "object-center",
-      title: "Học linh hoạt",
-      description: "Chủ động thời gian học phù hợp lịch làm việc bận rộn.",
+      bg: "/assets/8-5-adult.jpg",
+      title: "Có được đóng học\nphí trả góp không ?",
     },
     {
-      image: "/assets/8-3-adult.jpg",
-      objectPositionClass: "object-center",
-      title: "Giảng viên đồng hành",
-      description: "Theo sát tiến độ và hỗ trợ cải thiện từng kỹ năng.",
-    },
-    {
-      image: "/assets/8-4-adult.jpg",
-      objectPositionClass: "object-center",
-      title: "Tài liệu thực tế",
-      description: "Tình huống giao tiếp ứng dụng ngay trong công việc.",
-    },
-    {
-      image: "/assets/8-5-adult.jpg",
-      objectPositionClass: "object-center",
-      title: "Kết quả rõ ràng",
-      description: "Đo lường tiến bộ và tối ưu lộ trình theo từng buổi.",
+      bg: "/assets/8-2-adult.jpg",
+      title: "Có lớp tiếng anh buổi\ntối cho người đi làm\nkhông ?",
     },
   ] as const;
 
@@ -287,6 +376,12 @@ export default function LandingPage() {
       el.removeEventListener("scroll", onScroll);
     };
   }, []);
+
+  useEffect(() => {
+    setKidQuestionIndex((current) =>
+      current >= kidQuestionSlides.length ? 0 : current,
+    );
+  }, [kidQuestionSlides.length]);
 
   const shouldShowMenu = selectedAge != null && activeSnapIndex > 0;
 
@@ -394,6 +489,17 @@ export default function LandingPage() {
     <>
       {shouldShowMenu && (
         <>
+          <DesktopNavbar
+            logoSrc={logoSrc}
+            activeKey="home"
+            onNavigate={(key) => {
+              if (key === "home") scrollToTop();
+            }}
+          />
+          <DesktopFloatingActions
+            variant={selectedAge === "adult" ? "adult" : "kid"}
+            onScrollToTop={scrollToTop}
+          />
           <MobileMenuDrawer
             open={isMenuOpen}
             onClose={() => setIsMenuOpen(false)}
@@ -409,10 +515,10 @@ export default function LandingPage() {
 
       <main
         ref={mainRef}
-        className="relative h-[100dvh] w-full overflow-y-scroll snap-y snap-mandatory bg-black text-foreground"
+        className="relative h-[100dvh] w-full overflow-y-scroll snap-y snap-mandatory bg-black text-foreground lg:snap-proximity"
       >
       {/* Slide 1: Age selection */}
-      <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+	      <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
         <video
           className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
           key={videoSrc}
@@ -423,94 +529,182 @@ export default function LandingPage() {
           playsInline
         />
 
-        <div className="pointer-events-none absolute inset-0 bg-black/40" />
+        <div className="pointer-events-none absolute inset-0 bg-black/40 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/35 lg:to-black/10" />
 
-        <div className="relative z-10 flex w-full max-w-md flex-col justify-between px-4 pb-6 pt-8">
-          <div className="h-8" />
+	        <div className="relative z-10 flex h-full w-full items-stretch justify-center px-4 pb-6 pt-8 lg:px-[8vw] lg:py-14">
+	          <div className="flex w-full max-w-md flex-col justify-between lg:max-w-6xl lg:flex-row lg:items-center lg:justify-between lg:gap-10">
+            {/* Mobile */}
+            <div className="flex w-full flex-col justify-between lg:hidden">
+              <div className="h-8" />
 
-          <section className="mt-4 rounded-[32px] bg-black/30 px-5 pb-6 pt-5 text-white shadow-lg backdrop-blur-md">
-            <div className="mb-6 flex items-center gap-3">
-              <div
-                className={`relative ${
-                  selectedAge === "kid" ? "h-16 w-16" : "h-[50px] w-[50px]"
-                }`}
-              >
-                <Image
-                  src={logoSrc}
-                  alt="Telesa English logo"
-                  width={selectedAge === "kid" ? 64 : 50}
-                  height={selectedAge === "kid" ? 64 : 50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <p className="text-sm font-medium">Telesa English</p>
+              <section className="mt-4 rounded-[32px] bg-black/30 px-5 pb-6 pt-5 text-white shadow-lg backdrop-blur-md">
+                <div className="mb-6 flex items-center gap-3">
+                  <div
+                    className={`relative ${
+                      selectedAge === "kid" ? "h-16 w-16" : "h-[50px] w-[50px]"
+                    }`}
+                  >
+                    <Image
+                      src={logoSrc}
+                      alt="Telesa English logo"
+                      width={selectedAge === "kid" ? 64 : 50}
+                      height={selectedAge === "kid" ? 64 : 50}
+                      className="h-full w-full object-contain"
+                      priority
+                    />
+                  </div>
+                  <p className="text-sm font-medium">Telesa English</p>
+                </div>
+
+                <h1 className="text-[24px] font-semibold leading-snug">
+                  Nâng tầm kỹ năng
+                  <br />
+                  giao tiếp tiếng Anh
+                  <br />
+                  với Telesa English
+                </h1>
+
+                <p className="mt-4 text-sm text-white/85">Chọn độ tuổi để bắt đầu nhé</p>
+
+                <div className="mt-5 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAge("kid")}
+                    className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                      selectedAge === "kid"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.02]"
+                        : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
+                    }`}
+                  >
+                    Trẻ em {"<"} 16 tuổi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAge("adult")}
+                    className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                      selectedAge === "adult"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.02]"
+                        : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
+                    }`}
+                  >
+                    Người lớn {">="} 16 tuổi
+                  </button>
+                </div>
+              </section>
+
+              <section className="mt-6 flex flex-1 flex-col items-center justify-end gap-4 pb-3">
+                <div className="flex w-full items-end justify-center gap-6">
+                  <div className="relative w-[44%] aspect-[155/186] overflow-hidden rounded-[28px]">
+                    <Image
+                      src={leftImageSrc}
+                      alt="Telesa English class preview"
+                      fill
+                      sizes="(max-width: 768px) 44vw, 200px"
+                      quality={100}
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
+                  <div className="relative w-[44%] aspect-[155/186] overflow-hidden rounded-[28px]">
+                    <Image
+                      src={rightImageSrc}
+                      alt="Telesa English learning session"
+                      fill
+                      sizes="(max-width: 768px) 44vw, 200px"
+                      quality={100}
+                      className="object-cover"
+                      priority
+                    />
+                  </div>
+                </div>
+              </section>
             </div>
 
-            <h1 className="text-[24px] font-semibold leading-snug">
-              Nâng tầm kỹ năng
-              <br />
-              giao tiếp tiếng Anh
-              <br />
-              với Telesa English
-            </h1>
+            {/* Desktop */}
+            <div className="hidden w-full items-center justify-between gap-10 lg:flex">
+              <section className="w-[62%] rounded-[44px] bg-black/25 px-12 py-12 text-white shadow-2xl backdrop-blur-xl">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`relative ${
+                      selectedAge === "kid" ? "h-[56px] w-[56px]" : "h-[44px] w-[44px]"
+                    }`}
+                  >
+                    <Image
+                      src={logoSrc}
+                      alt="Telesa English logo"
+                      width={selectedAge === "kid" ? 56 : 44}
+                      height={selectedAge === "kid" ? 56 : 44}
+                      className="h-full w-full object-contain"
+                      priority
+                    />
+                  </div>
+                  <p className="text-lg font-medium">Telesa English</p>
+                </div>
 
-            <p className="mt-4 text-sm text-white/85">
-              Chọn độ tuổi để bắt đầu nhé
-            </p>
+                <h1 className="mt-6 text-[44px] font-semibold leading-[1.04] tracking-wide xl:text-[58px]">
+                  HỌC TIẾNG ANH GIAO TIẾP
+                  <br />
+                  CÙNG TELESA
+                </h1>
 
-            <div className="mt-5 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setSelectedAge("kid")}
-                className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
-                  selectedAge === "kid"
-                    ? "border-white bg-white text-black shadow-lg scale-[1.02]"
-                    : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
-                }`}
-              >
-                Trẻ em {"<"} 16 tuổi
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedAge("adult")}
-                className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
-                  selectedAge === "adult"
-                    ? "border-white bg-white text-black shadow-lg scale-[1.02]"
-                    : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
-                }`}
-              >
-                Người lớn {">="} 16 tuổi
-              </button>
+                <p className="mt-6 max-w-[56ch] text-base text-white/85 xl:text-lg">
+                  Vui lòng chọn độ tuổi để chúng tôi tối ưu hóa giao diện
+                  <br />
+                  và nội dung tương ứng
+                </p>
+
+                <div className="mt-10 flex max-w-xl gap-5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAge("kid")}
+                    className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                      selectedAge === "kid"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.01]"
+                        : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
+                    }`}
+                  >
+                    Trẻ em {"<"} 16 tuổi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedAge("adult")}
+                    className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                      selectedAge === "adult"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.01]"
+                        : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
+                    }`}
+                  >
+                    Người lớn {">="} 16 tuổi
+                  </button>
+                </div>
+              </section>
+
+              <aside className="flex shrink-0 flex-col gap-7">
+                <div className="relative h-[40vh] aspect-[2/3] overflow-hidden rounded-[24px] shadow-2xl">
+                  <Image
+                    src={leftImageSrc}
+                    alt="Telesa English class preview"
+                    fill
+                    sizes="(min-width: 1024px) 40vh, 44vw"
+                    quality={100}
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+                <div className="relative h-[40vh] aspect-[2/3] overflow-hidden rounded-[24px] shadow-2xl">
+                  <Image
+                    src={rightImageSrc}
+                    alt="Telesa English learning session"
+                    fill
+                    sizes="(min-width: 1024px) 40vh, 44vw"
+                    quality={100}
+                    className="object-cover"
+                    priority
+                  />
+                </div>
+              </aside>
             </div>
-          </section>
-
-          <section className="mt-6 flex flex-1 flex-col items-center justify-end gap-4 pb-3">
-            <div className="flex w-full items-end justify-center gap-6">
-              <div className="relative w-[44%] aspect-[155/186] overflow-hidden rounded-[28px]">
-                <Image
-                  src={leftImageSrc}
-                  alt="Telesa English class preview"
-                  fill
-                  sizes="(max-width: 768px) 44vw, 200px"
-                  quality={100}
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              <div className="relative w-[44%] aspect-[155/186] overflow-hidden rounded-[28px]">
-                <Image
-                  src={rightImageSrc}
-                  alt="Telesa English learning session"
-                  fill
-                  sizes="(max-width: 768px) 44vw, 200px"
-                  quality={100}
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            </div>
-          </section>
+          </div>
         </div>
       </section>
 
@@ -526,11 +720,11 @@ export default function LandingPage() {
             playsInline
           />
 
-          <div className="pointer-events-none absolute inset-0 bg-black/30" />
+          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
-          <div className="relative z-10 flex w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
+          <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
+            {/* Top bar (mobile) */}
+            <div className="flex items-center justify-between lg:hidden">
               <div className="relative h-16 w-16">
                 <Image
                   src="/assets/logo.png"
@@ -551,8 +745,46 @@ export default function LandingPage() {
               </button>
             </div>
 
+	            {/* Desktop hero content */}
+	            <div className="hidden lg:block absolute inset-x-0 bottom-[15vh]">
+	              <div className="px-[8vw]">
+	                <div className="max-w-[880px] text-left">
+	                  <h1 className="text-[60px] font-semibold leading-[1.04] tracking-tight xl:text-[72px]">
+	                    Telesa English –
+	                    <br />
+	                    Nói tự tin, giao tiếp tự nhiên!
+	                  </h1>
+
+	                  <p className="mt-6 text-lg leading-relaxed text-white/90 xl:text-xl">
+	                    Trung tâm Anh ngữ Telesa – với hơn 7 năm kinh nghiệm, chương trình T.E.S
+	                    <br />
+	                    (Học từ vựng với thẻ Leitner + Luyện phản xạ giao tiếp + Phát âm chuẩn IPA)
+	                    <br />
+	                    đã giúp hàng ngàn học viên từ con số 0 tự tin nói tiếng Anh lưu loát và tự nhiên.
+	                    <br />
+	                    Đăng ký ngay để bắt đầu hành trình giao tiếp mới!
+	                  </p>
+
+	                  <div className="mt-10 flex max-w-[440px] gap-5">
+	                    <button
+	                      type="button"
+	                      className="flex-1 rounded-full bg-white px-7 py-3 text-center text-sm font-semibold text-black shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
+	                    >
+	                      Học thử ngay
+	                    </button>
+	                    <button
+	                      type="button"
+	                      className="flex-1 rounded-full border border-white/80 bg-black/10 px-7 py-3 text-center text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
+	                    >
+	                      Tư vấn ngay
+	                    </button>
+	                  </div>
+	                </div>
+	              </div>
+	            </div>
+
             {/* Bottom content */}
-            <div className="mt-auto pb-2">
+            <div className="mt-auto pb-2 lg:hidden">
               <h2 className="text-[22px] font-semibold leading-snug">
                 Telesa English –
                 <br />
@@ -574,16 +806,17 @@ export default function LandingPage() {
         </section>
       )}
 
-	      {/* Slide 3 (kid): Horizontal feature carousel with 4 slides */}
-	      {selectedAge === "kid" && (
-	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
-	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900">
-	            {/* Top bar (same as kid) */}
-	            <div className="flex items-center justify-between">
-	              <div className="relative h-16 w-16">
-	                <Image
-	                  src="/assets/logo.png"
-	                  alt="Telesa English Kids logo"
+		      {/* Slide 3 (kid): Horizontal feature carousel with 4 slides */}
+		      {selectedAge === "kid" && (
+		        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
+		          {/* Mobile */}
+		          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
+		            {/* Top bar (same as kid) */}
+		            <div className="flex items-center justify-between">
+		              <div className="relative h-16 w-16">
+		                <Image
+		                  src="/assets/logo.png"
+		                  alt="Telesa English Kids logo"
 	                  width={64}
 	                  height={64}
 	                  className="h-full w-full object-contain"
@@ -596,9 +829,9 @@ export default function LandingPage() {
 	              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm">
 	                <span className="block h-[2px] w-4 rounded-full bg-white" />
 	                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-	                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-	              </button>
-	            </div>
+		                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
+		              </button>
+		            </div>
 
             {/* Horizontal slides: animated, one visible at a time */}
             <div
@@ -675,16 +908,75 @@ export default function LandingPage() {
                     <span className="text-lg">↑</span>
                   </button>
                 </div>
-              </div>
-            </div>
-	          </div>
-	        </section>
-	      )}
+	              </div>
+		            </div>
+		          </div>
+		
+		          {/* Desktop */}
+		          <div className="relative z-10 hidden h-full w-full items-center justify-between px-[8vw] lg:flex">
+		            <div className="flex w-[56%] flex-col items-center">
+		              <div className="relative w-full max-w-[760px]">
+		                <div
+		                  className="relative h-[64vh] max-h-[680px] w-full select-none cursor-grab active:cursor-grabbing"
+		                  style={{ touchAction: "pan-y" }}
+		                  {...kidCarouselSwipe}
+		                >
+		                  <div
+		                    className={`relative mx-auto h-full w-full max-w-[560px] transform-gpu transition-all duration-300 ease-out ${
+		                      kidTextVisible
+		                        ? "opacity-100 translate-x-0 scale-100"
+		                        : "opacity-0 -translate-x-2 scale-[0.99]"
+		                    }`}
+		                  >
+		                    <Image
+		                      src={kidSlides[kidSlideIndex].image}
+		                      alt={kidSlides[kidSlideIndex].alt}
+		                      fill
+		                      sizes="(min-width: 1024px) 560px, 90vw"
+		                      quality={100}
+		                      className="object-contain"
+		                      draggable={false}
+		                      priority
+		                    />
+		                  </div>
+		                </div>
+
+		                <div className="mt-10 flex items-center justify-center gap-4">
+		                  {kidSlides.map((_, index) => (
+		                    <button
+		                      key={index}
+		                      type="button"
+		                      onClick={() => changeKidSlide(index)}
+		                      className={`h-1.5 rounded-full transition-all ${
+		                        index === kidSlideIndex ? "w-10 bg-amber-400" : "w-7 bg-slate-300"
+		                      }`}
+		                    />
+		                  ))}
+		                </div>
+		              </div>
+		            </div>
+
+		            <div
+		              className={`w-[40%] max-w-[560px] text-left transform-gpu transition-all duration-300 ease-out ${
+		                kidTextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+		              }`}
+		            >
+		              <h2 className="text-[44px] font-semibold leading-tight text-slate-900">
+		                {kidSlides[kidSlideIndex].title}
+		              </h2>
+		              <p className="mt-6 text-lg leading-relaxed text-slate-500">
+		                {kidSlides[kidSlideIndex].description}
+		              </p>
+		            </div>
+		          </div>
+		        </section>
+		      )}
 
       {/* Slide 4 (kid): Stats view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
+          {/* Mobile */}
+          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <div className="relative h-16 w-16">
@@ -700,7 +992,12 @@ export default function LandingPage() {
               <button className="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
                 Làm bài kiểm tra ngay
               </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
+              <button
+                type="button"
+                aria-label="Open menu"
+                onClick={() => setIsMenuOpen(true)}
+                className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white"
+              >
                 <span className="block h-[2px] w-4 rounded-full bg-white" />
                 <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
                 <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
@@ -709,12 +1006,8 @@ export default function LandingPage() {
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <p className="text-base font-medium tracking-wide">
-                Tiếng anh giao tiếp
-              </p>
-              <p className="mt-3 text-[64px] font-extrabold leading-none text-amber-400">
-                3000+
-              </p>
+              <p className="text-base font-medium tracking-wide">Tiếng anh giao tiếp</p>
+              <p className="mt-3 text-[64px] font-extrabold leading-none text-amber-400">3000+</p>
               <p className="mt-4 text-base font-medium">Học viên đang học</p>
             </div>
 
@@ -736,6 +1029,435 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 hidden h-full w-full items-center justify-center px-[8vw] lg:flex">
+            <div className="w-full">
+              <div className="grid w-full grid-cols-4 items-start gap-12 text-center">
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                    1000+
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Học viên đang học</p>
+                </div>
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Giáo viên chuyên môn</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                    25+
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
+                </div>
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                    98%
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Học viên cảm nhận thực tế</p>
+                </div>
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Ứng dụng công nghệ</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                    90%
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Slide 5 (kid): Question slider */}
+      {selectedAge === "kid" && (
+        <section
+          className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden"
+          style={{ touchAction: "pan-y" }}
+          {...kidQuestionSwipe}
+        >
+          <Image
+            src={kidQuestionSlides[kidQuestionIndex].bg}
+            alt="Telesa question background"
+            fill
+            sizes="100vw"
+            quality={100}
+            className="object-cover"
+            priority
+            draggable={false}
+          />
+          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-black/20" />
+
+          <div className="relative z-10 h-full w-full">
+            <div className="absolute bottom-[18vh] left-4 right-4 text-white lg:left-[8vw] lg:right-auto lg:bottom-[18vh]">
+              <h2
+                className={`whitespace-pre-line text-[34px] font-semibold leading-[1.05] tracking-tight sm:text-[44px] lg:text-[56px] transform-gpu transition-all duration-300 ease-out ${
+                  kidQuestionVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                }`}
+              >
+                {kidQuestionSlides[kidQuestionIndex].title}
+              </h2>
+
+              <div className="mt-10 flex items-center gap-4 lg:mt-12">
+                {kidQuestionSlides.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => changeKidQuestionSlide(index)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      index === kidQuestionIndex ? "w-12 bg-[#FEA933]" : "w-12 bg-white/70"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Slide 6 (kid desktop): Testimonials */}
+      {selectedAge === "kid" && (
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
+          <div className="relative z-10 flex h-full w-full flex-col">
+            <div className="w-full px-[8vw] pt-[10vh] text-center">
+              <h2 className="text-[44px] font-extrabold tracking-tight text-slate-800">
+                Cảm Nhận Học Viên
+              </h2>
+              <p className="mt-3 text-lg text-[#667085]">
+                Đánh giá và chia sẻ thực tế từ học viên
+              </p>
+            </div>
+
+            <div
+              className="mt-14 w-full flex-1 overflow-x-auto pb-[10vh]"
+              style={
+                { scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties
+              }
+            >
+              <div className="flex w-max items-stretch gap-10 px-[8vw] snap-x snap-mandatory">
+                {kidTestimonials.map((t, index) => (
+                  <article
+                    key={`${t.name}-${index}`}
+                    className="flex w-[23vw] aspect-[1/1.4] flex-col justify-between rounded-[32px] border border-slate-100 bg-white p-10 shadow-sm snap-center"
+                  >
+                    <p className="text-[18px] leading-relaxed text-slate-700">
+                      {t.content}
+                    </p>
+
+                    <div className="mt-10 flex items-center gap-5">
+                      <div className="h-16 w-16 rounded-full bg-slate-200" />
+                      <div className="text-left">
+                        <p className="text-[26px] font-bold text-slate-800">
+                          {t.name}
+                        </p>
+                        <p className="mt-1 text-sm text-[#667085]">{t.date}</p>
+                        <div className="mt-2 text-[14px] text-[#FEA933]">
+                          {"★★★★★"}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Slide 7 (kid desktop): Global connections view */}
+      {selectedAge === "kid" && (
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:flex">
+          <div className="relative z-10 flex h-full w-full flex-col">
+            <div className="w-full px-[8vw] pt-[10vh] text-center">
+              <h2 className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
+                Kết nối học viên trên toàn thế giới cùng Telesa English!
+              </h2>
+              <p className="mx-auto mt-5 max-w-[820px] text-[20px] leading-relaxed text-slate-100">
+                Dù bạn ở đâu, Telesa English luôn đồng hành cùng bạn trên hành trình
+                chinh phục tiếng Anh.
+              </p>
+            </div>
+
+            <div className="mt-12 flex min-h-0 flex-1 items-center justify-center px-[8vw] pb-[10vh]">
+              <div className="h-full max-h-[70vh] w-full max-w-[1200px]">
+                <KidWorldMap variant="desktop" className="h-full" />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Slide 8 (kid desktop): Consultation form view */}
+      {selectedAge === "kid" && (
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex">
+          <Image
+            src="/assets/10-1.jpg"
+            alt="Telesa English Kids consultation"
+            fill
+            priority
+            quality={100}
+            sizes="100vw"
+            className="pointer-events-none select-none object-cover"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-black/35" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.78)_100%)]" />
+
+          <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(5vh,40px)]">
+            <div className="w-full max-w-[920px] text-center">
+              <h2 className="text-[clamp(29px,4vh,37px)] font-extrabold leading-[1.05] tracking-tight text-white">
+                Form Đăng Ký Tư Vấn
+              </h2>
+              <p className="mx-auto mt-[min(1.8vh,11px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
+                Để lại thông tin của bạn, chúng tôi sẽ liên hệ để tư vấn ngay!
+              </p>
+            </div>
+
+            <form
+              className="mt-[min(3.6vh,28px)] flex w-full max-w-[920px] flex-col gap-[min(2.1vh,18px)]"
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">Tên</label>
+                <input
+                  value={kidConsultName}
+                  onChange={(e) => setKidConsultName(e.target.value)}
+                  placeholder="Nhập tên của bạn"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                />
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">Email</label>
+                <input
+                  value={kidConsultEmail}
+                  onChange={(e) => setKidConsultEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  inputMode="email"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                />
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">
+                  Hình thức liên hệ
+                </label>
+                <div className="relative">
+                  <select
+                    value={kidConsultContactMethod}
+                    onChange={(e) => setKidConsultContactMethod(e.target.value as any)}
+                    className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
+                  >
+                    <option value="zalo">Zalo</option>
+                    <option value="phone">Điện thoại</option>
+                    <option value="email">Email</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                    <span className="text-[13px] text-slate-600">⌄</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">Số Zalo</label>
+                <div className="flex h-[clamp(35px,4.2vh,40px)] w-full overflow-hidden rounded-[16px] bg-white/55 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-md">
+                  <div className="flex items-center gap-2 px-4 text-[13px] text-slate-800">
+                    <select
+                      value={kidConsultZaloCountry}
+                      onChange={(e) => setKidConsultZaloCountry(e.target.value as any)}
+                      className="appearance-none bg-transparent font-semibold outline-none"
+                    >
+                      <option value="VN">VN</option>
+                    </select>
+                    <span className="text-slate-600">⌄</span>
+                  </div>
+                  <div className="my-2 w-px bg-white/55" />
+                  <div className="flex flex-1 items-center px-4">
+                    <span className="mr-2 text-[13px] text-slate-600">+84</span>
+                    <input
+                      value={kidConsultZaloNumber}
+                      onChange={(e) => setKidConsultZaloNumber(e.target.value)}
+                      placeholder="(555) 000-0000"
+                      inputMode="tel"
+                      className="h-full w-full bg-transparent text-left text-[13px] text-slate-800 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="text-[13px] font-semibold text-white">
+                  Vấn đề cần tư vấn
+                </label>
+                <textarea
+                  value={kidConsultTopic}
+                  onChange={(e) => setKidConsultTopic(e.target.value)}
+                  placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
+                  rows={3}
+                  className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                />
+              </div>
+
+              <label className="mt-1 flex items-start gap-3 text-left text-[13px] text-white/90">
+                <input
+                  type="checkbox"
+                  checked={kidConsultAgree}
+                  onChange={(e) => setKidConsultAgree(e.target.checked)}
+                  className="mt-1 h-[18px] w-[18px] rounded-md border-2 border-white/80 bg-transparent accent-white"
+                />
+                <span className="leading-snug">
+                  Bạn đồng ý với tất cả điều khoản bảo mật của Telesa
+                </span>
+              </label>
+
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="submit"
+                  disabled={!kidConsultAgree}
+                  className="h-[clamp(40px,5.3vh,44px)] w-full max-w-[506px] rounded-[16px] bg-[#FFC000] text-center text-[15px] font-extrabold text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95"
+                >
+                  Gửi
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      )}
+
+      {/* Slide 9 (kid desktop): Contact options view */}
+      {selectedAge === "kid" && (
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
+          <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(6vh,56px)]">
+            <div className="w-full max-w-[1100px] text-center">
+              <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
+                Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
+              </h2>
+              <p className="mx-auto mt-4 max-w-[760px] text-[20px] font-medium text-slate-500">
+                Chúng tôi sẽ liên hệ lại ngay để tư vấn tận tình
+              </p>
+            </div>
+
+            <div className="mt-[min(7vh,64px)] w-full max-w-[1180px]">
+              <div className="grid grid-cols-3 gap-12">
+                <div className="rounded-[40px] bg-[#E6F7FE] p-10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                    <Image
+                      src="/assets/svg/zalo.svg"
+                      alt="Zalo"
+                      width={44}
+                      height={44}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                    Zalo
+                  </h3>
+                  <p className="mt-3 text-[18px] font-medium text-slate-600">
+                    Liên hệ với chúng tôi qua Zalo
+                  </p>
+                </div>
+
+                <div className="rounded-[40px] bg-[#FFF5FB] p-10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                    <Image
+                      src="/assets/svg/messenger.svg"
+                      alt="Messenger"
+                      width={44}
+                      height={44}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                    Messenger
+                  </h3>
+                  <p className="mt-3 text-[18px] font-medium text-slate-600">
+                    Nhắn tin với chúng tôi ngay
+                  </p>
+                </div>
+
+                <div className="rounded-[40px] bg-[#F4FCE8] p-10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                    <Image
+                      src="/assets/svg/whatsapp.svg"
+                      alt="Whatsapp"
+                      width={44}
+                      height={44}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                    Whatsapp
+                  </h3>
+                  <p className="mt-3 text-[18px] font-medium text-slate-600">
+                    Liên hệ với chúng tôi qua Whatsapp
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+      )}
+
+      {/* Slide 10 (kid desktop): TELESA view */}
+      {selectedAge === "kid" && (
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:flex">
+          <Image
+            src="/assets/11-top.jpg"
+            alt="Telesa background"
+            fill
+            priority
+            quality={100}
+            sizes="100vw"
+            unoptimized
+            className="pointer-events-none select-none object-cover"
+          />
+
+          <div
+            className="absolute inset-x-0 bottom-0 top-[80px] z-10"
+            onPointerDown={startTeleSaDrag}
+            style={{ touchAction: "none" }}
+          >
+            {teleSaMaskBaseHeightPx > 0 && (
+              <div
+                className={`pointer-events-none absolute bottom-0 left-0 right-0 z-30 ${
+                  teleSaIsDragging ? "" : "transition-[height] duration-600 ease-out"
+                }`}
+                style={{
+                  height: Math.max(0, teleSaMaskBaseHeightPx + teleSaOffsetPx / 2),
+                }}
+              >
+                <Image
+                  src="/assets/11-top.jpg"
+                  alt="Telesa background mask"
+                  fill
+                  priority
+                  quality={100}
+                  sizes="100vw"
+                  unoptimized
+                  className="select-none object-cover object-center"
+                />
+              </div>
+            )}
+
+            <div
+              className={`absolute left-0 right-0 ${
+                teleSaIsDragging ? "" : "transition-transform duration-600 ease-out"
+              }`}
+              style={{
+                bottom: "30vh",
+                transform: `translateY(${teleSaOffsetPx}px)`,
+                zIndex: 20,
+              }}
+            >
+              <div className="flex w-full items-end justify-center pb-2">
+                <div
+                  ref={teleSaTextRef}
+                  className="w-[80vw] max-w-full select-none whitespace-nowrap text-center text-[clamp(72px,17vw,300px)] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)]"
+                >
+                  TELESA
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
@@ -744,18 +1466,18 @@ export default function LandingPage() {
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
           <video
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-            src="/assets/2-adult.mp4"
+            src="/assets/1-adult2.mp4"
             autoPlay
             muted
             loop
             playsInline
           />
 
-          <div className="pointer-events-none absolute inset-0 bg-black/30" />
+          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
-          <div className="relative z-10 flex w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white">
+          <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
             {/* Top bar */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between lg:hidden">
               <div className="relative h-[50px] w-[50px]">
                 <Image
                   src="/assets/svg/logo.png"
@@ -776,8 +1498,46 @@ export default function LandingPage() {
               </button>
             </div>
 
+            {/* Desktop hero content */}
+            <div className="hidden lg:block absolute inset-x-0 bottom-[15vh]">
+              <div className="px-[8vw]">
+                <div className="max-w-[880px] text-left">
+                  <h1 className="text-[60px] font-semibold leading-[1.04] tracking-tight xl:text-[72px]">
+                    Telesa English –
+                    <br />
+                    Nói tự tin, giao tiếp tự nhiên!
+                  </h1>
+
+                  <p className="mt-6 text-lg leading-relaxed text-white/90 xl:text-xl">
+                    Trung tâm Anh ngữ Telesa – với hơn 7 năm kinh nghiệm, chương trình T.E.S
+                    <br />
+                    (Học từ vựng với thẻ Leitner + Luyện phản xạ giao tiếp + Phát âm chuẩn IPA)
+                    <br />
+                    đã giúp hàng ngàn học viên từ con số 0 tự tin nói tiếng Anh lưu loát và tự nhiên.
+                    <br />
+                    Đăng ký ngay để bắt đầu hành trình giao tiếp mới!
+                  </p>
+
+                  <div className="mt-10 flex max-w-[440px] gap-5">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-full bg-white px-7 py-3 text-center text-sm font-semibold text-black shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                    >
+                      Học thử ngay
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 rounded-full border border-white/80 bg-black/10 px-7 py-3 text-center text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                    >
+                      Tư vấn ngay
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Bottom content */}
-            <div className="mt-auto pb-2">
+            <div className="mt-auto pb-2 lg:hidden">
               <h2 className="text-[22px] font-semibold leading-snug">
                 Telesa English –
                 <br />
@@ -802,15 +1562,16 @@ export default function LandingPage() {
       {/* Slide 3 (adult): Same structure as kid view 3 */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900">
-            {/* Top bar (adult logo) */}
+          {/* Mobile */}
+          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
+            {/* Top bar */}
             <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
+              <div className="relative h-16 w-16">
                 <Image
-                  src="/assets/svg/logo.png"
+                  src={logoSrc}
                   alt="Telesa English logo"
-                  width={50}
-                  height={50}
+                  width={64}
+                  height={64}
                   className="h-full w-full object-contain"
                   priority
                 />
@@ -903,12 +1664,70 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 hidden h-full w-full items-center justify-between px-[8vw] lg:flex">
+            <div className="flex w-[56%] flex-col items-center">
+              <div className="relative w-full max-w-[760px]">
+                <div
+                  className="relative h-[64vh] max-h-[680px] w-full select-none cursor-grab active:cursor-grabbing"
+                  style={{ touchAction: "pan-y" }}
+                  {...kidCarouselSwipe}
+                >
+                  <div
+                    className={`relative mx-auto h-full w-full max-w-[560px] transform-gpu transition-all duration-300 ease-out ${
+                      kidTextVisible
+                        ? "opacity-100 translate-x-0 scale-100"
+                        : "opacity-0 -translate-x-2 scale-[0.99]"
+                    }`}
+                  >
+                    <Image
+                      src={adultSlides[kidSlideIndex].image}
+                      alt={adultSlides[kidSlideIndex].alt}
+                      fill
+                      sizes="(min-width: 1024px) 560px, 90vw"
+                      quality={100}
+                      className="object-contain"
+                      draggable={false}
+                      priority
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-10 flex items-center justify-center gap-4">
+                  {adultSlides.map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => changeKidSlide(index)}
+                      className={`h-1.5 rounded-full transition-all ${
+                        index === kidSlideIndex ? "w-10 bg-amber-400" : "w-7 bg-slate-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={`w-[40%] max-w-[560px] text-left transform-gpu transition-all duration-300 ease-out ${
+                kidTextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+              }`}
+            >
+              <h2 className="text-[44px] font-semibold leading-tight text-slate-900">
+                {adultSlides[kidSlideIndex].title}
+              </h2>
+              <p className="mt-6 text-lg leading-relaxed text-slate-500">
+                {adultSlides[kidSlideIndex].description}
+              </p>
+            </div>
+          </div>
         </section>
       )}
 
       {/* Slide 5 (kid): Stats view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -968,7 +1787,7 @@ export default function LandingPage() {
 
       {/* Slide 6 (kid): Progress view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -1028,7 +1847,7 @@ export default function LandingPage() {
 
       {/* Slide 7 (kid): Technology application view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -1086,7 +1905,7 @@ export default function LandingPage() {
       {/* Slide 8 (kid): Why choose Telesa view (2 sub-slides) */}
       {selectedAge === "kid" && (
         <section
-          className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white"
+          className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
           style={{ touchAction: "pan-y" }}
           {...kidView8Swipe}
         >
@@ -1206,8 +2025,9 @@ export default function LandingPage() {
 
       {/* Slide 9 (kid): Testimonials view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
+          {/* Mobile */}
+          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <div className="relative h-16 w-16">
@@ -1312,7 +2132,7 @@ export default function LandingPage() {
 
       {/* Slide 10 (kid): Global connections view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -1377,7 +2197,7 @@ export default function LandingPage() {
 
       {/* Slide 11 (kid): Consultation form view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden">
           <Image
             src="/assets/10-1.jpg"
             alt="Telesa English Kids consultation"
@@ -1547,7 +2367,7 @@ export default function LandingPage() {
 
       {/* Slide 12 (kid): Contact options view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -1658,7 +2478,7 @@ export default function LandingPage() {
 
       {/* Slide 13 (kid): TELESA reveal view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:hidden">
           <Image
             src="/assets/11-top.jpg"
             alt="Telesa background"
@@ -1671,7 +2491,7 @@ export default function LandingPage() {
           />
 
           <div
-            className="absolute inset-0 z-10"
+            className="absolute inset-0 z-10 lg:pointer-events-none"
             onPointerDown={startTeleSaDrag}
             style={{ touchAction: "none" }}
           >
@@ -1736,151 +2556,22 @@ export default function LandingPage() {
 
       {/* Slide 14 (kid): Footer contact view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800">
-                <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-              </button>
-            </div>
-
-            <div className="mt-8 space-y-5">
-              {/* Contact info */}
-              <section>
-                <h2 className="text-[22px] font-extrabold text-slate-800">
-                  Thông tin liên hệ
-                </h2>
-                <div className="mt-3 space-y-3 text-[16px] font-medium text-slate-500">
-                  <div className="flex items-center gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v11c0 1.38-1.12 2.5-2.5 2.5h-11C5.12 20 4 18.88 4 17.5v-11Z" stroke="currentColor" strokeWidth="2" />
-                      <path d="M6.5 7.5 12 11.5 17.5 7.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                    </svg>
-                    <span>team1@telesaenglish.com</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M7 2h10v20H7V2Z" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M9 6h6M9 10h6M9 14h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                      <path d="M5 22h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    <span>0318591266</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.08 4.2 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.86.3 1.7.55 2.5a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.58-1.07a2 2 0 0 1 2.11-.45c.8.25 1.64.43 2.5.55A2 2 0 0 1 22 16.92Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                    </svg>
-                    <span>0932639259</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* Social */}
-              <section>
-                <h2 className="text-[22px] font-extrabold text-slate-800">
-                  Mạng xã hội
-                </h2>
-                <div className="mt-3 flex items-center gap-3">
-                  <a href="https://www.facebook.com/TelesaEnglish" target="_blank" rel="noreferrer" aria-label="Facebook" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/facebook.svg" alt="Facebook" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                  <a href="https://www.tiktok.com/@telesaenglishofficial" target="_blank" rel="noreferrer" aria-label="TikTok" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/tiktok.svg" alt="TikTok" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                  <a href="https://www.instagram.com/hoctienganhcungtelesa/" target="_blank" rel="noreferrer" aria-label="Instagram" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/instagram.svg" alt="Instagram" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                  <a href="https://www.youtube.com/@Telesaenglish" target="_blank" rel="noreferrer" aria-label="YouTube" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/youtube.svg" alt="YouTube" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                </div>
-              </section>
-
-              {/* Download */}
-              <section>
-                <h2 className="text-[22px] font-extrabold text-slate-800">
-                  Tải ngay
-                </h2>
-                <div className="mt-3 flex items-center gap-0">
-                  <a href="#" className="flex flex-1 items-center justify-start">
-                    <Image
-                      src="/assets/svg/apple-button.svg"
-                      alt="Download on the App Store"
-                      width={190}
-                      height={56}
-                      className="h-12 w-full object-contain object-left"
-                    />
-                  </a>
-                  <a href="#" className="flex flex-1 items-center justify-start">
-                    <Image
-                      src="/assets/svg/google-play-button.svg"
-                      alt="Get it on Google Play"
-                      width={190}
-                      height={56}
-                      className="h-12 w-full object-contain object-left"
-                    />
-                  </a>
-                </div>
-              </section>
-            </div>
-
-            <div className="mt-auto">
-              <div className="border-t border-slate-200" />
-              <p className="py-4 text-center text-[14px] font-medium text-slate-500">
-                © 2025 Untitled UI. All rights reserved.
-              </p>
-            </div>
-
-            {/* Floating actions */}
-            <div className="pointer-events-none absolute bottom-24 right-6">
-              <div className="pointer-events-auto flex flex-col items-center gap-4">
-                <button
-                  type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f3f3] shadow-md"
-                  aria-label="Gọi tư vấn"
-                >
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt=""
-                    width={18}
-                    height={18}
-                    className="h-[18px] w-[18px]"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f3f3] shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-xl text-slate-700">↑</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <FooterContactView
+          variant="kid"
+          logoSrc={logoSrc}
+          onMenuOpen={() => setIsMenuOpen(true)}
+          onScrollToTop={scrollToTop}
+          onNavigate={(key) => {
+            if (key === "home") scrollToTop();
+          }}
+        />
       )}
 
       {/* Slide 4 (adult): Stats view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
+          {/* Mobile */}
+          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <div className="relative h-[50px] w-[50px]">
@@ -1908,7 +2599,7 @@ export default function LandingPage() {
               <p className="text-base font-medium tracking-wide">
                 Tiếng anh giao tiếp
               </p>
-              <p className="mt-3 text-[64px] font-extrabold leading-none text-[#e0007a]">
+              <p className="mt-3 text-[64px] font-extrabold leading-none text-[#C1077B]">
                 1000+
               </p>
               <p className="mt-4 text-base font-medium">Học viên đang học</p>
@@ -1932,12 +2623,48 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 hidden h-full w-full items-center justify-center px-[8vw] lg:flex">
+            <div className="w-full">
+              <div className="grid w-full grid-cols-4 items-start gap-12 text-center">
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                    1000+
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Học viên đang học</p>
+                </div>
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Giáo viên chuyên môn</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                    25+
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
+                </div>
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                    98%
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Học viên cảm nhận thực tế</p>
+                </div>
+                <div>
+                  <p className="text-[24px] font-semibold text-slate-800">Ứng dụng công nghệ</p>
+                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                    90%
+                  </p>
+                  <p className="mt-6 text-lg text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
       {/* Slide 5 (adult): Teacher stats view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -1966,7 +2693,7 @@ export default function LandingPage() {
               <p className="text-base font-semibold tracking-wide text-slate-800">
                 Giảng viên chuyên môn
               </p>
-              <p className="mt-4 text-[72px] font-extrabold leading-none text-[#e0007a]">
+              <p className="mt-4 text-[72px] font-extrabold leading-none text-[#C1077B]">
                 25+
               </p>
               <p className="mt-5 text-base font-medium text-slate-700">
@@ -1997,7 +2724,7 @@ export default function LandingPage() {
 
       {/* Slide 6 (adult): Progress view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -2026,7 +2753,7 @@ export default function LandingPage() {
               <p className="text-base font-semibold tracking-wide text-white">
                 Tiến bộ rõ rệt
               </p>
-              <p className="mt-4 text-[72px] font-extrabold leading-none text-[#e0007a]">
+              <p className="mt-4 text-[72px] font-extrabold leading-none text-[#C1077B]">
                 98%
               </p>
               <p className="mt-5 text-base font-medium text-white">
@@ -2057,7 +2784,7 @@ export default function LandingPage() {
 
       {/* Slide 7 (adult): Technology application view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -2086,7 +2813,7 @@ export default function LandingPage() {
               <p className="text-base font-semibold tracking-wide text-slate-800">
                 Ứng dụng công nghệ
               </p>
-              <p className="mt-4 text-[72px] font-extrabold leading-none text-[#e0007a]">
+              <p className="mt-4 text-[72px] font-extrabold leading-none text-[#C1077B]">
                 90%
               </p>
               <p className="mt-5 text-base font-medium text-slate-700">
@@ -2115,104 +2842,46 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Slide 8 (adult): Why choose Telesa view (5 sub-slides) */}
+      {/* Slide 8 (adult): FAQ slider view */}
       {selectedAge === "adult" && (
         <section
-          className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white"
+          className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden"
           style={{ touchAction: "pan-y" }}
           {...adultView8Swipe}
         >
-          {/* Background image */}
           <Image
-            src={adultView8Slides[adultView8Index].image}
-            alt="Telesa English Adult learning"
+            src={adultView8Slides[adultView8Index].bg}
+            alt="Telesa English background"
             fill
             priority
             quality={100}
             unoptimized
             sizes="100vw"
-            className={`pointer-events-none select-none object-cover ${adultView8Slides[adultView8Index].objectPositionClass}`}
+            className="pointer-events-none select-none object-cover"
           />
-          <div className="pointer-events-none absolute inset-0 bg-black/25" />
+          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-black/20" />
 
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+          <div className="relative z-10 h-full w-full">
+            <div className="absolute bottom-[18vh] left-4 right-4 text-white lg:left-[8vw] lg:right-auto lg:bottom-[18vh]">
+              <h2
+                className={`whitespace-pre-line text-[34px] font-semibold leading-[1.05] tracking-tight sm:text-[44px] lg:text-[56px] transform-gpu transition-all duration-300 ease-out ${
+                  adultView8TextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                }`}
+              >
+                {adultView8Slides[adultView8Index].title}
+              </h2>
 
-            {/* Text + actions grouped near bottom */}
-            <div
-              className={`mt-12 flex flex-1 flex-col justify-end pb-10 transform-gpu transition-all duration-300 ease-out ${
-                adultView8TextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-              }`}
-            >
-              <div className="max-w-[90vw]">
-                <p className="text-left text-[22px] font-semibold leading-snug text-white">
-                  {adultView8Slides[adultView8Index].title}
-                </p>
-                <p className="mt-2 text-left text-sm leading-relaxed text-white/90">
-                  {adultView8Slides[adultView8Index].description}
-                </p>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between">
-                <div className="flex flex-col gap-3">
-                  <button className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
-                    Chi tiết
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {adultView8Slides.map((_, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => changeAdultView8Slide(index)}
-                        className={`h-1.5 rounded-full transition-all ${
-                          adultView8Index === index
-                            ? "w-4 bg-[#e0007a]"
-                            : "w-3 bg-white/70"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-3">
-                  <button className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm">
-                    <Image
-                      src="/assets/svg/phone-pink.svg"
-                      alt="Gọi tư vấn Telesa"
-                      width={20}
-                      height={20}
-                      className="h-5 w-5"
-                    />
-                  </button>
+              <div className="mt-10 flex items-center gap-4 lg:mt-12">
+                {adultView8Slides.map((_, index) => (
                   <button
+                    key={index}
                     type="button"
-                    onClick={scrollToTop}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm"
-                    aria-label="Lên đầu trang"
-                  >
-                    <span className="text-lg">↑</span>
-                  </button>
-                </div>
+                    onClick={() => changeAdultView8Slide(index)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      index === adultView8Index ? "w-12 bg-[#C1077B]" : "w-12 bg-white/70"
+                    }`}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -2221,8 +2890,9 @@ export default function LandingPage() {
 
       {/* Slide 9 (adult): Testimonials view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
+          {/* Mobile */}
+          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <div className="relative h-[50px] w-[50px]">
@@ -2273,7 +2943,7 @@ export default function LandingPage() {
                       Võ Minh Khôi
                     </p>
                     <p className="text-[11px] text-slate-500">Học viên</p>
-                    <div className="mt-1 text-[12px] text-[#D40887]">
+                    <div className="mt-1 text-[12px] text-[#C1077B]">
                       {"★★★★★"}
                     </div>
                   </div>
@@ -2292,7 +2962,7 @@ export default function LandingPage() {
                   <div className="flex flex-col">
                     <p className="text-sm font-semibold text-slate-900">Thy</p>
                     <p className="text-[11px] text-slate-500">Học viên</p>
-                    <div className="mt-1 text-[12px] text-[#D40887]">
+                    <div className="mt-1 text-[12px] text-[#C1077B]">
                       {"★★★★★"}
                     </div>
                   </div>
@@ -2323,13 +2993,59 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 hidden h-full w-full flex-col lg:flex">
+            <div className="w-full px-[8vw] pt-[10vh] text-center">
+              <h2 className="text-[44px] font-extrabold tracking-tight text-slate-800">
+                Cảm Nhận Học Viên
+              </h2>
+              <p className="mt-3 text-lg text-[#667085]">
+                Đánh giá và chia sẻ thực tế từ học viên
+              </p>
+            </div>
+
+            <div
+              className="mt-14 w-full flex-1 overflow-x-auto pb-[10vh]"
+              style={
+                { scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties
+              }
+            >
+              <div className="flex w-max items-stretch gap-10 px-[8vw] snap-x snap-mandatory">
+                {kidTestimonials.map((t, index) => (
+                  <article
+                    key={`adult-${t.name}-${index}`}
+                    className="flex w-[23vw] aspect-[1/1.4] flex-col justify-between rounded-[32px] border border-slate-100 bg-white p-10 shadow-sm snap-center"
+                  >
+                    <p className="text-[18px] leading-relaxed text-slate-700">
+                      {t.content}
+                    </p>
+
+                    <div className="mt-10 flex items-center gap-5">
+                      <div className="h-16 w-16 rounded-full bg-slate-200" />
+                      <div className="text-left">
+                        <p className="text-[26px] font-bold text-slate-800">
+                          {t.name}
+                        </p>
+                        <p className="mt-1 text-sm text-[#667085]">{t.date}</p>
+                        <div className="mt-2 text-[14px] text-[#C1077B]">
+                          {"★★★★★"}
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
       {/* Slide 10 (adult): Global connections view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+          {/* Mobile */}
+          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <div className="relative h-[50px] w-[50px]">
@@ -2393,6 +3109,25 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 hidden h-full w-full flex-col lg:flex">
+            <div className="w-full px-[8vw] pt-[10vh] text-center">
+              <h2 className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
+                Kết nối học viên trên toàn thế giới cùng Telesa English!
+              </h2>
+              <p className="mx-auto mt-5 max-w-[820px] text-[20px] leading-relaxed text-slate-100">
+                Dù bạn ở đâu, Telesa English luôn đồng hành cùng bạn trên hành trình
+                chinh phục tiếng Anh.
+              </p>
+            </div>
+
+            <div className="mt-12 flex min-h-0 flex-1 items-center justify-center px-[8vw] pb-[10vh]">
+              <div className="h-full max-h-[70vh] w-full max-w-[1200px]">
+                <KidWorldMap variant="desktop" className="h-full" highlightColor="#C1077B" />
+              </div>
+            </div>
+          </div>
         </section>
       )}
 
@@ -2414,7 +3149,8 @@ export default function LandingPage() {
             style={{ backgroundColor: "#59033933" }}
           />
 
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col items-center px-4 pb-3 pt-5">
+          {/* Mobile */}
+          <div className="relative z-10 flex h-full w-full max-w-md flex-col items-center px-4 pb-3 pt-5 lg:hidden">
             {/* Top bar */}
             <div className="flex w-full items-center justify-between gap-3 text-left">
               <div className="relative h-[50px] w-[50px]">
@@ -2570,13 +3306,134 @@ export default function LandingPage() {
               <span className="text-lg">↑</span>
             </button>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(5vh,40px)] lg:flex">
+            <div className="w-full max-w-[920px] text-center">
+              <h2 className="text-[clamp(29px,4vh,37px)] font-extrabold leading-[1.05] tracking-tight text-white">
+                Form Đăng Ký Tư Vấn
+              </h2>
+              <p className="mx-auto mt-[min(1.8vh,11px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
+                Để lại thông tin của bạn, chúng tôi sẽ liên hệ để tư vấn ngay!
+              </p>
+            </div>
+
+            <form
+              className="mt-[min(3.6vh,28px)] flex w-full max-w-[920px] flex-col gap-[min(2.1vh,18px)]"
+              onSubmit={(e) => e.preventDefault()}
+            >
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">Tên</label>
+                <input
+                  value={kidConsultName}
+                  onChange={(e) => setKidConsultName(e.target.value)}
+                  placeholder="Nhập tên của bạn"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                />
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">Email</label>
+                <input
+                  value={kidConsultEmail}
+                  onChange={(e) => setKidConsultEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  inputMode="email"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                />
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">
+                  Hình thức liên hệ
+                </label>
+                <div className="relative">
+                  <select
+                    value={kidConsultContactMethod}
+                    onChange={(e) => setKidConsultContactMethod(e.target.value as any)}
+                    className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
+                  >
+                    <option value="zalo">Zalo</option>
+                    <option value="phone">Điện thoại</option>
+                    <option value="email">Email</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                    <span className="text-[13px] text-slate-600">⌄</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="block text-[13px] font-semibold text-white">Số Zalo</label>
+                <div className="flex h-[clamp(35px,4.2vh,40px)] w-full overflow-hidden rounded-[16px] bg-white/55 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-md">
+                  <div className="flex items-center gap-2 px-4 text-[13px] text-slate-800">
+                    <select
+                      value={kidConsultZaloCountry}
+                      onChange={(e) => setKidConsultZaloCountry(e.target.value as any)}
+                      className="appearance-none bg-transparent font-semibold outline-none"
+                    >
+                      <option value="VN">VN</option>
+                    </select>
+                    <span className="text-slate-600">⌄</span>
+                  </div>
+                  <div className="my-2 w-px bg-white/55" />
+                  <div className="flex flex-1 items-center px-4">
+                    <span className="mr-2 text-[13px] text-slate-600">+84</span>
+                    <input
+                      value={kidConsultZaloNumber}
+                      onChange={(e) => setKidConsultZaloNumber(e.target.value)}
+                      placeholder="(555) 000-0000"
+                      inputMode="tel"
+                      className="h-full w-full bg-transparent text-left text-[13px] text-slate-800 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <label className="text-[13px] font-semibold text-white">
+                  Vấn đề cần tư vấn
+                </label>
+                <textarea
+                  value={kidConsultTopic}
+                  onChange={(e) => setKidConsultTopic(e.target.value)}
+                  placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
+                  rows={3}
+                  className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                />
+              </div>
+
+              <label className="mt-1 flex items-start gap-3 text-left text-[13px] text-white/90">
+                <input
+                  type="checkbox"
+                  checked={kidConsultAgree}
+                  onChange={(e) => setKidConsultAgree(e.target.checked)}
+                  className="mt-1 h-[18px] w-[18px] rounded-md border-2 border-white/80 bg-transparent accent-white"
+                />
+                <span className="leading-snug">
+                  Bạn đồng ý với tất cả điều khoản bảo mật của Telesa
+                </span>
+              </label>
+
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="submit"
+                  disabled={!kidConsultAgree}
+                  className="h-[clamp(40px,5.3vh,44px)] w-full max-w-[506px] rounded-[16px] bg-[#C1077B] text-center text-[15px] font-extrabold text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95"
+                >
+                  Gửi
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
       )}
 
       {/* Slide 12 (adult): Contact options view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8">
+          {/* Mobile */}
+          <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
             <div className="flex items-center justify-between">
               <div className="relative h-16 w-16">
@@ -2681,12 +3538,83 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+
+          {/* Desktop */}
+          <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(6vh,56px)] lg:flex">
+            <div className="w-full max-w-[1100px] text-center">
+              <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
+                Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
+              </h2>
+              <p className="mx-auto mt-4 max-w-[760px] text-[20px] font-medium text-slate-500">
+                Chúng tôi sẽ liên hệ lại ngay để tư vấn tận tình
+              </p>
+            </div>
+
+            <div className="mt-[min(7vh,64px)] w-full max-w-[1180px]">
+              <div className="grid grid-cols-3 gap-12">
+                <div className="rounded-[40px] bg-[#E6F7FE] p-10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                    <Image
+                      src="/assets/svg/zalo.svg"
+                      alt="Zalo"
+                      width={44}
+                      height={44}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                    Zalo
+                  </h3>
+                  <p className="mt-3 text-[18px] font-medium text-slate-600">
+                    Liên hệ với chúng tôi qua Zalo
+                  </p>
+                </div>
+
+                <div className="rounded-[40px] bg-[#FFF5FB] p-10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                    <Image
+                      src="/assets/svg/messenger.svg"
+                      alt="Messenger"
+                      width={44}
+                      height={44}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                    Messenger
+                  </h3>
+                  <p className="mt-3 text-[18px] font-medium text-slate-600">
+                    Nhắn tin với chúng tôi ngay
+                  </p>
+                </div>
+
+                <div className="rounded-[40px] bg-[#F4FCE8] p-10">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                    <Image
+                      src="/assets/svg/whatsapp.svg"
+                      alt="Whatsapp"
+                      width={44}
+                      height={44}
+                      className="h-10 w-10"
+                    />
+                  </div>
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                    Whatsapp
+                  </h3>
+                  <p className="mt-3 text-[18px] font-medium text-slate-600">
+                    Liên hệ với chúng tôi qua Whatsapp
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </section>
       )}
 
-      {/* Slide 13 (adult): TELESA reveal view */}
+      {/* Slide 13 (adult desktop): TELESA view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black">
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:flex">
           <Image
             src="/assets/11-top.jpg"
             alt="Telesa background"
@@ -2699,7 +3627,71 @@ export default function LandingPage() {
           />
 
           <div
-            className="absolute inset-0 z-10"
+            className="absolute inset-x-0 bottom-0 top-[80px] z-10"
+            onPointerDown={startTeleSaDrag}
+            style={{ touchAction: "none" }}
+          >
+            {teleSaMaskBaseHeightPx > 0 && (
+              <div
+                className={`pointer-events-none absolute bottom-0 left-0 right-0 z-30 ${
+                  teleSaIsDragging ? "" : "transition-[height] duration-600 ease-out"
+                }`}
+                style={{
+                  height: Math.max(0, teleSaMaskBaseHeightPx + teleSaOffsetPx / 2),
+                }}
+              >
+                <Image
+                  src="/assets/11-top.jpg"
+                  alt="Telesa background mask"
+                  fill
+                  priority
+                  quality={100}
+                  sizes="100vw"
+                  unoptimized
+                  className="select-none object-cover object-center"
+                />
+              </div>
+            )}
+
+            <div
+              className={`absolute left-0 right-0 ${
+                teleSaIsDragging ? "" : "transition-transform duration-600 ease-out"
+              }`}
+              style={{
+                bottom: "30vh",
+                transform: `translateY(${teleSaOffsetPx}px)`,
+                zIndex: 20,
+              }}
+            >
+              <div className="flex w-full items-end justify-center pb-2">
+                <div
+                  ref={teleSaTextRef}
+                  className="w-[80vw] max-w-full select-none whitespace-nowrap text-center text-[clamp(72px,17vw,300px)] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)]"
+                >
+                  TELESA
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Slide 13 (adult): TELESA reveal view */}
+      {selectedAge === "adult" && (
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:hidden">
+          <Image
+            src="/assets/11-top.jpg"
+            alt="Telesa background"
+            fill
+            priority
+            quality={100}
+            sizes="100vw"
+            unoptimized
+            className="pointer-events-none select-none object-cover"
+          />
+
+          <div
+            className="absolute inset-0 z-10 lg:pointer-events-none"
             onPointerDown={startTeleSaDrag}
             style={{ touchAction: "none" }}
           >
@@ -2764,145 +3756,15 @@ export default function LandingPage() {
 
       {/* Slide 14 (adult): Footer contact view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800">
-                <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-              </button>
-            </div>
-
-            <div className="mt-8 space-y-5">
-              {/* Contact info */}
-              <section>
-                <h2 className="text-[22px] font-extrabold text-slate-800">
-                  Thông tin liên hệ
-                </h2>
-                <div className="mt-3 space-y-3 text-[16px] font-medium text-slate-500">
-                  <div className="flex items-center gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M4 6.5C4 5.12 5.12 4 6.5 4h11C18.88 4 20 5.12 20 6.5v11c0 1.38-1.12 2.5-2.5 2.5h-11C5.12 20 4 18.88 4 17.5v-11Z" stroke="currentColor" strokeWidth="2" />
-                      <path d="M6.5 7.5 12 11.5 17.5 7.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                    </svg>
-                    <span>team1@telesaenglish.com</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M7 2h10v20H7V2Z" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M9 6h6M9 10h6M9 14h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                      <path d="M5 22h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    <span>0318591266</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.08 4.2 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.12.86.3 1.7.55 2.5a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.58-1.07a2 2 0 0 1 2.11-.45c.8.25 1.64.43 2.5.55A2 2 0 0 1 22 16.92Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                    </svg>
-                    <span>0932639259</span>
-                  </div>
-                </div>
-              </section>
-
-              {/* Social */}
-              <section>
-                <h2 className="text-[22px] font-extrabold text-slate-800">
-                  Mạng xã hội
-                </h2>
-                <div className="mt-3 flex items-center gap-3">
-                  <a href="https://www.facebook.com/TelesaEnglish" target="_blank" rel="noreferrer" aria-label="Facebook" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/facebook.svg" alt="Facebook" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                  <a href="https://www.tiktok.com/@telesaenglishofficial" target="_blank" rel="noreferrer" aria-label="TikTok" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/tiktok.svg" alt="TikTok" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                  <a href="https://www.instagram.com/hoctienganhcungtelesa/" target="_blank" rel="noreferrer" aria-label="Instagram" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/instagram.svg" alt="Instagram" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                  <a href="https://www.youtube.com/@Telesaenglish" target="_blank" rel="noreferrer" aria-label="YouTube" className="flex h-9 w-9 items-center justify-center">
-                    <Image src="/assets/svg/youtube.svg" alt="YouTube" width={36} height={36} className="h-9 w-9" />
-                  </a>
-                </div>
-              </section>
-
-              {/* Download */}
-              <section>
-                <h2 className="text-[22px] font-extrabold text-slate-800">
-                  Tải ngay
-                </h2>
-                <div className="mt-3 flex items-center gap-0">
-                  <a href="#" className="flex flex-1 items-center justify-start">
-                    <Image
-                      src="/assets/svg/apple-button.svg"
-                      alt="Download on the App Store"
-                      width={190}
-                      height={56}
-                      className="h-12 w-full object-contain object-left"
-                    />
-                  </a>
-                  <a href="#" className="flex flex-1 items-center justify-start">
-                    <Image
-                      src="/assets/svg/google-play-button.svg"
-                      alt="Get it on Google Play"
-                      width={190}
-                      height={56}
-                      className="h-12 w-full object-contain object-left"
-                    />
-                  </a>
-                </div>
-              </section>
-            </div>
-
-            <div className="mt-auto">
-              <div className="border-t border-slate-200" />
-              <p className="py-4 text-center text-[14px] font-medium text-slate-500">
-                © 2025 Untitled UI. All rights reserved.
-              </p>
-            </div>
-
-            {/* Floating actions */}
-            <div className="pointer-events-none absolute bottom-24 right-6">
-              <div className="pointer-events-auto flex flex-col items-center gap-4">
-                <button
-                  type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f3f3] shadow-md"
-                  aria-label="Gọi tư vấn"
-                >
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt=""
-                    width={18}
-                    height={18}
-                    className="h-[18px] w-[18px]"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f3f3] shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-xl text-slate-700">↑</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <FooterContactView
+          variant="adult"
+          logoSrc={logoSrc}
+          onMenuOpen={() => setIsMenuOpen(true)}
+          onScrollToTop={scrollToTop}
+          onNavigate={(key) => {
+            if (key === "home") scrollToTop();
+          }}
+        />
       )}
       </main>
     </>
