@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { SVGProps } from "react";
+import MobileFloatingActions from "./MobileFloatingActions";
 
 type FooterVariant = "kid" | "adult";
 
@@ -65,6 +66,9 @@ type FooterContactViewProps = {
   onMenuOpen: () => void;
   onScrollToTop: () => void;
   onNavigate?: (key: (typeof NAV_ITEMS)[number]["key"]) => void;
+  showFloatingActions?: boolean;
+  mobileFullHeight?: boolean;
+  showMobileHeader?: boolean;
 };
 
 export default function FooterContactView({
@@ -73,42 +77,54 @@ export default function FooterContactView({
   onMenuOpen,
   onScrollToTop,
   onNavigate,
+  showFloatingActions = true,
+  mobileFullHeight = true,
+  showMobileHeader = true,
 }: FooterContactViewProps) {
   const brandAlt = variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo";
-  const floatingPhoneIconSrc =
-    variant === "adult" ? "/assets/svg/phone-pink.svg" : "/assets/svg/phone.svg";
-
   return (
-    <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:h-auto lg:snap-none">
+    <section
+      className={[
+        "relative flex w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:h-auto lg:snap-none",
+        mobileFullHeight ? "h-[100dvh]" : "h-auto",
+      ].join(" ")}
+    >
       {/* Mobile */}
-      <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-        <div className="flex items-center justify-between">
-          <div className="relative h-16 w-16">
-            <Image
-              src={logoSrc}
-              alt={brandAlt}
-              width={64}
-              height={64}
-              className="h-full w-full object-contain"
-              priority
-            />
+      <div
+        className={[
+          "relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden",
+          mobileFullHeight ? "h-full" : "h-auto",
+        ].join(" ")}
+      >
+        {showMobileHeader && (
+          <div className="flex items-center justify-between">
+            <div className="relative h-16 w-16">
+              <Image
+                src={logoSrc}
+                alt={brandAlt}
+                width={64}
+                height={64}
+                className="h-full w-full object-contain"
+                priority
+              />
+            </div>
+            <button className="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm">
+              Làm bài kiểm tra ngay
+            </button>
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={onMenuOpen}
+              className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
+            >
+              <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
+              <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
+              <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
+            </button>
           </div>
-          <button className="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm">
-            Làm bài kiểm tra ngay
-          </button>
-          <button
-            type="button"
-            aria-label="Open menu"
-            onClick={onMenuOpen}
-            className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
-          >
-            <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
-            <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-            <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-          </button>
-        </div>
+        )}
 
-        <div className="mt-8 space-y-5">
+        <div className={showMobileHeader ? "mt-8 space-y-5" : "space-y-5"}>
           <section>
             <h2 className="text-[22px] font-extrabold text-slate-800">Thông tin liên hệ</h2>
             <div className="mt-3 space-y-3 text-[16px] font-medium text-slate-500">
@@ -225,31 +241,13 @@ export default function FooterContactView({
           </p>
         </div>
 
-        <div className="pointer-events-none absolute bottom-24 right-6">
-          <div className="pointer-events-auto flex flex-col items-center gap-4">
-            <button
-              type="button"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f3f3] shadow-md"
-              aria-label="Gọi tư vấn"
-            >
-              <Image
-                src={floatingPhoneIconSrc}
-                alt=""
-                width={18}
-                height={18}
-                className="h-[18px] w-[18px]"
-              />
-            </button>
-            <button
-              type="button"
-              onClick={onScrollToTop}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f3f3f3] shadow-md"
-              aria-label="Lên đầu trang"
-            >
-              <span className="text-xl text-slate-700">↑</span>
-            </button>
+        {showFloatingActions && (
+          <div className="pointer-events-none absolute bottom-24 right-6">
+            <div className="pointer-events-auto">
+              <MobileFloatingActions variant={variant} tone="soft" onScrollToTop={onScrollToTop} />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Desktop */}

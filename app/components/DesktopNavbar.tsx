@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 
-function ChevronDownIcon(props: { className?: string }) {
+function ChevronDownIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 20 20"
       fill="none"
       aria-hidden="true"
       className={props.className ?? "h-4 w-4"}
+      {...props}
     >
       <path
         d="M5 7.5L10 12.5L15 7.5"
@@ -41,10 +42,15 @@ export default function DesktopNavbar(props: {
   logoSrc: string;
   activeKey: DesktopNavbarKey;
   onNavigate: (key: DesktopNavbarKey) => void;
+  activeColor?: string;
+  backgroundClassName?: string;
 }) {
+  const activeColor = props.activeColor ?? "#9e005a";
+  const backgroundClassName = props.backgroundClassName ?? "bg-[#3b3b3b]/90";
+
   return (
     <nav className="fixed inset-x-0 top-0 z-50 hidden lg:block">
-      <div className="bg-[#3b3b3b]/90">
+      <div className={backgroundClassName}>
         <div className="mx-auto flex w-full items-center justify-between gap-4 px-[8vw] py-4 xl:gap-8">
           <div className="flex min-w-0 items-center gap-3 xl:gap-6">
             <div className="relative h-10 w-10 shrink-0 xl:h-11 xl:w-11">
@@ -61,18 +67,17 @@ export default function DesktopNavbar(props: {
             <div className="flex min-w-0 items-center gap-2 text-[11px] font-semibold text-white xl:gap-7 xl:text-[16px]">
               {MENU_ITEMS.map((item) => {
                 const isActive = item.key === props.activeKey;
-                const isClickable = item.key === "home";
                 return (
                   <button
                     key={item.key}
                     type="button"
                     onClick={() => {
-                      if (!isClickable) return;
-                      props.onNavigate("home");
+                      props.onNavigate(item.key);
                     }}
                     className={`inline-flex items-center gap-1 transition-colors ${
-                      isClickable ? "cursor-pointer" : "cursor-default"
-                    } ${isActive ? "text-[#9e005a]" : "text-white/90 hover:text-white"}`}
+                      isActive ? "" : "text-white/90 hover:text-white"
+                    } cursor-pointer`}
+                    style={isActive ? { color: activeColor } : undefined}
                   >
                     <span className="whitespace-nowrap">
                       <span className="xl:hidden">{item.shortLabel}</span>
@@ -81,8 +86,9 @@ export default function DesktopNavbar(props: {
                     {item.hasDropdown && (
                       <ChevronDownIcon
                         className={`h-3 w-3 shrink-0 ${
-                          isActive ? "text-[#9e005a]" : "text-white/80"
+                          isActive ? "" : "text-white/80"
                         }`}
+                        style={isActive ? { color: activeColor } : undefined}
                       />
                     )}
                   </button>
@@ -121,4 +127,3 @@ export default function DesktopNavbar(props: {
     </nav>
   );
 }
-

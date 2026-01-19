@@ -2,8 +2,11 @@
 export default {
   content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        gold: "#6B5100",
+      },
+    },
   },
   plugins: [],
 };
-

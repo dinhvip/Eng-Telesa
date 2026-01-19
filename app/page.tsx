@@ -1,11 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopFloatingActions from "./components/DesktopFloatingActions";
 import DesktopNavbar from "./components/DesktopNavbar";
 import { KidWorldMap } from "./components/KidWorldMap";
 import FooterContactView from "./components/FooterContactView";
+import MobileFloatingActions from "./components/MobileFloatingActions";
 import MobileMenuDrawer from "./components/MobileMenuDrawer";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
@@ -133,6 +135,7 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
 }
 
 export default function LandingPage() {
+  const router = useRouter();
   const mainRef = useRef<HTMLElement | null>(null);
   const [selectedAge, setSelectedAge] = useState<"kid" | "adult" | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -554,6 +557,8 @@ export default function LandingPage() {
             activeKey={activeMenuKey}
             onNavigate={(key) => {
               if (key === "home") scrollToTop();
+              if (key === "product") router.push(`/product?variant=${selectedAge ?? "kid"}`);
+              if (key === "library") router.push("/library");
             }}
           />
         </>
@@ -563,19 +568,20 @@ export default function LandingPage() {
         ref={mainRef}
         className="relative h-[100dvh] w-full overflow-y-scroll snap-y snap-mandatory bg-black text-foreground lg:snap-proximity"
       >
-      {/* Slide 1: Age selection */}
-	      <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
-        <video
-          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-          key={videoSrc}
-          src={videoSrc}
-          autoPlay
-          muted
-          loop
-          playsInline
-        />
-
-        <div className="pointer-events-none absolute inset-0 bg-black/40 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/35 lg:to-black/10" />
+	      {/* Slide 1: Age selection */}
+		      <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+	        <video
+	          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+	          key={videoSrc}
+	          src={videoSrc}
+	          autoPlay
+	          muted
+	          loop
+	          playsInline
+	        />
+          <div aria-hidden="true" className="absolute inset-0" />
+	
+	        <div className="pointer-events-none absolute inset-0 bg-black/40 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/35 lg:to-black/10" />
 
 	        <div className="relative z-10 flex h-full w-full items-stretch justify-center px-4 pb-6 pt-8 lg:px-[8vw] lg:py-14">
 	          <div className="flex w-full max-w-md flex-col justify-between lg:max-w-6xl lg:flex-row lg:items-center lg:justify-between lg:gap-10">
@@ -755,18 +761,19 @@ export default function LandingPage() {
       </section>
 
       {/* Slide 2: Kid follow-up view */}
-      {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
-          <video
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-            src="/assets/2-kid.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
+	      {selectedAge === "kid" && (
+	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+	          <video
+	            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+	            src="/assets/2-kid.mp4"
+	            autoPlay
+	            muted
+	            loop
+	            playsInline
+	          />
+            <div aria-hidden="true" className="absolute inset-0" />
+	
+	          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
           <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
             {/* Top bar (mobile) */}
@@ -940,28 +947,10 @@ export default function LandingPage() {
                     {kidSlides[kidSlideIndex].description}
                   </p>
                 </div>
-                <div className="flex flex-col items-center gap-3">
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-800 shadow-md">
-                    <Image
-                      src="/assets/svg/phone.svg"
-                      alt="Gọi tư vấn Telesa"
-                      width={20}
-                      height={20}
-                      className="h-5 w-5"
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={scrollToTop}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
-                    aria-label="Lên đầu trang"
-                  >
-                    <span className="text-lg">↑</span>
-                  </button>
-                </div>
-	              </div>
-		            </div>
-		          </div>
+                <MobileFloatingActions variant="kid" tone="light" size="sm" onScrollToTop={scrollToTop} />
+		              </div>
+			            </div>
+			          </div>
 		
 		          {/* Desktop */}
 		          <div className="relative z-10 hidden h-full w-full items-center justify-between px-[8vw] lg:flex">
@@ -1064,25 +1053,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="kid" tone="slate" onScrollToTop={scrollToTop} />
             </div>
           </div>
 
@@ -1519,18 +1490,19 @@ export default function LandingPage() {
       )}
 
       {/* Slide 2 (adult): Adult follow-up view */}
-      {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
-          <video
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-            src="/assets/1-adult2.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-          />
-
-          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
+	      {selectedAge === "adult" && (
+	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+	          <video
+	            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+	            src="/assets/1-adult2.mp4"
+	            autoPlay
+	            muted
+	            loop
+	            playsInline
+	          />
+            <div aria-hidden="true" className="absolute inset-0" />
+	
+	          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
           <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
             {/* Top bar */}
@@ -1704,25 +1676,7 @@ export default function LandingPage() {
                     {adultSlides[kidSlideIndex].description}
                   </p>
                 </div>
-                <div className="flex flex-col items-center gap-3">
-                  <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-800 shadow-md">
-                    <Image
-                      src="/assets/svg/phone-pink.svg"
-                      alt="Gọi tư vấn Telesa"
-                      width={20}
-                      height={20}
-                      className="h-5 w-5"
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={scrollToTop}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
-                    aria-label="Lên đầu trang"
-                  >
-                    <span className="text-lg">↑</span>
-                  </button>
-                </div>
+                <MobileFloatingActions variant="adult" tone="light" size="sm" onScrollToTop={scrollToTop} />
               </div>
             </div>
           </div>
@@ -1828,25 +1782,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md">
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="kid" tone="light" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -1893,25 +1829,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="kid" tone="glass" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -1955,25 +1873,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md">
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="kid" tone="light" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -2080,25 +1980,7 @@ export default function LandingPage() {
                     />
                   </div>
                 </div>
-                <div className="flex flex-col items-center gap-3">
-                  <button className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm">
-                    <Image
-                      src="/assets/svg/phone.svg"
-                      alt="Gọi tư vấn Telesa"
-                      width={20}
-                      height={20}
-                      className="h-5 w-5"
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={scrollToTop}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm"
-                    aria-label="Lên đầu trang"
-                  >
-                    <span className="text-lg">↑</span>
-                  </button>
-                </div>
+                <MobileFloatingActions variant="kid" tone="darkGlass" onScrollToTop={scrollToTop} />
               </div>
             </div>
           </div>
@@ -2193,24 +2075,8 @@ export default function LandingPage() {
 
             {/* Floating actions overlaying white block */}
             <div className="pointer-events-none absolute bottom-6 right-6">
-              <div className="pointer-events-auto flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
+              <div className="pointer-events-auto">
+                <MobileFloatingActions variant="kid" tone="slate" onScrollToTop={scrollToTop} />
               </div>
             </div>
           </div>
@@ -2263,25 +2129,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-3 flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="kid" tone="slate" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -2701,25 +2549,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="adult" tone="slate" onScrollToTop={scrollToTop} />
             </div>
           </div>
 
@@ -2802,25 +2632,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f4f4f4] text-slate-800 shadow-md">
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f4f4f4] text-slate-800 shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="adult" tone="soft" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -2867,25 +2679,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="adult" tone="slate" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -2932,25 +2726,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-auto flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f4f4f4] text-slate-800 shadow-md">
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#f4f4f4] text-slate-800 shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="adult" tone="soft" onScrollToTop={scrollToTop} />
             </div>
           </div>
         </section>
@@ -3027,25 +2803,7 @@ export default function LandingPage() {
                     ))}
                   </div>
                 </div>
-                <div className="flex flex-col items-center gap-3">
-                  <button className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm">
-                    <Image
-                      src="/assets/svg/phone-pink.svg"
-                      alt="Gọi tư vấn Telesa"
-                      width={20}
-                      height={20}
-                      className="h-5 w-5"
-                    />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={scrollToTop}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white shadow-md backdrop-blur-sm"
-                    aria-label="Lên đầu trang"
-                  >
-                    <span className="text-lg">↑</span>
-                  </button>
-                </div>
+                <MobileFloatingActions variant="adult" tone="darkGlass" onScrollToTop={scrollToTop} />
               </div>
             </div>
           </div>
@@ -3182,24 +2940,8 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="pointer-events-none absolute bottom-6 right-6">
-              <div className="pointer-events-auto flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
+              <div className="pointer-events-auto">
+                <MobileFloatingActions variant="adult" tone="slate" onScrollToTop={scrollToTop} />
               </div>
             </div>
           </div>
@@ -3298,25 +3040,7 @@ export default function LandingPage() {
 
             {/* Floating actions */}
             <div className="mt-3 flex items-end justify-end pb-1">
-              <div className="flex flex-col items-center gap-3">
-                <button className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md">
-                  <Image
-                    src="/assets/svg/phone-pink.svg"
-                    alt="Gọi tư vấn Telesa"
-                    width={20}
-                    height={20}
-                    className="h-5 w-5"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-[#323c4f] text-white shadow-md"
-                  aria-label="Lên đầu trang"
-                >
-                  <span className="text-lg">↑</span>
-                </button>
-              </div>
+              <MobileFloatingActions variant="adult" tone="slate" onScrollToTop={scrollToTop} />
             </div>
           </div>
 
