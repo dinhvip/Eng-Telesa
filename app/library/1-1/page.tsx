@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import DesktopNavbar from "../../components/DesktopNavbar";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileHeader from "../../components/MobileHeader";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
@@ -34,13 +35,54 @@ const CARDS: CardContent[] = [
     imageAlt: "Giáo trình",
   },
   {
-    title: "Lộ trình cá nhân hoá\n& bám sát mục tiêu",
+    title: "Cam kết chất lượng\ngiảng dạy",
     bullets: [
-      "Được test đầu vào và thiết kế lộ trình theo năng lực.",
-      "Theo dõi tiến bộ, điều chỉnh nội dung theo từng giai đoạn.",
+      <>
+        Trung tâm đảm bảo giáo viên luôn{" "}
+        <span className="font-semibold">giữ vững phong độ giảng dạy</span>, áp dụng{" "}
+        <span className="font-semibold">phương pháp phù hợp cho từng đối tượng</span> học viên.
+      </>,
+      <>
+        Có hệ thống <span className="font-semibold">quản lý và theo dõi</span>{" "}
+        <span className="font-semibold">chất lượng</span> lớp học chặt chẽ.
+      </>,
     ],
-    imageSrc: "/assets/book.png",
-    imageAlt: "Lộ trình",
+    imageSrc: "/assets/hockem1.jpg",
+    imageAlt: "Cam kết chất lượng giảng dạy",
+  },
+  {
+    title: "Kiểm tra & đo lường\ntiến bộ định kỳ",
+    bullets: [
+      <>
+        Bạn sẽ được <span className="font-semibold">test năng lực thường xuyên</span>, giúp theo dõi rõ
+        ràng sự tiến bộ qua từng giai đoạn.
+      </>,
+      <>
+        Giáo viên và trung tâm cùng đồng hành, <span className="font-semibold">điều chỉnh lộ trình</span>{" "}
+        để bạn đạt kết quả tối ưu.
+      </>,
+    ],
+    imageSrc: "/assets/hockem2.jpg",
+    imageAlt: "Kiểm tra và đo lường tiến bộ định kỳ",
+  },
+  {
+    title: "Uy tín & tâm huyết",
+    bullets: [
+      <>
+        Telesa English làm việc với tâm và tầm,{" "}
+        <span className="font-semibold">đặt lợi ích học viên lên hàng đầu.</span>
+      </>,
+      <>
+        Mỗi khóa học không chỉ là dạy kiến thức mà còn là{" "}
+        <span className="font-semibold">cam kết đồng hành đến khi bạn đạt mục tiêu.</span>
+      </>,
+      <>
+        👉 Đó chính là lý do bạn nên đăng ký học kèm tại Telesa English, thay vì tự tìm giáo viên bên
+        ngoài và đối mặt với nhiều rủi ro.
+      </>,
+    ],
+    imageSrc: "/assets/hockem3.jpg",
+    imageAlt: "Uy tín và tâm huyết",
   },
 ];
 
@@ -125,6 +167,26 @@ export default function OneOnOnePage() {
 
   return (
     <main className="relative min-h-[100dvh] bg-[#313A4C] text-white">
+      <DesktopNavbar
+        variant="adult"
+        logoSrc="/assets/svg/logo.png"
+        activeKey="library"
+        backgroundClassName="bg-[#313A4C]/70 backdrop-blur-md"
+        onTestClick={() => router.push("/test?variant=adult")}
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "products") router.push("/product?variant=adult");
+          if (key === "library") router.push("/library");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
+          if (key === "tutoring") router.push("/");
+          if (key === "about") router.push("/");
+          if (key === "careers") router.push("/");
+        }}
+      />
       <MobileMenuDrawer
         open={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
@@ -155,6 +217,7 @@ export default function OneOnOnePage() {
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
           menuLineClassName="bg-white"
           onMenuOpen={() => setIsMenuOpen(true)}
+          onCtaClick={() => router.push("/test?variant=adult")}
         />
 
         <div className="mt-12 flex flex-1 flex-col">
@@ -204,9 +267,10 @@ export default function OneOnOnePage() {
                           alt={card.imageAlt}
                           fill
                           sizes="320px"
-                          className="object-cover"
+                          className="z-0 object-cover"
                           priority={false}
                         />
+                        <div aria-hidden className="absolute inset-0 z-10 bg-[#99005F33]" />
                       </div>
                     </div>
                   </article>
@@ -229,13 +293,56 @@ export default function OneOnOnePage() {
         </div>
       </section>
 
-      {/* Desktop fallback */}
+      {/* Desktop */}
       <section className="hidden lg:block">
-        <div className="mx-auto max-w-6xl px-[8vw] py-16">
-          <h1 className="text-[44px] font-semibold leading-[1.05] tracking-tight">Học kèm 1-1</h1>
-          <p className="mt-6 text-[18px] leading-relaxed text-white/80">
-            Xem trên mobile để trải nghiệm giao diện tối ưu.
-          </p>
+        <div className="mx-auto w-full px-[6vw] pb-16 pt-[92px]">
+          <h1 className="text-center text-[clamp(34px,2.6vw,52px)] font-semibold leading-[1.12] tracking-tight">
+            Học kèm 1-1
+          </h1>
+
+          <div className="mt-14 grid grid-cols-4 justify-items-center gap-8">
+            {CARDS.map((card) => (
+              <article
+                key={`desktop-${card.title}`}
+                className={[
+                  "w-full max-w-[60vh]",
+                  "rounded-[28px] bg-white p-7 text-[#313A4C] shadow-[0_18px_50px_rgba(0,0,0,0.25)]",
+                  "flex min-h-[520px] flex-col overflow-hidden",
+                ].join(" ")}
+              >
+                <h2 className="text-center text-[18px] font-semibold leading-tight tracking-tight whitespace-pre-line">
+                  {card.title}
+                </h2>
+
+                <div className="mt-6 flex flex-1 flex-col justify-center">
+                  <ul className="space-y-4 text-[14px] leading-relaxed text-slate-700">
+                    {card.bullets.map((b, idx) => (
+                      <li key={idx} className="flex gap-3">
+                        <span className="mt-[8px] inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-[#313A4C]" />
+                        <div className="flex-1">{b}</div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="mt-8">
+                    <div className="overflow-hidden rounded-[20px] bg-slate-100 p-3">
+                      <div className="relative aspect-[4/3] w-full">
+                        <Image
+                          src={card.imageSrc}
+                          alt={card.imageAlt}
+                          fill
+                          sizes="(min-width: 1024px) 25vw, 0px"
+                          className="z-0 object-contain"
+                          priority={false}
+                        />
+                        <div aria-hidden className="absolute inset-0 z-10 bg-[#99005F33]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
     </main>

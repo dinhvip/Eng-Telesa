@@ -206,6 +206,7 @@ export default function ProductPageClient() {
         logoSrc={logoSrc}
         activeKey="products"
         activeColor="#D40887"
+        onTestClick={() => router.push(variant === "adult" ? "/test?variant=adult" : "/test")}
         onNavigate={(key) => {
           if (
             key === "library-why" ||
@@ -286,6 +287,7 @@ export default function ProductPageClient() {
               logoAlt={variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo"}
               logoPriority
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push(variant === "adult" ? "/test?variant=adult" : "/test")}
               ctaClassName="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-center text-xs font-medium text-white shadow-sm backdrop-blur-md"
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
               menuLineClassName="bg-white"
@@ -337,6 +339,7 @@ export default function ProductPageClient() {
               logoSrc={logoSrc}
               logoAlt={variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo"}
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push(variant === "adult" ? "/test?variant=adult" : "/test")}
               ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"

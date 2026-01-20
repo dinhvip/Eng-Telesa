@@ -123,6 +123,7 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
         activeKey="products"
         activeColor={navbarActiveColor}
         backgroundClassName="bg-[#36363666] backdrop-blur-md"
+        onTestClick={() => router.push(variant === "adult" ? "/test?variant=adult" : "/test")}
         onNavigate={(key) => {
           if (
             key === "library-why" ||
@@ -190,6 +191,7 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
               logoAriaLabel="Back to products"
               onLogoClick={() => router.push(`/product?variant=${variant}`)}
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push(variant === "adult" ? "/test?variant=adult" : "/test")}
               ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
               menuLineClassName="bg-white"

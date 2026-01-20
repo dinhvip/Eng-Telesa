@@ -128,6 +128,7 @@ export default function WhyGroupPage() {
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
           menuLineClassName="bg-slate-900"
           onMenuOpen={() => setIsMenuOpen(true)}
+          onCtaClick={() => router.push("/test?variant=adult")}
         />
 
         <div className="relative mt-8 h-[75vh] w-screen -translate-x-1/2 left-1/2 overflow-hidden">

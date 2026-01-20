@@ -66,6 +66,7 @@ type FooterContactViewProps = {
   logoSrc: string;
   onMenuOpen: () => void;
   onScrollToTop: () => void;
+  onCtaClick?: () => void;
   onNavigate?: (
     key:
       | (typeof NAV_ITEMS)[number]["key"]
@@ -90,6 +91,7 @@ export default function FooterContactView({
   logoSrc,
   onMenuOpen,
   onScrollToTop,
+  onCtaClick,
   onNavigate,
   showFloatingActions = true,
   mobileFullHeight = true,
@@ -124,6 +126,7 @@ export default function FooterContactView({
             logoAlt={brandAlt}
             logoPriority
             ctaClassName="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm"
+            onCtaClick={onCtaClick}
             onMenuOpen={onMenuOpen}
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
             menuLineClassName="bg-slate-800"

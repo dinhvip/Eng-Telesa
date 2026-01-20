@@ -638,6 +638,10 @@ export default function LandingPage() {
     setTeleSaOffsetPx(next);
   };
 
+  const goToTest = () => {
+    router.push(selectedAge === "adult" ? "/test?variant=adult" : "/test");
+  };
+
   return (
     <>
       {shouldShowMenu && (
@@ -646,8 +650,10 @@ export default function LandingPage() {
             logoSrc={logoSrc}
             variant={selectedAge === "kid" ? "kid" : "adult"}
             activeKey="home"
+            onTestClick={goToTest}
             onNavigate={(key) => {
               if (key === "home") scrollToTop();
+              if (key === "products") router.push(`/product?variant=${selectedAge ?? "kid"}`);
               if (key === "library") navigateToLibraryFromMenu("/library");
               if (key === "library-why") navigateToLibraryFromMenu("/library/why");
               if (key === "library-program-for-kid") navigateToLibraryFromMenu("/library/program-for-kid");
@@ -903,6 +909,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
 	              menuLineClassName="bg-white"
@@ -980,6 +987,7 @@ export default function LandingPage() {
 			              logoAlt="Telesa English Kids logo"
 			              logoPriority
 			              onMenuOpen={() => setIsMenuOpen(true)}
+			              onCtaClick={goToTest}
 			              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
 			              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 			              menuLineClassName="bg-white"
@@ -1122,6 +1130,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -1143,34 +1152,34 @@ export default function LandingPage() {
           {/* Desktop */}
           <div className="relative z-10 hidden h-full w-full items-center justify-center px-[8vw] lg:flex">
             <div className="w-full">
-              <div className="grid w-full grid-cols-4 items-start gap-12 text-center">
+              <div className="grid w-full grid-cols-2 items-start gap-8 text-center 2xl:grid-cols-4 2xl:gap-12">
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                     1000+
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Học viên đang học</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên đang học</p>
                 </div>
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Giáo viên chuyên môn</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Giáo viên chuyên môn</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                     25+
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
                 </div>
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                     98%
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Học viên cảm nhận thực tế</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên cảm nhận thực tế</p>
                 </div>
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Ứng dụng công nghệ</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#FEA933]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Ứng dụng công nghệ</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                     90%
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
                 </div>
               </div>
             </div>
@@ -1312,18 +1321,18 @@ export default function LandingPage() {
           <div className="pointer-events-none absolute inset-0 bg-black/35" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.10)_0%,rgba(0,0,0,0.55)_70%,rgba(0,0,0,0.78)_100%)]" />
 
-          <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(5vh,40px)]">
+          <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4vh,32px)]">
             <div className="w-full max-w-[920px] text-center">
               <h2 className="text-[clamp(29px,4vh,37px)] font-extrabold leading-[1.05] tracking-tight text-white">
                 Form Đăng Ký Tư Vấn
               </h2>
-              <p className="mx-auto mt-[min(1.8vh,11px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
+              <p className="mx-auto mt-[min(1.45vh,9px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
                 Để lại thông tin của bạn, chúng tôi sẽ liên hệ để tư vấn ngay!
               </p>
             </div>
 
             <form
-              className="mt-[min(3.6vh,28px)] flex w-full max-w-[920px] flex-col gap-[min(2.1vh,18px)]"
+              className="mt-[min(2.9vh,22px)] flex w-full max-w-[920px] flex-col gap-[min(1.7vh,14px)]"
               onSubmit={(e) => e.preventDefault()}
             >
               <div className="space-y-2 text-left">
@@ -1436,7 +1445,7 @@ export default function LandingPage() {
       {/* Slide 9 (kid desktop): Contact options view */}
       {selectedAge === "kid" && (
         <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
-          <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(6vh,56px)]">
+          <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)]">
             <div className="w-full max-w-[1100px] text-center">
               <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
                 Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
@@ -1446,7 +1455,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-[min(7vh,64px)] w-full max-w-[1180px]">
+            <div className="mt-[min(5.6vh,51px)] w-full max-w-[1180px]">
               <div className="grid grid-cols-3 gap-12">
                 <div className="rounded-[40px] bg-[#E6F7FE] p-10">
                   <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
@@ -1597,6 +1606,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
 	              menuLineClassName="bg-white"
@@ -1674,6 +1684,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 	              menuLineClassName="bg-white"
@@ -1812,13 +1823,14 @@ export default function LandingPage() {
 	            {/* Top bar */}
 	            <MobileHeader
 	              logoSrc="/assets/logo.png"
-	              logoAlt="Telesa English Kids logo"
-	              logoPriority
-	              onMenuOpen={() => setIsMenuOpen(true)}
-	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
-	              menuLineClassName="bg-slate-900"
-	            />
+		              logoAlt="Telesa English Kids logo"
+		              logoPriority
+		              onMenuOpen={() => setIsMenuOpen(true)}
+		              onCtaClick={goToTest}
+		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+		              menuLineClassName="bg-white"
+		            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1851,6 +1863,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -1953,6 +1966,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm"
 	              menuLineClassName="bg-white"
@@ -2051,6 +2065,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -2135,6 +2150,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -2188,6 +2204,7 @@ export default function LandingPage() {
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md"
 	              menuLineClassName="bg-white"
@@ -2524,6 +2541,7 @@ export default function LandingPage() {
           logoSrc={logoSrc}
           onMenuOpen={() => setIsMenuOpen(true)}
           onScrollToTop={scrollToTop}
+          onCtaClick={goToTest}
           onNavigate={(key) => {
             if (key === "home") scrollToTop();
           }}
@@ -2543,6 +2561,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -2568,34 +2587,34 @@ export default function LandingPage() {
           {/* Desktop */}
           <div className="relative z-10 hidden h-full w-full items-center justify-center px-[8vw] lg:flex">
             <div className="w-full">
-              <div className="grid w-full grid-cols-4 items-start gap-12 text-center">
+              <div className="grid w-full grid-cols-2 items-start gap-8 text-center 2xl:grid-cols-4 2xl:gap-12">
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                     1000+
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Học viên đang học</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên đang học</p>
                 </div>
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Giáo viên chuyên môn</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Giáo viên chuyên môn</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                     25+
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
                 </div>
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                     98%
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Học viên cảm nhận thực tế</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên cảm nhận thực tế</p>
                 </div>
                 <div>
-                  <p className="text-[24px] font-semibold text-slate-800">Ứng dụng công nghệ</p>
-                  <p className="mt-6 text-[96px] font-extrabold leading-none text-[#C1077B]">
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Ứng dụng công nghệ</p>
+                  <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                     90%
                   </p>
-                  <p className="mt-6 text-lg text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
+                  <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
                 </div>
               </div>
             </div>
@@ -2611,14 +2630,15 @@ export default function LandingPage() {
 	            <MobileHeader
 	              logoSrc="/assets/svg/logo.png"
 	              logoAlt="Telesa English logo"
-	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
-	              logoImageSize={50}
-	              logoPriority
-	              onMenuOpen={() => setIsMenuOpen(true)}
-	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
-	              menuLineClassName="bg-slate-900"
-	            />
+		              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+		              logoImageSize={50}
+		              logoPriority
+		              onMenuOpen={() => setIsMenuOpen(true)}
+		              onCtaClick={goToTest}
+		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+		              menuLineClassName="bg-white"
+		            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -2653,6 +2673,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -2687,14 +2708,15 @@ export default function LandingPage() {
 	            <MobileHeader
 	              logoSrc="/assets/svg/logo.png"
 	              logoAlt="Telesa English logo"
-	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
-	              logoImageSize={50}
-	              logoPriority
-	              onMenuOpen={() => setIsMenuOpen(true)}
-	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
-	              menuLineClassName="bg-slate-900"
-	            />
+		              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+		              logoImageSize={50}
+		              logoPriority
+		              onMenuOpen={() => setIsMenuOpen(true)}
+		              onCtaClick={goToTest}
+		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+		              menuLineClassName="bg-white"
+		            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -2747,6 +2769,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm"
 	              menuLineClassName="bg-white"
@@ -2864,6 +2887,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -2992,6 +3016,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
 	              menuLineClassName="bg-white"
@@ -3071,6 +3096,7 @@ export default function LandingPage() {
 	              logoImageSize={50}
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={goToTest}
 	              ctaClassName="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md"
 	              menuLineClassName="bg-white"
@@ -3211,18 +3237,18 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop */}
-          <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(5vh,40px)] lg:flex">
+          <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4vh,32px)] lg:flex">
             <div className="w-full max-w-[920px] text-center">
               <h2 className="text-[clamp(29px,4vh,37px)] font-extrabold leading-[1.05] tracking-tight text-white">
                 Form Đăng Ký Tư Vấn
               </h2>
-              <p className="mx-auto mt-[min(1.8vh,11px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
+              <p className="mx-auto mt-[min(1.45vh,9px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
                 Để lại thông tin của bạn, chúng tôi sẽ liên hệ để tư vấn ngay!
               </p>
             </div>
 
             <form
-              className="mt-[min(3.6vh,28px)] flex w-full max-w-[920px] flex-col gap-[min(2.1vh,18px)]"
+              className="mt-[min(2.9vh,22px)] flex w-full max-w-[920px] flex-col gap-[min(1.7vh,14px)]"
               onSubmit={(e) => e.preventDefault()}
             >
               <div className="space-y-2 text-left">
@@ -3437,7 +3463,7 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop */}
-          <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(6vh,56px)] lg:flex">
+          <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)] lg:flex">
             <div className="w-full max-w-[1100px] text-center">
               <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
                 Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
@@ -3447,7 +3473,7 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-[min(7vh,64px)] w-full max-w-[1180px]">
+            <div className="mt-[min(5.6vh,51px)] w-full max-w-[1180px]">
               <div className="grid grid-cols-3 gap-12">
                 <div className="rounded-[40px] bg-[#E6F7FE] p-10">
                   <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
@@ -3666,6 +3692,7 @@ export default function LandingPage() {
           logoSrc={logoSrc}
           onMenuOpen={() => setIsMenuOpen(true)}
           onScrollToTop={scrollToTop}
+          onCtaClick={goToTest}
           onNavigate={(key) => {
             if (key === "home") scrollToTop();
           }}

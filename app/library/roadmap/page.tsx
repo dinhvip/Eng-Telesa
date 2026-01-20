@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import DesktopNavbar from "../../components/DesktopNavbar";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileHeader from "../../components/MobileHeader";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
@@ -128,6 +129,26 @@ export default function RoadmapPage() {
 
   return (
     <main className="relative min-h-[100dvh] bg-white text-slate-900">
+      <DesktopNavbar
+        variant="adult"
+        logoSrc="/assets/svg/logo.png"
+        activeKey="library"
+        backgroundClassName="bg-[#273143]/70 backdrop-blur-md"
+        onTestClick={() => router.push("/test?variant=adult")}
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "products") router.push("/product?variant=adult");
+          if (key === "library") router.push("/library");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
+          if (key === "tutoring") router.push("/");
+          if (key === "about") router.push("/");
+          if (key === "careers") router.push("/");
+        }}
+      />
       <MobileMenuDrawer
         open={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
@@ -158,6 +179,7 @@ export default function RoadmapPage() {
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
           menuLineClassName="bg-slate-900"
           onMenuOpen={() => setIsMenuOpen(true)}
+          onCtaClick={() => router.push("/test?variant=adult")}
         />
 
         <div className="mt-10 flex flex-1 flex-col">
@@ -226,16 +248,16 @@ export default function RoadmapPage() {
           role="dialog"
           aria-modal="true"
           aria-label={activeModal.label}
+          onClick={closeModal}
         >
           <div
             className="relative z-10 flex h-full w-full items-center justify-center"
-            onClick={closeModal}
           >
             <div
               onClick={(e) => e.stopPropagation()}
               role="document"
               className={[
-                "transition-[transform,opacity] duration-200 ease-out will-change-transform",
+                "inline-block transition-[transform,opacity] duration-200 ease-out will-change-transform",
                 modalPhase === "open"
                   ? "opacity-100 translate-y-0 scale-100"
                   : "opacity-0 translate-y-2 scale-[0.98]",
@@ -246,7 +268,7 @@ export default function RoadmapPage() {
                 alt={activeModal.label}
                 width={900}
                 height={1200}
-                className="h-auto w-[90vw] max-h-[90dvh] object-contain"
+                className="h-auto w-auto max-h-[90dvh] max-w-[90vw] object-contain lg:max-h-[75vh]"
                 priority={false}
               />
             </div>
@@ -254,44 +276,54 @@ export default function RoadmapPage() {
         </div>
       )}
 
-      {/* Desktop fallback */}
-      <section className="hidden lg:block">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-10 px-[8vw] py-16">
-          <div className="max-w-xl">
-            <h1 className="text-[44px] font-semibold leading-[1.05] tracking-tight text-[#2F3A4C]">
-              Lộ trình học Tiếng Anh tại Telesa
-            </h1>
-            <p className="mt-6 text-[18px] leading-relaxed text-slate-600">
-              Chương trình gồm 8 cấp độ theo CEFR, giúp bạn tiến bộ rõ ràng qua từng giai đoạn.
-            </p>
-          </div>
+      {/* Desktop */}
+      <section className="hidden lg:flex h-[100dvh] w-full items-center bg-white">
+        <div className="mx-auto w-full px-[8vw] pt-[92px]">
+          <div className="grid w-full grid-cols-12 items-center gap-x-12">
+            <div className="col-span-5">
+              <h1 className="text-[clamp(38px,2.7vw,56px)] font-semibold leading-[1.12] tracking-tight text-[#2F3A4C]">
+                Lộ trình học Tiếng Anh tại
+                <br />
+                Telesa – Tiến bộ từng bước
+                <br />
+                vững chắc
+              </h1>
 
-          <div className="relative h-[420px] w-[420px] overflow-visible">
-            <div className="absolute bottom-0 right-0 aspect-[322/429] w-[380px] max-w-full">
-              <Image
-                src="/assets/stair.svg"
-                alt="Lộ trình học theo cấp độ"
-                fill
-                sizes="380px"
-                className="object-contain"
-                priority={false}
-              />
+              <p className="mt-6 max-w-[560px] text-[clamp(16px,1.05vw,18px)] leading-relaxed text-slate-600">
+                Telesa English thiết kế chương trình gồm 8 cấp độ, tương ứng với khung CEFR quốc tế,
+                giúp bạn phát triển từ nền tảng cơ bản đến giao tiếp lưu loát.
+              </p>
+            </div>
 
-              {ROADMAP_CARDS.map((card) => (
-                <button
-                  key={`desktop-${card.imgSrc}`}
-                  type="button"
-                  onClick={() => openModal(card)}
-                  aria-label={`Xem chi tiết cấp độ ${card.label}`}
-                  className="absolute rounded-md bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40"
-                  style={{
-                    left: pct(card.hitbox.xMin, STAIR_VIEW_W),
-                    top: pct(card.hitbox.yMin, STAIR_VIEW_H),
-                    width: pct(card.hitbox.xMax - card.hitbox.xMin, STAIR_VIEW_W),
-                    height: pct(card.hitbox.yMax - card.hitbox.yMin, STAIR_VIEW_H),
-                  }}
-                />
-              ))}
+            <div className="col-span-7">
+              <div className="relative mx-auto flex w-full justify-end">
+                <div className="relative aspect-[322/429] h-[75vh] max-h-[75vh] w-auto max-w-[min(44vw,720px)]">
+                  <Image
+                    src="/assets/stair.svg"
+                    alt="Lộ trình học theo cấp độ"
+                    fill
+                    sizes="(min-width: 1024px) 720px, 0px"
+                    className="object-contain"
+                    priority={false}
+                  />
+
+                  {ROADMAP_CARDS.map((card) => (
+                    <button
+                      key={`desktop-${card.imgSrc}`}
+                      type="button"
+                      onClick={() => openModal(card)}
+                      aria-label={`Xem chi tiết cấp độ ${card.label}`}
+                      className="absolute rounded-md bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40"
+                      style={{
+                        left: pct(card.hitbox.xMin, STAIR_VIEW_W),
+                        top: pct(card.hitbox.yMin, STAIR_VIEW_H),
+                        width: pct(card.hitbox.xMax - card.hitbox.xMin, STAIR_VIEW_W),
+                        height: pct(card.hitbox.yMax - card.hitbox.yMin, STAIR_VIEW_H),
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

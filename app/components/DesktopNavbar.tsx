@@ -53,6 +53,7 @@ export default function DesktopNavbar(props: {
   logoSrc: string;
   activeKey: DesktopNavbarKey;
   onNavigate: (key: DesktopNavbarActionKey) => void;
+  onTestClick?: () => void;
   activeColor?: string;
   backgroundClassName?: string;
 }) {
@@ -98,7 +99,7 @@ export default function DesktopNavbar(props: {
   return (
     <nav className="fixed inset-x-0 top-0 z-50 hidden lg:block">
       <div className={backgroundClassName}>
-        <div className="mx-auto flex w-full items-center justify-between gap-4 px-[8vw] py-4 xl:gap-8">
+        <div className="mx-auto flex w-full items-start justify-between gap-2 px-2 py-4 lg:px-4 xl:gap-8 xl:px-[8vw]">
           <div className="flex min-w-0 items-center gap-3 xl:gap-6">
             <div className="relative h-10 w-10 shrink-0 xl:h-11 xl:w-11">
               <Image
@@ -111,7 +112,7 @@ export default function DesktopNavbar(props: {
               />
             </div>
 
-            <div className="flex min-w-0 items-center gap-2 text-[11px] font-semibold text-white xl:gap-7 xl:text-[16px]">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-[clamp(6px,1vw,18px)] gap-y-2 pr-2 text-[clamp(9px,0.9vw,14px)] font-semibold leading-tight text-white xl:gap-x-7 xl:pr-0 xl:text-[clamp(12px,1.05vw,16px)]">
               {MENU_ITEMS.map((item) => {
                 const isActive = item.key === props.activeKey;
                 const isLibrary = item.key === "library";
@@ -262,14 +263,17 @@ export default function DesktopNavbar(props: {
           <div className="flex shrink-0 items-center gap-2 xl:gap-4">
             <button
               type="button"
-              className="rounded-[32px] border border-white/90 bg-white/0 px-3.5 py-2 text-[10px] font-semibold text-white shadow-sm transition-colors hover:bg-white/10 xl:px-8 xl:py-3 xl:text-sm"
+              onClick={props.onTestClick}
+              disabled={!props.onTestClick}
+              aria-disabled={!props.onTestClick || undefined}
+              className="rounded-[32px] border border-white/90 bg-white/0 px-2.5 py-2 text-[clamp(9px,0.75vw,12px)] font-semibold text-white shadow-sm transition-colors hover:bg-white/10 xl:px-3.5 xl:py-2 xl:text-[clamp(12px,0.9vw,14px)]"
             >
               <span className="xl:hidden">Làm bài</span>
               <span className="hidden xl:inline">Làm bài kiểm tra</span>
             </button>
             <button
               type="button"
-              className="rounded-[32px] border border-white/90 bg-white/0 px-3.5 py-2 text-[10px] font-semibold text-white shadow-sm transition-colors hover:bg-white/10 xl:px-8 xl:py-3 xl:text-sm"
+              className="rounded-[32px] border border-white/90 bg-white/0 px-2.5 py-2 text-[clamp(9px,0.75vw,12px)] font-semibold text-white shadow-sm transition-colors hover:bg-white/10 xl:px-3.5 xl:py-2 xl:text-[clamp(12px,0.9vw,14px)]"
             >
               <span className="xl:hidden">Góc học</span>
               <span className="hidden xl:inline">Góc học tập</span>

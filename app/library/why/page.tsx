@@ -58,6 +58,7 @@ export default function LibraryWhyPage() {
         activeKey="library"
         activeColor="#FFC000"
         backgroundClassName="bg-[#36363666] backdrop-blur-md"
+        onTestClick={() => router.push("/test")}
         onNavigate={(key) => {
           if (key === "home") router.push("/");
           if (key === "products") router.push("/product?variant=kid");
@@ -130,6 +131,7 @@ export default function LibraryWhyPage() {
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push("/test")}
             />
 
             <div className="flex flex-1 items-center justify-center text-center">
@@ -231,6 +233,7 @@ export default function LibraryWhyPage() {
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push("/test")}
             />
 
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -268,6 +271,7 @@ export default function LibraryWhyPage() {
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push("/test")}
             />
 
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -305,6 +309,7 @@ export default function LibraryWhyPage() {
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push("/test")}
             />
 
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -343,6 +348,7 @@ export default function LibraryWhyPage() {
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
               onMenuOpen={() => setIsMenuOpen(true)}
+              onCtaClick={() => router.push("/test")}
             />
 
             <div className="flex flex-1 flex-col items-center justify-center text-center">

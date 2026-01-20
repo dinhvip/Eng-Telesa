@@ -398,6 +398,7 @@ export default function LibraryPage() {
         activeKey="library"
         activeColor="#FFC000"
         backgroundClassName="bg-[#B6B6B6]"
+        onTestClick={() => router.push("/test")}
         onNavigate={(key) => {
           if (key === "home") router.push("/");
           if (key === "products") router.push("/product?variant=kid");
@@ -536,6 +537,7 @@ export default function LibraryPage() {
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 	              menuLineClassName="bg-white"
 	              onMenuOpen={() => setIsMenuOpen(true)}
+	              onCtaClick={() => router.push("/test")}
 	            />
 
           <div className="flex flex-1 flex-col items-center justify-center">
@@ -708,6 +710,7 @@ export default function LibraryPage() {
 	            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
 	            menuLineClassName="bg-white"
 	            onMenuOpen={() => setIsMenuOpen(true)}
+	            onCtaClick={() => router.push("/test")}
 	          />
 
           <div className="mt-10 flex flex-col items-center text-center">
@@ -877,6 +880,7 @@ export default function LibraryPage() {
 	            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
 	            menuLineClassName="bg-white"
 	            onMenuOpen={() => setIsMenuOpen(true)}
+	            onCtaClick={() => router.push("/test")}
 	          />
 
           <div className="flex flex-1 flex-col justify-center">
@@ -1036,6 +1040,7 @@ export default function LibraryPage() {
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
             onMenuOpen={() => setIsMenuOpen(true)}
+            onCtaClick={() => router.push("/test")}
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1084,6 +1089,7 @@ export default function LibraryPage() {
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
             onMenuOpen={() => setIsMenuOpen(true)}
+            onCtaClick={() => router.push("/test")}
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1132,6 +1138,7 @@ export default function LibraryPage() {
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
             onMenuOpen={() => setIsMenuOpen(true)}
+            onCtaClick={() => router.push("/test")}
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
