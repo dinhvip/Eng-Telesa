@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 function ChevronDownIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -37,16 +38,62 @@ const MENU_ITEMS = [
 ];
 
 export type DesktopNavbarKey = (typeof MENU_ITEMS)[number]["key"];
+export type DesktopNavbarActionKey =
+  | DesktopNavbarKey
+  | "library-why"
+  | "library-program-for-kid"
+  | "library-what-is-tes"
+  | "library-roadmap"
+  | "library-why-group"
+  | "library-1-1"
+  | "library-payment-method";
 
 export default function DesktopNavbar(props: {
+  variant?: "kid" | "adult";
   logoSrc: string;
   activeKey: DesktopNavbarKey;
-  onNavigate: (key: DesktopNavbarKey) => void;
+  onNavigate: (key: DesktopNavbarActionKey) => void;
   activeColor?: string;
   backgroundClassName?: string;
 }) {
   const activeColor = props.activeColor ?? "#9e005a";
   const backgroundClassName = props.backgroundClassName ?? "bg-[#3b3b3b]/90";
+  const variant = props.variant ?? "adult";
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const libraryCloseTimerRef = useRef<number | null>(null);
+
+  const openLibraryMenu = () => {
+    if (libraryCloseTimerRef.current != null) {
+      window.clearTimeout(libraryCloseTimerRef.current);
+      libraryCloseTimerRef.current = null;
+    }
+    setIsLibraryOpen(true);
+  };
+
+  const scheduleCloseLibraryMenu = () => {
+    if (libraryCloseTimerRef.current != null) window.clearTimeout(libraryCloseTimerRef.current);
+    libraryCloseTimerRef.current = window.setTimeout(() => {
+      setIsLibraryOpen(false);
+      libraryCloseTimerRef.current = null;
+    }, 200);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsLibraryOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (libraryCloseTimerRef.current != null) {
+        window.clearTimeout(libraryCloseTimerRef.current);
+        libraryCloseTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 hidden lg:block">
@@ -67,31 +114,146 @@ export default function DesktopNavbar(props: {
             <div className="flex min-w-0 items-center gap-2 text-[11px] font-semibold text-white xl:gap-7 xl:text-[16px]">
               {MENU_ITEMS.map((item) => {
                 const isActive = item.key === props.activeKey;
+                const isLibrary = item.key === "library";
                 return (
-                  <button
+                  <div
                     key={item.key}
-                    type="button"
-                    onClick={() => {
-                      props.onNavigate(item.key);
+                    className="relative"
+                    onMouseEnter={() => {
+                      if (isLibrary) openLibraryMenu();
                     }}
-                    className={`inline-flex items-center gap-1 transition-colors ${
-                      isActive ? "" : "text-white/90 hover:text-white"
-                    } cursor-pointer`}
-                    style={isActive ? { color: activeColor } : undefined}
+                    onMouseLeave={() => {
+                      if (isLibrary) scheduleCloseLibraryMenu();
+                    }}
                   >
-                    <span className="whitespace-nowrap">
-                      <span className="xl:hidden">{item.shortLabel}</span>
-                      <span className="hidden xl:inline">{item.label}</span>
-                    </span>
-                    {item.hasDropdown && (
-                      <ChevronDownIcon
-                        className={`h-3 w-3 shrink-0 ${
-                          isActive ? "" : "text-white/80"
-                        }`}
-                        style={isActive ? { color: activeColor } : undefined}
-                      />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isLibrary) {
+                          setIsLibraryOpen((prev) => !prev);
+                          return;
+                        }
+                        props.onNavigate(item.key);
+                      }}
+                      className={`inline-flex items-center gap-1 transition-colors ${
+                        isActive ? "" : "text-white/90 hover:text-white"
+                      } cursor-pointer`}
+                      style={isActive ? { color: activeColor } : undefined}
+                      aria-haspopup={isLibrary ? "menu" : undefined}
+                      aria-expanded={isLibrary ? isLibraryOpen : undefined}
+                    >
+                      <span className="whitespace-nowrap">
+                        <span className="xl:hidden">{item.shortLabel}</span>
+                        <span className="hidden xl:inline">{item.label}</span>
+                      </span>
+                      {item.hasDropdown && (
+                        <ChevronDownIcon
+                          className={`h-3 w-3 shrink-0 ${
+                            isActive ? "" : "text-white/80"
+                          }`}
+                          style={isActive ? { color: activeColor } : undefined}
+                        />
+                      )}
+                    </button>
+
+                    {isLibrary && isLibraryOpen && (
+                      <div
+                        className="absolute left-0 top-full pt-3"
+                        onMouseEnter={openLibraryMenu}
+                        onMouseLeave={scheduleCloseLibraryMenu}
+                      >
+                        <div
+                          role="menu"
+                          className="w-[260px] overflow-hidden rounded-2xl bg-white shadow-[0_18px_48px_rgba(0,0,0,0.25)] ring-1 ring-black/5"
+                        >
+                          {variant === "adult" ? (
+                            <>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-what-is-tes");
+                                }}
+                              >
+                                T.E.S là gì?
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-1-1");
+                                }}
+                              >
+                                Học kèm 1-1
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-payment-method");
+                                }}
+                              >
+                                Phương thức thanh toán
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-why-group");
+                                }}
+                              >
+                                Chương trình học nhóm
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-roadmap");
+                                }}
+                              >
+                                Lộ trình học
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-why");
+                                }}
+                              >
+                                Vì sao chọn Telesa
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-4 py-3 text-left text-[14px] font-semibold text-slate-900 hover:bg-slate-50"
+                                onClick={() => {
+                                  setIsLibraryOpen(false);
+                                  props.onNavigate("library-program-for-kid");
+                                }}
+                              >
+                                Chương trình cho bé
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>

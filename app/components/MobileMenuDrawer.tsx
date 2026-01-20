@@ -14,6 +14,10 @@ type MobileMenuDrawerProps = {
   onNavigate?: (key: string) => void;
 };
 
+type MenuItem =
+  | { key: string; label: string }
+  | { key: string; label: string; children: { key: string; label: string }[] };
+
 const CloseIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
     <path
@@ -78,19 +82,36 @@ export default function MobileMenuDrawer({
 }: MobileMenuDrawerProps) {
   const [language, setLanguage] = useState<"vi" | "en">("vi");
   const [isAccountExpanded, setIsAccountExpanded] = useState(true);
+  const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
 
-  const items = useMemo(
+  const items = useMemo<MenuItem[]>(
     () => [
       { key: "home", label: "Trang chủ" },
       { key: "product", label: "Sản phẩm" },
       { key: "teacher", label: "Học kèm với giáo viên" },
       { key: "about", label: "Về Telesa" },
-      { key: "library", label: "Thư viện" },
+      {
+        key: "library",
+        label: "Thư viện",
+        children:
+          variant === "adult"
+            ? [
+                { key: "library-what-is-tes", label: "T.E.S là gì?" },
+                { key: "library-1-1", label: "Học kèm 1-1" },
+                { key: "library-payment-method", label: "Phương thức thanh toán" },
+                { key: "library-why-group", label: "Chương trình học nhóm" },
+                { key: "library-roadmap", label: "Lộ trình học" },
+              ]
+            : [
+                { key: "library-why", label: "Vì sao chọn Telesa" },
+                { key: "library-program-for-kid", label: "Chương trình cho bé" },
+              ],
+      },
       { key: "career", label: "Tuyển dụng" },
     ],
-    [],
+    [variant],
   );
 
   useEffect(() => {
@@ -165,24 +186,93 @@ export default function MobileMenuDrawer({
           <div className="flex-1 overflow-y-auto px-5 pb-24 pt-6">
             <nav className="space-y-4">
               {items.map((item) => {
-                const isActive = item.key === activeKey;
+                const hasChildren = "children" in item;
+                const isActive =
+                  item.key === activeKey ||
+                  (hasChildren && item.children.some((child) => child.key === activeKey));
+
+                if (!hasChildren) {
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => {
+                        onNavigate?.(item.key);
+                        onClose();
+                      }}
+                      className={`block w-full text-left text-[18px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                        isActive
+                          ? "text-[#D40887]"
+                          : "text-slate-900 hover:text-[#D40887]"
+                      }`}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                }
+
                 return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => {
-                      onNavigate?.(item.key);
-                      onClose();
-                    }}
-                    className={`block w-full text-left text-[18px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
-                      isActive
-                        ? "text-[#D40887]"
-                        : "text-slate-900 hover:text-[#D40887]"
-                    }`}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    {item.label}
-                  </button>
+                  <div key={item.key} className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsLibraryExpanded((prev) => !prev)}
+                      className={`flex w-full items-center justify-between text-left text-[18px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                        isActive
+                          ? "text-[#D40887]"
+                          : "text-slate-900 hover:text-[#D40887]"
+                      }`}
+                      aria-expanded={isLibraryExpanded}
+                    >
+                      <span>{item.label}</span>
+                      <ChevronDownIcon
+                        className={`h-5 w-5 transition-transform ${
+                          isLibraryExpanded ? "rotate-0" : "-rotate-90"
+                        }`}
+                      />
+                    </button>
+
+                    <div
+                      className={`space-y-1 overflow-hidden pl-4 transition-[max-height,opacity] duration-200 ease-out ${
+                        isLibraryExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                      }`}
+                    >
+                      {item.children.map((child) => {
+                        const isChildActive = child.key === activeKey;
+                        return (
+                          <button
+                            key={child.key}
+                            type="button"
+                            onClick={() => {
+                              if (
+                                child.key === "library-why" ||
+                                child.key === "library-program-for-kid" ||
+                                child.key === "library-what-is-tes" ||
+                                child.key === "library-roadmap" ||
+                                child.key === "library-why-group" ||
+                                child.key === "library-1-1" ||
+                                child.key === "library-payment-method"
+                              ) {
+                                try {
+                                  sessionStorage.setItem("telesa:openMenuOnBack", "1");
+                                } catch {}
+                              }
+                              onNavigate?.(child.key);
+                              onClose();
+                            }}
+                            className={`block w-full rounded-xl px-3 py-2 text-left text-[15px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                              isChildActive
+                                ? "bg-[#D40887]/10 text-[#D40887]"
+                                : "text-slate-800 hover:bg-slate-50 hover:text-[#D40887]"
+                            }`}
+                            aria-current={isChildActive ? "page" : undefined}
+                          >
+                            {child.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </nav>

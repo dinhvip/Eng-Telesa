@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { SVGProps } from "react";
 import MobileFloatingActions from "./MobileFloatingActions";
+import MobileHeader from "./MobileHeader";
 
 type FooterVariant = "kid" | "adult";
 
@@ -65,10 +66,23 @@ type FooterContactViewProps = {
   logoSrc: string;
   onMenuOpen: () => void;
   onScrollToTop: () => void;
-  onNavigate?: (key: (typeof NAV_ITEMS)[number]["key"]) => void;
+  onNavigate?: (
+    key:
+      | (typeof NAV_ITEMS)[number]["key"]
+      | "library-why"
+      | "library-program-for-kid"
+      | "library-what-is-tes"
+      | "library-roadmap"
+      | "library-why-group"
+      | "library-1-1"
+      | "library-payment-method"
+  ) => void;
   showFloatingActions?: boolean;
   mobileFullHeight?: boolean;
   showMobileHeader?: boolean;
+  desktopFullHeight?: boolean;
+  desktopSnap?: boolean;
+  snapStart?: boolean;
 };
 
 export default function FooterContactView({
@@ -80,14 +94,22 @@ export default function FooterContactView({
   showFloatingActions = true,
   mobileFullHeight = true,
   showMobileHeader = true,
+  desktopFullHeight = false,
+  desktopSnap = false,
+  snapStart = true,
 }: FooterContactViewProps) {
   const brandAlt = variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo";
+  const desktopFullHeightClass = desktopFullHeight ? "lg:h-[100dvh]" : "lg:h-auto";
+  const desktopSnapClass = desktopSnap ? "lg:snap-start" : "lg:snap-none";
   return (
     <section
       className={[
-        "relative flex w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:h-auto lg:snap-none",
+        "relative flex w-full items-stretch justify-center bg-white text-slate-900",
+        snapStart ? "snap-start" : null,
+        desktopFullHeightClass,
+        desktopSnapClass,
         mobileFullHeight ? "h-[100dvh]" : "h-auto",
-      ].join(" ")}
+      ].filter(Boolean).join(" ")}
     >
       {/* Mobile */}
       <div
@@ -97,31 +119,15 @@ export default function FooterContactView({
         ].join(" ")}
       >
         {showMobileHeader && (
-          <div className="flex items-center justify-between">
-            <div className="relative h-16 w-16">
-              <Image
-                src={logoSrc}
-                alt={brandAlt}
-                width={64}
-                height={64}
-                className="h-full w-full object-contain"
-                priority
-              />
-            </div>
-            <button className="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm">
-              Làm bài kiểm tra ngay
-            </button>
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={onMenuOpen}
-              className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
-            >
-              <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
-              <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-              <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
-            </button>
-          </div>
+          <MobileHeader
+            logoSrc={logoSrc}
+            logoAlt={brandAlt}
+            logoPriority
+            ctaClassName="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm"
+            onMenuOpen={onMenuOpen}
+            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
+            menuLineClassName="bg-slate-800"
+          />
         )}
 
         <div className={showMobileHeader ? "mt-8 space-y-5" : "space-y-5"}>

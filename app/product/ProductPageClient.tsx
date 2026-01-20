@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopNavbar from "../components/DesktopNavbar";
 import FooterContactView from "../components/FooterContactView";
+import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
 import {
   AUDIO_PRODUCTS,
@@ -155,6 +156,14 @@ export default function ProductPageClient() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
     if (!isMenuOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -189,13 +198,34 @@ export default function ProductPageClient() {
   return (
     <>
       <DesktopNavbar
+        variant={variant}
         logoSrc={logoSrc}
         activeKey="products"
         activeColor="#D40887"
         onNavigate={(key) => {
+          if (
+            key === "library-why" ||
+            key === "library-program-for-kid" ||
+            key === "library-what-is-tes" ||
+            key === "library-1-1" ||
+            key === "library-payment-method" ||
+            key === "library-why-group" ||
+            key === "library-roadmap"
+          ) {
+            try {
+              sessionStorage.setItem("telesa:openMenuOnBack", "1");
+            } catch {}
+          }
           if (key === "home") router.push("/");
           if (key === "products") router.push(`/product?variant=${variant}`);
           if (key === "library") router.push("/library");
+          if (key === "library-why") router.push("/library/why");
+          if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
           if (key === "tutoring") router.push("/");
           if (key === "about") router.push("/");
           if (key === "careers") router.push("/");
@@ -212,6 +242,13 @@ export default function ProductPageClient() {
           if (key === "home") router.push("/");
           if (key === "product") router.push(`/product?variant=${variant}`);
           if (key === "library") router.push("/library");
+          if (key === "library-why") router.push("/library/why");
+          if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
         }}
       />
 
@@ -235,36 +272,16 @@ export default function ProductPageClient() {
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-yellow-300/25 via-yellow-100/12 to-transparent" />
 
           <div className="relative z-10 mx-auto flex h-full w-full max-w-md flex-col px-4 pt-[calc(env(safe-area-inset-top)+18px)] lg:max-w-5xl lg:px-[8vw] lg:pt-12">
-            <div className="flex items-center justify-between lg:hidden">
-              <div className="relative h-16 w-16 shrink-0">
-                <Image
-                  src={logoSrc}
-                  alt="Telesa English logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-
-              <button
-                type="button"
-                className="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-center text-xs font-medium text-white shadow-sm backdrop-blur-md"
-              >
-                Làm bài kiểm tra ngay
-              </button>
-
-              <button
-                type="button"
-                aria-label="Open menu"
-                onClick={() => setIsMenuOpen(true)}
-                className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
-              >
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+            <MobileHeader
+              className="lg:hidden"
+              logoSrc={logoSrc}
+              logoAlt={variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo"}
+              logoPriority
+              onMenuOpen={() => setIsMenuOpen(true)}
+              ctaClassName="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-center text-xs font-medium text-white shadow-sm backdrop-blur-md"
+              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
+              menuLineClassName="bg-white"
+            />
 
             <div className="mt-auto mb-[calc(env(safe-area-inset-bottom)+10vh)] lg:hidden">
               <h1 className="text-[36px] font-semibold leading-[1.08] tracking-tight lg:text-[56px]">
@@ -306,35 +323,16 @@ export default function ProductPageClient() {
           </div>
         </section>
 
-        <section className="relative w-full bg-white text-slate-900 lg:h-auto lg:snap-none">
+        <section className="relative w-full bg-[#F8F9FA] text-slate-900 lg:h-auto lg:snap-none">
           <div className="mx-auto flex w-full max-w-md flex-col px-4 pb-[calc(env(safe-area-inset-bottom)+18px)] pt-[calc(env(safe-area-inset-top)+18px)] lg:hidden">
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src={logoSrc}
-                  alt="Telesa English logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority={false}
-                />
-              </div>
-
-              <button className="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-
-              <button
-                type="button"
-                aria-label="Open menu"
-                onClick={() => setIsMenuOpen(true)}
-                  className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
-                >
-                  <span className="block h-[2px] w-4 rounded-full bg-white" />
-                  <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                  <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                </button>
-              </div>
+            <MobileHeader
+              logoSrc={logoSrc}
+              logoAlt={variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo"}
+              onMenuOpen={() => setIsMenuOpen(true)}
+              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+              menuLineClassName="bg-white"
+            />
 
             <div className="mt-6">
               <div className="relative">
@@ -1120,6 +1118,9 @@ export default function ProductPageClient() {
             if (key === "home") router.push("/");
             if (key === "product") router.push(`/product?variant=${variant}`);
             if (key === "library") router.push("/library");
+            if (key === "library-why") router.push("/library/why");
+            if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+            if (key === "library-what-is-tes") router.push("/library/what-is-tes");
             if (key === "teacher") router.push("/");
             if (key === "about") router.push("/");
             if (key === "career") router.push("/");

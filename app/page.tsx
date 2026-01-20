@@ -7,6 +7,7 @@ import DesktopFloatingActions from "./components/DesktopFloatingActions";
 import DesktopNavbar from "./components/DesktopNavbar";
 import { KidWorldMap } from "./components/KidWorldMap";
 import FooterContactView from "./components/FooterContactView";
+import MobileHeader from "./components/MobileHeader";
 import MobileFloatingActions from "./components/MobileFloatingActions";
 import MobileMenuDrawer from "./components/MobileMenuDrawer";
 
@@ -170,6 +171,9 @@ export default function LandingPage() {
     startOffset: number;
     pointerId: number | null;
   }>({ isDragging: false, startY: 0, startOffset: 0, pointerId: null });
+  const restoreAnchorIdRef = useRef<string | null>(null);
+  const restoreScrollTopRef = useRef<number | null>(null);
+  const restoreShouldOpenMenuRef = useRef(false);
 
   const kidSlides = [
     {
@@ -395,6 +399,98 @@ export default function LandingPage() {
   }, [selectedAge]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem("telesa:returnContext");
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as {
+        kind?: string;
+        selectedAge?: "kid" | "adult";
+        anchorId?: string;
+        scrollTop?: number;
+        openMenu?: boolean;
+      };
+
+      if (!parsed?.selectedAge) return;
+
+      if (parsed.kind === "landing" && parsed.anchorId) {
+        restoreAnchorIdRef.current = parsed.anchorId;
+        setSelectedAge(parsed.selectedAge);
+        return;
+      }
+
+      if (parsed.kind === "landing-scroll" && typeof parsed.scrollTop === "number") {
+        restoreScrollTopRef.current = parsed.scrollTop;
+        restoreShouldOpenMenuRef.current = !!parsed.openMenu;
+        setSelectedAge(parsed.selectedAge);
+      }
+    } catch {
+      return;
+    } finally {
+      sessionStorage.removeItem("telesa:returnContext");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedAge == null) return;
+
+    const scrollTop = restoreScrollTopRef.current;
+    if (scrollTop != null) {
+      restoreScrollTopRef.current = null;
+      const shouldOpenMenu = restoreShouldOpenMenuRef.current;
+      restoreShouldOpenMenuRef.current = false;
+      mainRef.current?.scrollTo({ top: scrollTop, behavior: "auto" });
+      if (shouldOpenMenu) setIsMenuOpen(true);
+      return;
+    }
+
+    const anchorId = restoreAnchorIdRef.current;
+    if (!anchorId) return;
+    restoreAnchorIdRef.current = null;
+
+    const t = window.setTimeout(() => {
+      document.getElementById(anchorId)?.scrollIntoView({ behavior: "auto", block: "start" });
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [selectedAge]);
+
+  const navigateToLibraryFromMenu = (
+    pathname:
+      | "/library"
+      | "/library/why"
+      | "/library/program-for-kid"
+      | "/library/what-is-tes"
+      | "/library/1-1"
+      | "/library/payment-method"
+      | "/library/why-group"
+      | "/library/roadmap",
+  ) => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("telesa:openMenuOnBack", "1");
+        sessionStorage.setItem(
+          "telesa:returnContext",
+          JSON.stringify({
+            kind: "landing-scroll",
+            selectedAge: selectedAge ?? "kid",
+            scrollTop: mainRef.current?.scrollTop ?? 0,
+            openMenu: true,
+          }),
+        );
+      } catch {}
+    }
+    router.push(pathname);
+  };
+
+  useEffect(() => {
     const el = mainRef.current;
     if (!el) return;
     let raf = 0;
@@ -540,9 +636,18 @@ export default function LandingPage() {
         <>
           <DesktopNavbar
             logoSrc={logoSrc}
+            variant={selectedAge === "kid" ? "kid" : "adult"}
             activeKey="home"
             onNavigate={(key) => {
               if (key === "home") scrollToTop();
+              if (key === "library") navigateToLibraryFromMenu("/library");
+              if (key === "library-why") navigateToLibraryFromMenu("/library/why");
+              if (key === "library-program-for-kid") navigateToLibraryFromMenu("/library/program-for-kid");
+              if (key === "library-what-is-tes") navigateToLibraryFromMenu("/library/what-is-tes");
+              if (key === "library-1-1") navigateToLibraryFromMenu("/library/1-1");
+              if (key === "library-payment-method") navigateToLibraryFromMenu("/library/payment-method");
+              if (key === "library-why-group") navigateToLibraryFromMenu("/library/why-group");
+              if (key === "library-roadmap") navigateToLibraryFromMenu("/library/roadmap");
             }}
           />
           <DesktopFloatingActions
@@ -558,7 +663,14 @@ export default function LandingPage() {
             onNavigate={(key) => {
               if (key === "home") scrollToTop();
               if (key === "product") router.push(`/product?variant=${selectedAge ?? "kid"}`);
-              if (key === "library") router.push("/library");
+              if (key === "library") navigateToLibraryFromMenu("/library");
+              if (key === "library-why") navigateToLibraryFromMenu("/library/why");
+              if (key === "library-program-for-kid") navigateToLibraryFromMenu("/library/program-for-kid");
+              if (key === "library-what-is-tes") navigateToLibraryFromMenu("/library/what-is-tes");
+              if (key === "library-1-1") navigateToLibraryFromMenu("/library/1-1");
+              if (key === "library-payment-method") navigateToLibraryFromMenu("/library/payment-method");
+              if (key === "library-why-group") navigateToLibraryFromMenu("/library/why-group");
+              if (key === "library-roadmap") navigateToLibraryFromMenu("/library/roadmap");
             }}
           />
         </>
@@ -775,28 +887,18 @@ export default function LandingPage() {
 	
 	          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
-            {/* Top bar (mobile) */}
-            <div className="flex items-center justify-between lg:hidden">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
+	            {/* Top bar (mobile) */}
+	            <MobileHeader
+	              className="lg:hidden"
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
+	              menuLineClassName="bg-white"
+	            />
 
 	            {/* Desktop hero content */}
 	            <div className="hidden lg:block absolute inset-x-0 bottom-[15vh]">
@@ -862,29 +964,18 @@ export default function LandingPage() {
 		      {/* Slide 3 (kid): Horizontal feature carousel with 4 slides */}
 		      {selectedAge === "kid" && (
 		        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
-		          {/* Mobile */}
-		          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
-		            {/* Top bar (same as kid) */}
-		            <div className="flex items-center justify-between">
-		              <div className="relative h-16 w-16">
-		                <Image
-		                  src="/assets/logo.png"
-		                  alt="Telesa English Kids logo"
-	                  width={64}
-	                  height={64}
-	                  className="h-full w-full object-contain"
-	                  priority
-	                />
-	              </div>
-	              <button className="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm">
-	                Làm bài kiểm tra ngay
-	              </button>
-	              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm">
-	                <span className="block h-[2px] w-4 rounded-full bg-white" />
-	                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-		                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-		              </button>
-		            </div>
+			          {/* Mobile */}
+			          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
+			            {/* Top bar (same as kid) */}
+			            <MobileHeader
+			              logoSrc="/assets/logo.png"
+			              logoAlt="Telesa English Kids logo"
+			              logoPriority
+			              onMenuOpen={() => setIsMenuOpen(true)}
+			              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+			              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+			              menuLineClassName="bg-white"
+			            />
 
             {/* Horizontal slides: animated, one visible at a time */}
             <div
@@ -1015,34 +1106,18 @@ export default function LandingPage() {
       {/* Slide 4 (kid): Stats view */}
       {selectedAge === "kid" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
-          {/* Mobile */}
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button
-                type="button"
-                aria-label="Open menu"
-                onClick={() => setIsMenuOpen(true)}
-                className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white"
-              >
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          {/* Mobile */}
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1504,28 +1579,20 @@ export default function LandingPage() {
 	
 	          <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
-            {/* Top bar */}
-            <div className="flex items-center justify-between lg:hidden">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex h-full w-full max-w-md flex-col justify-between px-4 pb-6 pt-8 text-white lg:max-w-none lg:px-0 lg:pb-0 lg:pt-0">
+	            {/* Top bar */}
+	            <MobileHeader
+	              className="lg:hidden"
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-black/25 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/30 text-white shadow-sm backdrop-blur-md"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Desktop hero content */}
             <div className="hidden lg:block absolute inset-x-0 bottom-[15vh]">
@@ -1591,29 +1658,18 @@ export default function LandingPage() {
       {/* Slide 3 (adult): Same structure as kid view 3 */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
-          {/* Mobile */}
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src={logoSrc}
-                  alt="Telesa English logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          {/* Mobile */}
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc={logoSrc}
+	              logoAlt="Telesa English logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Horizontal slides: reuse kid slider behaviour but with adult visuals */}
             <div
@@ -1744,28 +1800,17 @@ export default function LandingPage() {
       {/* Slide 5 (kid): Stats view */}
       {selectedAge === "kid" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-900">
-                <span className="block h-[2px] w-4 rounded-full bg-slate-900" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-900" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-900" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
+	              menuLineClassName="bg-slate-900"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1791,28 +1836,17 @@ export default function LandingPage() {
       {/* Slide 6 (kid): Progress view */}
       {selectedAge === "kid" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1882,6 +1916,7 @@ export default function LandingPage() {
       {/* Slide 8 (kid): Why choose Telesa view (2 sub-slides) */}
       {selectedAge === "kid" && (
         <section
+          id="kid-library-teaser"
           className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
           style={{ touchAction: "pan-y" }}
           {...kidView8Swipe}
@@ -1902,28 +1937,18 @@ export default function LandingPage() {
           {/* Dark overlay for readability */}
           <div className="pointer-events-none absolute inset-0 bg-black/25" />
 
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              className="gap-2"
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Text + actions grouped near bottom */}
             <div
@@ -1954,14 +1979,34 @@ export default function LandingPage() {
               )}
 
               {/* Bottom actions */}
-              <div className="mt-3 flex items-center justify-between">
-                <div className="flex flex-col gap-3">
-                  <button className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
-                    Chi tiết
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
+	              <div className="mt-3 flex items-center justify-between">
+	                <div className="flex flex-col gap-3">
+	                  <button
+	                    type="button"
+	                    onClick={() =>
+	                      (() => {
+	                        try {
+	                          sessionStorage.setItem(
+	                            "telesa:returnContext",
+	                            JSON.stringify({
+	                              kind: "landing",
+	                              selectedAge: "kid",
+	                              anchorId: "kid-library-teaser",
+	                            }),
+	                          );
+	                        } catch {}
+	                        router.push(
+	                          kidView8Index === 0 ? "/library/why" : "/library/program-for-kid",
+	                        );
+	                      })()
+	                    }
+	                    className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
+	                  >
+	                    Chi tiết
+	                  </button>
+	                  <div className="flex items-center gap-2">
+	                    <button
+	                      type="button"
                       onClick={() => changeKidView8Slide(0)}
                       className={`h-1.5 rounded-full transition-all ${
                         kidView8Index === 0
@@ -1991,28 +2036,17 @@ export default function LandingPage() {
       {selectedAge === "kid" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
           {/* Mobile */}
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Heading */}
             <div className="mt-6 text-center">
@@ -2086,28 +2120,17 @@ export default function LandingPage() {
       {/* Slide 10 (kid): Global connections view */}
       {selectedAge === "kid" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Heading */}
             <div className="mt-8 text-center px-2">
@@ -2149,28 +2172,18 @@ export default function LandingPage() {
           />
           <div className="pointer-events-none absolute inset-0 bg-[#6B510033]" />
 
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col items-center px-4 pb-3 pt-5">
-            {/* Top bar */}
-            <div className="flex w-full items-center justify-between gap-3 text-left">
-              <div className="relative h-16 w-16">
-                <Image
-                  src="/assets/logo.png"
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex h-full w-full max-w-md flex-col items-center px-4 pb-3 pt-5">
+	            {/* Top bar */}
+	            <MobileHeader
+	              className="w-full text-left gap-3"
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md"
+	              menuLineClassName="bg-white"
+	            />
 
             <div className="mx-auto mt-4 w-[80vw] max-w-full text-center">
               <h2 className="text-[26px] font-extrabold leading-[1.05] tracking-tight text-white">
@@ -2512,29 +2525,20 @@ export default function LandingPage() {
       {/* Slide 4 (adult): Stats view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
-          {/* Mobile */}
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          {/* Mobile */}
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -2594,28 +2598,19 @@ export default function LandingPage() {
       {/* Slide 5 (adult): Teacher stats view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-900">
-                <span className="block h-[2px] w-4 rounded-full bg-slate-900" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-900" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-900" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
+	              menuLineClassName="bg-slate-900"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -2641,28 +2636,19 @@ export default function LandingPage() {
       {/* Slide 6 (adult): Progress view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -2688,28 +2674,19 @@ export default function LandingPage() {
       {/* Slide 7 (adult): Technology application view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-900">
-                <span className="block h-[2px] w-4 rounded-full bg-slate-900" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-900" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-900" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
+	              menuLineClassName="bg-slate-900"
+	            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -2735,6 +2712,7 @@ export default function LandingPage() {
       {/* Slide 8 (adult mobile): Why choose view (4 sub-slides) */}
       {selectedAge === "adult" && (
         <section
+          id="adult-library-teaser"
           className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
           style={{ touchAction: "pan-y" }}
           {...adultWhyMobileSwipe}
@@ -2751,28 +2729,20 @@ export default function LandingPage() {
           />
           <div className="pointer-events-none absolute inset-0 bg-black/25" />
 
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
-            {/* Top bar */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
+	            {/* Top bar */}
+	            <MobileHeader
+	              className="gap-2"
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white bg-black/30 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/40 text-white shadow-sm backdrop-blur-sm"
+	              menuLineClassName="bg-white"
+	            />
 
             <div
               className={`mt-12 flex flex-1 flex-col justify-end pb-10 transform-gpu transition-all duration-300 ease-out ${
@@ -2784,10 +2754,27 @@ export default function LandingPage() {
               </p>
 
               <div className="mt-3 flex items-center justify-between">
-                <div className="flex flex-col gap-3">
-                  <button className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm">
-                    Chi tiết
-                  </button>
+	                <div className="flex flex-col gap-3">
+	                  <button
+	                    type="button"
+	                    onClick={() => {
+	                      if (adultWhyMobileIndex !== 0) return;
+	                      try {
+	                        sessionStorage.setItem(
+	                          "telesa:returnContext",
+	                          JSON.stringify({
+	                            kind: "landing",
+	                            selectedAge: "adult",
+	                            anchorId: "adult-library-teaser",
+	                          }),
+	                        );
+	                      } catch {}
+	                      router.push("/library/what-is-tes");
+	                    }}
+	                    className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
+	                  >
+	                    Chi tiết
+	                  </button>
                   <div className="flex items-center gap-2">
                     {adultWhySlidesMobile.map((_, index) => (
                       <button
@@ -2859,29 +2846,20 @@ export default function LandingPage() {
       {/* Slide 9 (adult): Testimonials view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
-          {/* Mobile */}
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          {/* Mobile */}
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Heading */}
             <div className="mt-6 text-center">
@@ -2996,29 +2974,20 @@ export default function LandingPage() {
       {/* Slide 10 (adult): Global connections view */}
       {selectedAge === "adult" && (
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
-          {/* Mobile */}
-          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-            {/* Top bar */}
-            <div className="flex items-center justify-between">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          {/* Mobile */}
+	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+	              menuLineClassName="bg-white"
+	            />
 
             {/* Heading */}
             <div className="mt-8 px-2 text-center">
@@ -3083,29 +3052,21 @@ export default function LandingPage() {
             style={{ backgroundColor: "#59033933" }}
           />
 
-          {/* Mobile */}
-          <div className="relative z-10 flex h-full w-full max-w-md flex-col items-center px-4 pb-3 pt-5 lg:hidden">
-            {/* Top bar */}
-            <div className="flex w-full items-center justify-between gap-3 text-left">
-              <div className="relative h-[50px] w-[50px]">
-                <Image
-                  src="/assets/svg/logo.png"
-                  alt="Telesa English logo"
-                  width={50}
-                  height={50}
-                  className="h-full w-full object-contain"
-                  priority
-                />
-              </div>
-              <button className="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md">
-                Làm bài kiểm tra ngay
-              </button>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md">
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+	          {/* Mobile */}
+	          <div className="relative z-10 flex h-full w-full max-w-md flex-col items-center px-4 pb-3 pt-5 lg:hidden">
+	            {/* Top bar */}
+	            <MobileHeader
+	              className="w-full text-left gap-3"
+	              logoSrc="/assets/svg/logo.png"
+	              logoAlt="Telesa English logo"
+	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+	              logoImageSize={50}
+	              logoPriority
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	              ctaClassName="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md"
+	              menuLineClassName="bg-white"
+	            />
 
             <div className="mx-auto mt-4 w-[80vw] max-w-full text-center">
               <h2 className="text-[26px] font-extrabold leading-[1.05] tracking-tight text-white">

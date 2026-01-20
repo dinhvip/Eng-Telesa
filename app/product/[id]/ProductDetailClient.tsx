@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import DesktopNavbar from "../../components/DesktopNavbar";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
+import MobileHeader from "../../components/MobileHeader";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
 import type { CourseProduct } from "../catalog";
 
@@ -76,6 +77,14 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
   const slideImages = Array.from({ length: slideCount }, () => props.course.image);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
     if (!isMenuOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -105,14 +114,35 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
   return (
     <>
       <DesktopNavbar
+        variant={variant}
         logoSrc={logoSrc}
         activeKey="products"
         activeColor={navbarActiveColor}
         backgroundClassName="bg-[#36363666] backdrop-blur-md"
         onNavigate={(key) => {
+          if (
+            key === "library-why" ||
+            key === "library-program-for-kid" ||
+            key === "library-what-is-tes" ||
+            key === "library-1-1" ||
+            key === "library-payment-method" ||
+            key === "library-why-group" ||
+            key === "library-roadmap"
+          ) {
+            try {
+              sessionStorage.setItem("telesa:openMenuOnBack", "1");
+            } catch {}
+          }
           if (key === "home") router.push("/");
           if (key === "products") router.push(`/product?variant=${variant}`);
           if (key === "library") router.push("/library");
+          if (key === "library-why") router.push("/library/why");
+          if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
           if (key === "tutoring") router.push("/");
           if (key === "about") router.push("/");
           if (key === "careers") router.push("/");
@@ -129,6 +159,13 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
           if (key === "home") router.push("/");
           if (key === "product") router.push(`/product?variant=${variant}`);
           if (key === "library") router.push("/library");
+          if (key === "library-why") router.push("/library/why");
+          if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
         }}
       />
 
@@ -138,41 +175,17 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
           className="h-[100dvh] w-full overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
           <div className="mx-auto w-full max-w-md px-4 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-[calc(env(safe-area-inset-top)+18px)] lg:max-w-5xl lg:px-[6vw] lg:pt-[110px]">
-            <div className="flex items-center justify-between lg:hidden">
-              <button
-                type="button"
-                aria-label="Back to products"
-                onClick={() => router.push(`/product?variant=${variant}`)}
-                className="relative h-16 w-16"
-              >
-                <Image
-                  src={logoSrc}
-                  alt="Telesa English Kids logo"
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
-                  priority={false}
-                />
-              </button>
-
-              <button
-                type="button"
-                className="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
-              >
-                Làm bài kiểm tra ngay
-              </button>
-
-              <button
-                type="button"
-                aria-label="Open menu"
-                onClick={() => setIsMenuOpen(true)}
-                className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-white"
-              >
-                <span className="block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-                <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-white" />
-              </button>
-            </div>
+            <MobileHeader
+              className="lg:hidden"
+              logoSrc={logoSrc}
+              logoAlt={variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo"}
+              logoAriaLabel="Back to products"
+              onLogoClick={() => router.push(`/product?variant=${variant}`)}
+              onMenuOpen={() => setIsMenuOpen(true)}
+              ctaClassName="rounded-full border border-white/80 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+              menuLineClassName="bg-white"
+            />
 
             <div className="mt-5 overflow-hidden rounded-[18px] bg-white">
               <div
