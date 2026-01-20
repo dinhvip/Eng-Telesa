@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileHeader from "../../components/MobileHeader";
+import MobileMenuDrawer from "../../components/MobileMenuDrawer";
 
 const STAIR_VIEW_W = 322;
 const STAIR_VIEW_H = 429;
@@ -62,6 +63,7 @@ function pct(value: number, total: number) {
 
 export default function RoadmapPage() {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [modalPhase, setModalPhase] = useState<"opening" | "open" | "closing" | "closed">(
     "closed",
   );
@@ -103,8 +105,47 @@ export default function RoadmapPage() {
     };
   }, [isModalVisible]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    const returnTo = sessionStorage.getItem("telesa:openMenuOnBack:returnTo");
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (!returnTo || returnTo !== current) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    sessionStorage.removeItem("telesa:openMenuOnBack:returnTo");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
+
   return (
     <main className="relative min-h-[100dvh] bg-white text-slate-900">
+      <MobileMenuDrawer
+        open={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        variant="adult"
+        logoSrc="/assets/svg/logo.png"
+        activeKey="library-roadmap"
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "product") router.push("/product?variant=adult");
+          if (key === "library") router.push("/library");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
+        }}
+      />
+
       {/* Mobile */}
       <section className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
         <MobileHeader
@@ -116,6 +157,7 @@ export default function RoadmapPage() {
           ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
           menuLineClassName="bg-slate-900"
+          onMenuOpen={() => setIsMenuOpen(true)}
         />
 
         <div className="mt-10 flex flex-1 flex-col">

@@ -80,7 +80,11 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
     if (typeof window === "undefined") return;
     const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
     if (!shouldOpen) return;
+    const returnTo = sessionStorage.getItem("telesa:openMenuOnBack:returnTo");
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (!returnTo || returnTo !== current) return;
     sessionStorage.removeItem("telesa:openMenuOnBack");
+    sessionStorage.removeItem("telesa:openMenuOnBack:returnTo");
     setIsMenuOpen(true);
   }, []);
 
@@ -131,6 +135,10 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
           ) {
             try {
               sessionStorage.setItem("telesa:openMenuOnBack", "1");
+              sessionStorage.setItem(
+                "telesa:openMenuOnBack:returnTo",
+                `${window.location.pathname}${window.location.search}`,
+              );
             } catch {}
           }
           if (key === "home") router.push("/");

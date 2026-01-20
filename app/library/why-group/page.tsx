@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileHeader from "../../components/MobileHeader";
+import MobileMenuDrawer from "../../components/MobileMenuDrawer";
 
 type Benefit = {
   title: string;
@@ -59,6 +60,7 @@ function ChevronIcon(props: { open: boolean }) {
 export default function WhyGroupPage() {
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const bgSrc =
     openIndex === 3
       ? "/assets/group3.jpg"
@@ -73,8 +75,47 @@ export default function WhyGroupPage() {
     else router.push("/");
   };
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    const returnTo = sessionStorage.getItem("telesa:openMenuOnBack:returnTo");
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (!returnTo || returnTo !== current) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    sessionStorage.removeItem("telesa:openMenuOnBack:returnTo");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
+
   return (
     <main className="relative min-h-[100dvh] bg-white text-slate-900">
+      <MobileMenuDrawer
+        open={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        variant="adult"
+        logoSrc="/assets/svg/logo.png"
+        activeKey="library-why-group"
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "product") router.push("/product?variant=adult");
+          if (key === "library") router.push("/library");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
+        }}
+      />
+
       {/* Mobile */}
       <section className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
         <MobileHeader
@@ -86,6 +127,7 @@ export default function WhyGroupPage() {
           ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
           menuLineClassName="bg-slate-900"
+          onMenuOpen={() => setIsMenuOpen(true)}
         />
 
         <div className="relative mt-8 h-[75vh] w-screen -translate-x-1/2 left-1/2 overflow-hidden">

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import MobileHeader from "../../components/MobileHeader";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
+import MobileMenuDrawer from "../../components/MobileMenuDrawer";
 
 type TesDirection = "forward" | "back";
 
@@ -228,6 +229,7 @@ function TesStack(props: {
 
 export default function LibraryWhatIsTesPage() {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const slides = useMemo<TesSlide[]>(
     () => [
       { src: "/assets/tes1.png", alt: "T.E.S Method overview" },
@@ -256,6 +258,27 @@ export default function LibraryWhatIsTesPage() {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
     else router.push("/");
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    const returnTo = sessionStorage.getItem("telesa:openMenuOnBack:returnTo");
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (!returnTo || returnTo !== current) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    sessionStorage.removeItem("telesa:openMenuOnBack:returnTo");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
 
   const highlightLetter: "T" | "E" | "S" | "ALL" =
     activeIndex === 0 ? "ALL" : activeIndex === 1 ? "T" : activeIndex === 2 ? "E" : "S";
@@ -304,22 +327,40 @@ export default function LibraryWhatIsTesPage() {
 
   return (
     <main className="h-[100dvh] overflow-hidden bg-[#273143] text-white">
+      <MobileMenuDrawer
+        open={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        variant="adult"
+        logoSrc="/assets/svg/logo.png"
+        activeKey="library-what-is-tes"
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "product") router.push("/product?variant=adult");
+          if (key === "library") router.push("/library");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
+        }}
+      />
       <div
         className="h-full w-full transform-gpu transition-transform duration-400 ease-out"
         style={{ transform: `translateY(-${viewIndex * 100}dvh)` }}
       >
 	        <section className="relative h-[100dvh]">
 	          <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8">
-	            <MobileHeader
-	              logoSrc="/assets/svg/logo.png"
-	              logoAlt="Telesa English logo"
-	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
-	              logoImageSize={50}
-	              ctaClassName="rounded-full border border-white/80 bg-transparent px-5 py-2 text-xs font-medium text-white shadow-sm"
-	              menuAriaLabel="Menu"
-	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
-	              menuLineClassName="bg-white"
-	            />
+		            <MobileHeader
+		              logoSrc="/assets/svg/logo.png"
+		              logoAlt="Telesa English logo"
+		              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+		              logoImageSize={50}
+		              ctaClassName="rounded-full border border-white/80 bg-transparent px-5 py-2 text-xs font-medium text-white shadow-sm"
+		              menuAriaLabel="Menu"
+		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
+		              menuLineClassName="bg-white"
+		              onMenuOpen={() => setIsMenuOpen(true)}
+		            />
 
             <div className="mt-8 flex flex-1 flex-col items-center text-center">
               <h1 className="text-[34px] font-semibold leading-[1.1] tracking-tight">
@@ -393,16 +434,17 @@ export default function LibraryWhatIsTesPage() {
           }}
 	        >
 	          <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8">
-	            <MobileHeader
-	              logoSrc="/assets/svg/logo.png"
-	              logoAlt="Telesa English logo"
-	              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
-	              logoImageSize={50}
-	              ctaClassName="rounded-full border border-white/80 bg-transparent px-5 py-2 text-xs font-medium text-white shadow-sm"
-	              menuAriaLabel="Menu"
-	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
-	              menuLineClassName="bg-white"
-	            />
+		            <MobileHeader
+		              logoSrc="/assets/svg/logo.png"
+		              logoAlt="Telesa English logo"
+		              logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+		              logoImageSize={50}
+		              ctaClassName="rounded-full border border-white/80 bg-transparent px-5 py-2 text-xs font-medium text-white shadow-sm"
+		              menuAriaLabel="Menu"
+		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
+		              menuLineClassName="bg-white"
+		              onMenuOpen={() => setIsMenuOpen(true)}
+		            />
 
             <div className="flex flex-1 flex-col items-center justify-center text-center">
               <h2 className="text-[34px] font-semibold leading-[1.12] tracking-tight">

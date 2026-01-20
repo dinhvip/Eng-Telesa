@@ -255,6 +255,10 @@ export default function MobileMenuDrawer({
                               ) {
                                 try {
                                   sessionStorage.setItem("telesa:openMenuOnBack", "1");
+                                  sessionStorage.setItem(
+                                    "telesa:openMenuOnBack:returnTo",
+                                    `${window.location.pathname}${window.location.search}`,
+                                  );
                                 } catch {}
                               }
                               onNavigate?.(child.key);

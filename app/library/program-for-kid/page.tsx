@@ -9,6 +9,7 @@ import FooterContactView from "../../components/FooterContactView";
 import Group3ShapeCard from "../../components/Group3ShapeCard";
 import MobileHeader from "../../components/MobileHeader";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
+import MobileMenuDrawer from "../../components/MobileMenuDrawer";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
@@ -261,6 +262,7 @@ const SLIDES: Slide[] = [
 
 export default function LibraryPage() {
   const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [modalPhase, setModalPhase] = useState<"opening" | "open" | "closing" | "closed">("closed");
@@ -307,6 +309,27 @@ export default function LibraryPage() {
       document.body.style.overflow = prevOverflow;
     };
   }, [active]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const shouldOpen = sessionStorage.getItem("telesa:openMenuOnBack") === "1";
+    if (!shouldOpen) return;
+    const returnTo = sessionStorage.getItem("telesa:openMenuOnBack:returnTo");
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (!returnTo || returnTo !== current) return;
+    sessionStorage.removeItem("telesa:openMenuOnBack");
+    sessionStorage.removeItem("telesa:openMenuOnBack:returnTo");
+    setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMenuOpen]);
 
   useEffect(() => {
     const pairs = [
@@ -389,6 +412,26 @@ export default function LibraryPage() {
           if (key === "tutoring") router.push("/");
           if (key === "about") router.push("/");
           if (key === "careers") router.push("/");
+        }}
+      />
+
+      <MobileMenuDrawer
+        open={isMenuOpen}
+        onClose={() => setIsMenuOpen(false)}
+        variant="kid"
+        logoSrc="/assets/logo.png"
+        activeKey="library-program-for-kid"
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "product") router.push("/product?variant=kid");
+          if (key === "library") router.push("/library");
+          if (key === "library-why") router.push("/library/why");
+          if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
         }}
       />
 
@@ -484,15 +527,16 @@ export default function LibraryPage() {
 
           {/* Mobile hero (unchanged) */}
           <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
-            <MobileHeader
-              logoSrc="/assets/logo.png"
-              logoAlt="Telesa English Kids logo"
-              logoPriority
-              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-              menuAriaLabel="Menu"
-              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
-              menuLineClassName="bg-white"
-            />
+	            <MobileHeader
+	              logoSrc="/assets/logo.png"
+	              logoAlt="Telesa English Kids logo"
+	              logoPriority
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              menuAriaLabel="Menu"
+	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
+	              menuLineClassName="bg-white"
+	              onMenuOpen={() => setIsMenuOpen(true)}
+	            />
 
           <div className="flex flex-1 flex-col items-center justify-center">
             <div className="flex flex-col items-center text-center">
@@ -656,14 +700,15 @@ export default function LibraryPage() {
 
         {/* Mobile */}
         <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:hidden">
-          <MobileHeader
-            logoSrc="/assets/logo.png"
-            logoAlt="Telesa English Kids logo"
-            ctaClassName="rounded-full border border-white/80 bg-white/10 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
-            menuAriaLabel="Menu"
-            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
-            menuLineClassName="bg-white"
-          />
+	          <MobileHeader
+	            logoSrc="/assets/logo.png"
+	            logoAlt="Telesa English Kids logo"
+	            ctaClassName="rounded-full border border-white/80 bg-white/10 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
+	            menuAriaLabel="Menu"
+	            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
+	            menuLineClassName="bg-white"
+	            onMenuOpen={() => setIsMenuOpen(true)}
+	          />
 
           <div className="mt-10 flex flex-col items-center text-center">
             <div className="mx-auto w-full max-w-[80vw]">
@@ -823,15 +868,16 @@ export default function LibraryPage() {
 
         {/* Mobile */}
         <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:hidden">
-          <MobileHeader
-            className="relative z-10"
-            logoSrc="/assets/logo.png"
-            logoAlt="Telesa English Kids logo"
-            ctaClassName="rounded-full border border-white/80 bg-white/10 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
-            menuAriaLabel="Menu"
-            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
-            menuLineClassName="bg-white"
-          />
+	          <MobileHeader
+	            className="relative z-10"
+	            logoSrc="/assets/logo.png"
+	            logoAlt="Telesa English Kids logo"
+	            ctaClassName="rounded-full border border-white/80 bg-white/10 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
+	            menuAriaLabel="Menu"
+	            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-white/10 text-white shadow-sm backdrop-blur-md"
+	            menuLineClassName="bg-white"
+	            onMenuOpen={() => setIsMenuOpen(true)}
+	          />
 
           <div className="flex flex-1 flex-col justify-center">
             <div className="relative z-10 flex flex-col items-center text-center">
@@ -989,6 +1035,7 @@ export default function LibraryPage() {
             menuAriaLabel="Menu"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
+            onMenuOpen={() => setIsMenuOpen(true)}
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1036,6 +1083,7 @@ export default function LibraryPage() {
             menuAriaLabel="Menu"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
+            onMenuOpen={() => setIsMenuOpen(true)}
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
@@ -1083,6 +1131,7 @@ export default function LibraryPage() {
             menuAriaLabel="Menu"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
+            onMenuOpen={() => setIsMenuOpen(true)}
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
