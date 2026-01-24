@@ -110,13 +110,13 @@ function KidWorldMapInner({
 
   const mapWrapperClassName =
     variant === "desktop"
-      ? "relative h-full w-auto max-w-full aspect-[343/188] min-h-[188px] rounded-[28px] bg-transparent shadow-[0_24px_70px_rgba(0,0,0,0.28)] overflow-visible"
-      : "relative w-full aspect-[343/188] min-h-[188px] rounded-[28px] bg-transparent shadow-lg overflow-visible";
+      ? "relative h-full w-auto max-w-full aspect-[343/188] min-h-[188px] rounded-[28px] bg-transparent shadow-none overflow-visible"
+      : "relative w-full aspect-[343/188] min-h-[188px] rounded-[28px] bg-transparent shadow-none overflow-visible";
 
   const tooltipClassName =
     variant === "desktop"
-      ? "relative w-[220px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-5 py-4 text-slate-900 shadow-[0_22px_60px_rgba(0,0,0,0.22)]"
-      : "relative w-[200px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-4 py-3 text-slate-900 shadow-[0_18px_40px_rgba(0,0,0,0.18)]";
+      ? "relative w-[220px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-5 py-4 text-slate-900 shadow-none"
+      : "relative w-[200px] max-w-[calc(100vw-40px)] rounded-[22px] bg-white px-4 py-3 text-slate-900 shadow-none";
 
   const flagBoxClassName =
     variant === "desktop"

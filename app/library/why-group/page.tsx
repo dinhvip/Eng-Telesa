@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import DesktopNavbar from "../../components/DesktopNavbar";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileHeader from "../../components/MobileHeader";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
@@ -35,40 +36,146 @@ const BENEFITS: Benefit[] = [
   },
 ];
 
-function ChevronIcon(props: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden="true"
-      className={[
-        "h-5 w-5 text-white/90 transition-transform duration-200",
-        props.open ? "rotate-180" : "rotate-0",
-      ].join(" ")}
-    >
-      <path
-        d="M6 9l6 6 6-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+type StepDirection = "forward" | "back";
+
+function useStepDeck(options: { itemCount: number }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [phase, setPhase] = useState<{
+    state: "leaving" | "entering";
+    direction: StepDirection;
+  } | null>(null);
+  const isTransitioningRef = useRef(false);
+  const animTimerRef = useRef<number | null>(null);
+  const phaseTimerRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const clearAnimTimer = () => {
+    if (animTimerRef.current == null) return;
+    window.clearTimeout(animTimerRef.current);
+    animTimerRef.current = null;
+  };
+
+  const clearPhaseTimer = () => {
+    if (phaseTimerRef.current == null) return;
+    window.clearTimeout(phaseTimerRef.current);
+    phaseTimerRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      clearAnimTimer();
+      clearPhaseTimer();
+    };
+  }, []);
+
+  const startTransition = (direction: StepDirection) => {
+    if (isTransitioningRef.current) return;
+    const to = direction === "forward" ? activeIndex + 1 : activeIndex - 1;
+    if (to < 0 || to >= options.itemCount) return;
+
+    isTransitioningRef.current = true;
+    setPhase({ state: "leaving", direction });
+    clearPhaseTimer();
+
+    clearAnimTimer();
+    animTimerRef.current = window.setTimeout(() => {
+      setActiveIndex(to);
+      isTransitioningRef.current = false;
+      animTimerRef.current = null;
+
+      setPhase({ state: "entering", direction });
+      clearPhaseTimer();
+      phaseTimerRef.current = window.setTimeout(() => {
+        setPhase(null);
+        phaseTimerRef.current = null;
+      }, 220);
+    }, 320);
+  };
+
+  const onWheelNonPassive = (e: WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTransitioningRef.current) return;
+    if (e.deltaY > 12) startTransition("forward");
+    else if (e.deltaY < -12) startTransition("back");
+  };
+
+  const onTouchStart: React.TouchEventHandler<HTMLElement> = (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchStartYRef.current = t.clientY;
+  };
+
+  const onTouchEnd: React.TouchEventHandler<HTMLElement> = (e) => {
+    const startY = touchStartYRef.current;
+    touchStartYRef.current = null;
+    if (startY == null) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dy = t.clientY - startY;
+    if (Math.abs(dy) < 42) return;
+    if (dy < 0) startTransition("forward");
+    else startTransition("back");
+  };
+
+  const motion =
+    phase?.state === "leaving"
+      ? {
+          opacity: 0,
+          transform: `translateY(${phase.direction === "forward" ? "-14px" : "14px"})`,
+        }
+      : phase?.state === "entering"
+        ? { opacity: 1, transform: "translateY(0px)" }
+        : { opacity: 1, transform: "translateY(0px)" };
+
+  const baseClass =
+    "transition-[transform,opacity] duration-300 ease-out will-change-transform will-change-opacity";
+
+  return {
+    activeIndex,
+    motion,
+    baseClass,
+    onWheelNonPassive,
+    gestureHandlers: {
+      onTouchStart,
+      onTouchEnd,
+      onTouchCancel: () => {
+        touchStartYRef.current = null;
+      },
+    },
+  };
+}
+
+function splitBenefitLines(description: string) {
+  return description
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => (line.startsWith("•") ? line.replace(/^•\s?/, "") : line));
 }
 
 export default function WhyGroupPage() {
   const router = useRouter();
-  const [openIndex, setOpenIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const bgSrc =
-    openIndex === 3
-      ? "/assets/group3.jpg"
-      : openIndex === 2
-        ? "/assets/group2.jpg"
-        : openIndex === 1
-          ? "/assets/group1.jpg"
-          : "/assets/group.jpg";
+
+  const steps = useMemo(
+    () => [
+      { ...BENEFITS[0], bg: "/assets/group.jpg" },
+      { ...BENEFITS[1], bg: "/assets/group1.jpg" },
+      { ...BENEFITS[2], bg: "/assets/group2.jpg" },
+      { ...BENEFITS[3], bg: "/assets/group3.jpg" },
+    ],
+    [],
+  );
+
+  const deckRef = useRef<HTMLDivElement | null>(null);
+  const {
+    activeIndex,
+    motion,
+    baseClass,
+    onWheelNonPassive,
+    gestureHandlers,
+  } = useStepDeck({ itemCount: steps.length });
 
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
@@ -96,8 +203,37 @@ export default function WhyGroupPage() {
     };
   }, [isMenuOpen]);
 
+  useEffect(() => {
+    const element = deckRef.current;
+    if (!element) return;
+    element.addEventListener("wheel", onWheelNonPassive, { passive: false });
+    return () => {
+      element.removeEventListener("wheel", onWheelNonPassive);
+    };
+  }, [onWheelNonPassive]);
+
   return (
     <main className="relative min-h-[100dvh] bg-white text-slate-900">
+      <DesktopNavbar
+        variant="adult"
+        logoSrc="/assets/svg/logo.png"
+        activeKey="library"
+        backgroundClassName="bg-[#3B0025]/40 backdrop-blur-md"
+        onTestClick={() => router.push("/test?variant=adult")}
+        onNavigate={(key) => {
+          if (key === "home") router.push("/");
+          if (key === "products") router.push("/product?variant=adult");
+          if (key === "library") router.push("/library");
+          if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+          if (key === "library-1-1") router.push("/library/1-1");
+          if (key === "library-payment-method") router.push("/library/payment-method");
+          if (key === "library-why-group") router.push("/library/why-group");
+          if (key === "library-roadmap") router.push("/library/roadmap");
+          if (key === "tutoring") router.push("/");
+          if (key === "about") router.push("/");
+          if (key === "careers") router.push("/");
+        }}
+      />
       <MobileMenuDrawer
         open={isMenuOpen}
         onClose={() => setIsMenuOpen(false)}
@@ -124,7 +260,7 @@ export default function WhyGroupPage() {
           logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
           logoImageSize={50}
           logoPriority
-          ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+          ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
           menuLineClassName="bg-slate-900"
           onMenuOpen={() => setIsMenuOpen(true)}
@@ -132,47 +268,47 @@ export default function WhyGroupPage() {
         />
 
         <div className="relative mt-8 h-[75vh] w-screen -translate-x-1/2 left-1/2 overflow-hidden">
-          <Image
-            src={bgSrc}
-            alt="Chương trình học nhóm"
-            fill
-            sizes="100vw"
-            className="object-cover"
-            priority={false}
-          />
+          {steps.map((step, idx) => (
+            <Image
+              key={step.bg}
+              src={step.bg}
+              alt="Chương trình học nhóm"
+              fill
+              sizes="100vw"
+              className={[
+                "object-cover transition-opacity duration-700 ease-out will-change-opacity",
+                idx === activeIndex ? "opacity-100" : "opacity-0",
+              ].join(" ")}
+              priority={false}
+            />
+          ))}
           <div className="absolute inset-0 bg-[#3B002566]" />
 
-          <div className="relative z-10 flex h-full w-full flex-col items-center justify-start overflow-y-auto px-6 pb-10 pt-10 text-center text-white">
+          <div
+            ref={deckRef}
+            className="relative z-10 flex h-full w-full flex-col items-center px-6 pb-10 pt-10 text-center text-white"
+            style={{ touchAction: "none" }}
+            {...gestureHandlers}
+          >
             <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
               Chương trình học nhóm
             </h1>
 
-            <div className="mt-8 w-full max-w-[320px] space-y-7">
-              {BENEFITS.map((benefit, idx) => {
-                const open = idx === openIndex;
-                return (
-                  <div key={benefit.title} className="flex flex-col items-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/80 text-[16px] font-semibold">
-                      {idx + 1}
-                    </div>
+            <div className="mt-10 flex flex-1 flex-col items-center justify-center">
+              <div className={baseClass} style={motion}>
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-white/80 bg-white/40 text-[16px] font-semibold">
+                  {activeIndex + 1}
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setOpenIndex((current) => (current === idx ? -1 : idx))}
-                      className="mt-4 inline-flex items-center justify-center gap-2 text-center text-[16px] font-semibold leading-snug"
-                    >
-                      {benefit.title}
-                      <ChevronIcon open={open} />
-                    </button>
+                <h2 className="mt-4 max-w-[320px] text-center text-[16px] font-semibold leading-snug">
+                  {steps[activeIndex]?.title}
+                </h2>
 
-                    {open && (
-                      <p className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-white/90">
-                        {benefit.description}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+                <p className="mt-3 max-w-[320px] whitespace-pre-line text-[14px] font-normal leading-relaxed text-white/90">
+                  {steps[activeIndex]?.description}
+                </p>
+              </div>
+
             </div>
           </div>
         </div>
@@ -191,14 +327,55 @@ export default function WhyGroupPage() {
       </section>
 
       {/* Desktop fallback */}
-      <section className="hidden lg:block">
-        <div className="mx-auto max-w-6xl px-[8vw] py-16">
-          <h1 className="text-[44px] font-semibold leading-[1.05] tracking-tight text-[#2F3A4C]">
+      <section className="relative hidden h-[100dvh] w-full overflow-hidden bg-[#1F0A16] text-white lg:block">
+        <Image
+          src="/assets/group.jpg"
+          alt="Chương trình học nhóm"
+          fill
+          sizes="100vw"
+          className="object-cover"
+          priority={false}
+        />
+        <div className="absolute inset-0 bg-[#3B002566]" />
+
+        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col px-[8vw] pb-16 pt-[110px]">
+          <h1 className="text-center text-[clamp(34px,2.6vw,48px)] font-semibold leading-[1.12] tracking-tight">
             Chương trình học nhóm
           </h1>
-          <p className="mt-6 text-[18px] leading-relaxed text-slate-600">
-            Xem trên mobile để trải nghiệm giao diện tối ưu.
-          </p>
+
+          <div className="flex flex-1 items-center">
+            <div className="grid w-full grid-cols-4 gap-x-[clamp(18px,2.8vw,56px)]">
+              {BENEFITS.map((benefit, index) => {
+                const lines = splitBenefitLines(benefit.description);
+                const hasBullets = benefit.description.includes("•");
+                return (
+                  <div key={benefit.title} className="flex flex-col items-center text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/80 bg-white/40 text-[28px] font-semibold leading-none">
+                      {index + 1}
+                    </div>
+                    <h2 className="mt-5 text-[clamp(18px,1.35vw,22px)] font-semibold leading-snug tracking-tight">
+                      {benefit.title}
+                    </h2>
+
+                    {hasBullets ? (
+                      <ul className="mt-5 space-y-3 text-[clamp(14px,1vw,16px)] font-normal leading-relaxed text-white/90">
+                        {lines.map((line) => (
+                          <li key={line} className="flex items-start gap-3 text-left">
+                            <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-white/80" />
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="mt-5 whitespace-pre-line text-[clamp(14px,1vw,16px)] font-normal leading-relaxed text-white/90">
+                        {lines.join("\n")}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
     </main>

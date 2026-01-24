@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import DesktopNavbar from "../../components/DesktopNavbar";
 import MobileHeader from "../../components/MobileHeader";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
+import BackgroundVideo from "../../components/BackgroundVideo";
 
 type TesDirection = "forward" | "back";
 
@@ -19,6 +20,9 @@ type TesTransition = {
   direction: TesDirection;
   phase: "prepare" | "animate";
 };
+
+type ModelNode = { x: number; y: number; rx: number; ry: number };
+type ModelBox = { x: number; y: number; w: number; h: number };
 
 function useTesDeck(options: {
   slideCount: number;
@@ -222,11 +226,11 @@ function TesStack(props: {
     });
 
   return (
-    <div className={["mt-8 flex w-full justify-center overflow-visible", props.wrapperClassName ?? ""].join(" ")}>
+    <div className={["mt-6 flex w-full justify-center overflow-visible", props.wrapperClassName ?? ""].join(" ")}>
       <div
         className={[
           "relative aspect-[360/520] select-none overflow-visible",
-          props.frameClassName ?? "h-[40vh] max-h-[520px]",
+          props.frameClassName ?? "h-[36vh] max-h-[480px]",
         ].join(" ")}
         style={{ touchAction: "none" }}
         {...gestureHandlers}
@@ -242,6 +246,35 @@ function TesStack(props: {
 export default function LibraryWhatIsTesPage() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [modelStep, setModelStep] = useState(0);
+  const MODEL_LINE_ANIM_MS = 520;
+  const modelStepRef = useRef(modelStep);
+  const modelStepTargetRef = useRef(modelStep);
+  const modelStepTimerRef = useRef<number | null>(null);
+  const desktopModelOverlayRef = useRef<HTMLDivElement | null>(null);
+  const desktopModelStep0Ref = useRef<HTMLButtonElement | null>(null);
+  const desktopModelStep1Ref = useRef<HTMLButtonElement | null>(null);
+  const desktopModelStep2Ref = useRef<HTMLButtonElement | null>(null);
+  const desktopModelStep3Ref = useRef<HTMLButtonElement | null>(null);
+  const desktopModelText0Ref = useRef<HTMLDivElement | null>(null);
+  const desktopModelText1Ref = useRef<HTMLDivElement | null>(null);
+  const desktopModelText2Ref = useRef<HTMLDivElement | null>(null);
+  const desktopModelText3Ref = useRef<HTMLDivElement | null>(null);
+  const mobileModelOverlayRef = useRef<HTMLDivElement | null>(null);
+  const mobileModelStep0Ref = useRef<HTMLButtonElement | null>(null);
+  const mobileModelStep1Ref = useRef<HTMLButtonElement | null>(null);
+  const mobileModelStep2Ref = useRef<HTMLButtonElement | null>(null);
+  const mobileModelStep3Ref = useRef<HTMLButtonElement | null>(null);
+  const mobileModelText0Ref = useRef<HTMLDivElement | null>(null);
+  const mobileModelText1Ref = useRef<HTMLDivElement | null>(null);
+  const mobileModelText2Ref = useRef<HTMLDivElement | null>(null);
+  const mobileModelText3Ref = useRef<HTMLDivElement | null>(null);
+  const [desktopModelNodes, setDesktopModelNodes] = useState<ModelNode[] | null>(null);
+  const [mobileModelNodes, setMobileModelNodes] = useState<ModelNode[] | null>(null);
+  const [desktopModelTextBoxes, setDesktopModelTextBoxes] = useState<ModelBox[] | null>(null);
+  const [mobileModelTextBoxes, setMobileModelTextBoxes] = useState<ModelBox[] | null>(null);
+  const desktopModelMaskId = useId().replaceAll(":", "");
+  const mobileModelMaskId = useId().replaceAll(":", "");
   const slides = useMemo<TesSlide[]>(
     () => [
       { src: "/assets/tes1.png", alt: "T.E.S Method overview" },
@@ -318,20 +351,135 @@ export default function LibraryWhatIsTesPage() {
     };
   }, [isMenuOpen]);
 
+  useEffect(() => {
+    modelStepRef.current = modelStep;
+  }, [modelStep]);
+
+  const getNodeInViewBox = (container: HTMLElement, target: HTMLElement): ModelNode => {
+    const containerRect = container.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const x = ((cx - containerRect.left) / containerRect.width) * 100;
+    const y = ((cy - containerRect.top) / containerRect.height) * 100;
+    const rx = (rect.width / containerRect.width) * 50;
+    const ry = (rect.height / containerRect.height) * 50;
+    return {
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+      rx,
+      ry,
+    };
+  };
+
+  const getBoxInViewBox = (container: HTMLElement, target: HTMLElement): ModelBox => {
+    const containerRect = container.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    const x = ((rect.left - containerRect.left) / containerRect.width) * 100;
+    const y = ((rect.top - containerRect.top) / containerRect.height) * 100;
+    const w = (rect.width / containerRect.width) * 100;
+    const h = (rect.height / containerRect.height) * 100;
+    return {
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+      w: Math.max(0, Math.min(100, w)),
+      h: Math.max(0, Math.min(100, h)),
+    };
+  };
+
+  useLayoutEffect(() => {
+    const updateDesktop = () => {
+      const container = desktopModelOverlayRef.current;
+      const n0 = desktopModelStep0Ref.current;
+      const n1 = desktopModelStep1Ref.current;
+      const n2 = desktopModelStep2Ref.current;
+      const n3 = desktopModelStep3Ref.current;
+      const t0 = desktopModelText0Ref.current;
+      const t1 = desktopModelText1Ref.current;
+      const t2 = desktopModelText2Ref.current;
+      const t3 = desktopModelText3Ref.current;
+      if (!container || !n0 || !n1 || !n2 || !n3) return;
+      setDesktopModelNodes([
+        getNodeInViewBox(container, n0),
+        getNodeInViewBox(container, n1),
+        getNodeInViewBox(container, n2),
+        getNodeInViewBox(container, n3),
+      ]);
+      if (t0 && t1 && t2 && t3) {
+        setDesktopModelTextBoxes([
+          getBoxInViewBox(container, t0),
+          getBoxInViewBox(container, t1),
+          getBoxInViewBox(container, t2),
+          getBoxInViewBox(container, t3),
+        ]);
+      }
+    };
+
+    const updateMobile = () => {
+      const container = mobileModelOverlayRef.current;
+      const n0 = mobileModelStep0Ref.current;
+      const n1 = mobileModelStep1Ref.current;
+      const n2 = mobileModelStep2Ref.current;
+      const n3 = mobileModelStep3Ref.current;
+      const t0 = mobileModelText0Ref.current;
+      const t1 = mobileModelText1Ref.current;
+      const t2 = mobileModelText2Ref.current;
+      const t3 = mobileModelText3Ref.current;
+      if (!container || !n0 || !n1 || !n2 || !n3) return;
+      setMobileModelNodes([
+        getNodeInViewBox(container, n0),
+        getNodeInViewBox(container, n1),
+        getNodeInViewBox(container, n2),
+        getNodeInViewBox(container, n3),
+      ]);
+      if (t0 && t1 && t2 && t3) {
+        setMobileModelTextBoxes([
+          getBoxInViewBox(container, t0),
+          getBoxInViewBox(container, t1),
+          getBoxInViewBox(container, t2),
+          getBoxInViewBox(container, t3),
+        ]);
+      }
+    };
+
+    const raf = window.requestAnimationFrame(() => {
+      updateDesktop();
+      updateMobile();
+    });
+
+    window.addEventListener("resize", updateDesktop);
+    window.addEventListener("resize", updateMobile);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updateDesktop);
+      window.removeEventListener("resize", updateMobile);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (modelStepTimerRef.current == null) return;
+      window.clearTimeout(modelStepTimerRef.current);
+      modelStepTimerRef.current = null;
+    };
+  }, []);
+
   const highlightLetter: "T" | "E" | "S" | "ALL" =
     activeIndex === 0 ? "ALL" : activeIndex === 1 ? "T" : activeIndex === 2 ? "E" : "S";
 
+  const tesOverviewText =
+    "T.E.S – Telesa English Speaking là phương pháp học tiếng Anh thực hành, được thiết kế đặc biệt cho người mất gốc đến trung cấp, giúp học viên nói đúng – nhanh – tự nhiên thông qua 3 trụ cột chính.";
+
   const descriptionText =
-    activeIndex === 1
+    activeIndex === 0
+      ? tesOverviewText
+      : activeIndex === 1
       ? "T – Từ vựng: Học từ theo hệ thống Leitner Flashcards qua 5 cấp độ ghi nhớ dài hạn, theo cụm và ngữ cảnh thực tế, kèm âm thanh – hình ảnh – ví dụ, giúp kích hoạt trí nhớ và phản xạ tự nhiên."
       : activeIndex === 2
         ? "E – Ghép câu phản xạ: Nắm vững cấu trúc câu đơn, luyện ghép cụm – chọn thì – phản xạ qua 4 bước (nhìn tranh, nghe tình huống, trả lời, đóng vai), giúp nói tự tin và giảm lỗi ngữ pháp mà không cần học lý thuyết khó khăn."
         : activeIndex === 3
           ? "S – Phát âm: Luyện phát âm theo IPA và khẩu hình, sửa âm khó, rèn ngữ điệu – nối âm bằng kỹ thuật Shadowing & Repetition, giúp nói chuẩn và tự nhiên như người bản xứ."
-        : "T.E.S – Telesa English Speaking là phương pháp học tiếng Anh thực hành, được thiết kế đặc biệt cho người mất gốc đến trung cấp, giúp học viên nói đúng – nhanh – tự nhiên thông qua 3 trụ cột chính.";
-
-  const desktopOverviewText =
-    "T.E.S – Telesa English Speaking là phương pháp học tiếng Anh thực hành, được thiết kế đặc biệt cho người mất gốc đến trung cấp, giúp học viên nói đúng – nhanh – tự nhiên thông qua 3 trụ cột chính.";
+        : "";
 
   const desktopHighlightLetter: "T" | "E" | "S" | "ALL" =
     desktopActiveIndex === 0 ? "ALL" : desktopActiveIndex === 1 ? "T" : desktopActiveIndex === 2 ? "E" : "S";
@@ -343,7 +491,9 @@ export default function LibraryWhatIsTesPage() {
         ? "E – Ghép câu phản xạ: Nắm vững cấu trúc câu đơn, luyện ghép cụm – chọn thì – phản xạ qua 4 bước (nhìn tranh, nghe tình huống, trả lời, đóng vai), giúp nói tự tin và giảm lỗi ngữ pháp mà không cần học lý thuyết khó khăn."
         : desktopActiveIndex === 3
           ? "S – Phát âm: Luyện phát âm theo IPA và khẩu hình, sửa âm khó, rèn ngữ điệu – nối âm bằng kỹ thuật Shadowing & Repetition, giúp nói chuẩn và tự nhiên như người bản xứ."
-        : desktopOverviewText;
+        : "";
+
+  const desktopBodyText = desktopActiveIndex === 0 ? tesOverviewText : desktopDescriptionText;
 
   const textMotion =
     textPhase?.state === "leaving"
@@ -423,6 +573,50 @@ export default function LibraryWhatIsTesPage() {
     setDesktopViewIndex(1);
   };
 
+  const goToModelStep = (target: number) => {
+    const clampedTarget = Math.max(0, Math.min(3, target));
+    modelStepTargetRef.current = clampedTarget;
+
+    if (modelStepTimerRef.current != null) return;
+    const current = modelStepRef.current;
+    if (current === clampedTarget) return;
+
+    const stepOnce = () => {
+      modelStepTimerRef.current = window.setTimeout(() => {
+        modelStepTimerRef.current = null;
+        const currentStep = modelStepRef.current;
+        const targetStep = modelStepTargetRef.current;
+        if (currentStep === targetStep) return;
+
+        const direction = targetStep > currentStep ? 1 : -1;
+        setModelStep(currentStep + direction);
+        stepOnce();
+      }, MODEL_LINE_ANIM_MS);
+    };
+
+    const direction = clampedTarget > current ? 1 : -1;
+    setModelStep(current + direction);
+    stepOnce();
+  };
+
+  const desktopSegments = useMemo(() => {
+    if (!desktopModelNodes) {
+      return ["M24 40 L21 74", "M21 74 L56 50", "M56 50 L80 60"];
+    }
+    const [p0, p1, p2, p3] = desktopModelNodes;
+    if (!p0 || !p1 || !p2 || !p3) return ["M24 40 L21 74", "M21 74 L56 50", "M56 50 L80 60"];
+    return [`M${p0.x} ${p0.y} L${p1.x} ${p1.y}`, `M${p1.x} ${p1.y} L${p2.x} ${p2.y}`, `M${p2.x} ${p2.y} L${p3.x} ${p3.y}`];
+  }, [desktopModelNodes]);
+
+  const mobileSegments = useMemo(() => {
+    if (!mobileModelNodes) {
+      return ["M22 42 L18 70", "M18 70 L52 52", "M52 52 L78 58"];
+    }
+    const [p0, p1, p2, p3] = mobileModelNodes;
+    if (!p0 || !p1 || !p2 || !p3) return ["M22 42 L18 70", "M18 70 L52 52", "M52 52 L78 58"];
+    return [`M${p0.x} ${p0.y} L${p1.x} ${p1.y}`, `M${p1.x} ${p1.y} L${p2.x} ${p2.y}`, `M${p2.x} ${p2.y} L${p3.x} ${p3.y}`];
+  }, [mobileModelNodes]);
+
   return (
     <>
       <DesktopNavbar
@@ -472,14 +666,11 @@ export default function LibraryWhatIsTesPage() {
             className="relative flex h-[100dvh] w-full items-stretch justify-center overflow-hidden bg-black text-white"
             onWheel={onDesktopHeroWheel}
           >
-            <video
-              className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+            <BackgroundVideo
+              className="bg-video absolute inset-0 h-full w-full object-cover object-center"
               src="/assets/library-adult.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
             />
+            <div aria-hidden="true" className="absolute inset-0" />
             <div className="pointer-events-none absolute inset-0 bg-black/30 lg:bg-gradient-to-r lg:from-black/55 lg:via-black/25 lg:to-black/5" />
 
             <div className="relative z-10 flex h-full w-full items-end">
@@ -523,7 +714,7 @@ export default function LibraryWhatIsTesPage() {
             <div className="mx-auto w-full px-[8vw] pt-[92px]">
               <div className="grid w-full grid-cols-12 items-center gap-x-10">
                 <div className="col-span-5">
-                  <h2 className="text-[clamp(34px,2.6vw,48px)] font-semibold leading-[1.12] tracking-tight text-slate-800">
+                  <h2 className="text-[clamp(34px,2.6vw,48px)] font-semibold leading-[1.12] tracking-tight text-slate-700">
                     T.E.S Method –
                     <br />
                     Speak English Naturally
@@ -559,18 +750,17 @@ export default function LibraryWhatIsTesPage() {
                     </span>
                   </div>
 
-                  <p className="mt-5 text-[clamp(16px,1.15vw,19px)] leading-relaxed text-slate-600">
-                    {desktopOverviewText}
-                  </p>
-
-                  <p
-                    className={["mt-6 text-[clamp(16px,1.05vw,18px)] leading-relaxed text-slate-700", textBaseClass].join(
-                      " ",
-                    )}
-                    style={desktopTextMotion}
-                  >
-                    {desktopDescriptionText}
-                  </p>
+                  {desktopBodyText && (
+                    <p
+                      className={[
+                        "mt-6 text-[clamp(16px,1.05vw,18px)] leading-relaxed text-slate-700",
+                        textBaseClass,
+                      ].join(" ")}
+                      style={desktopTextMotion}
+                    >
+                      {desktopBodyText}
+                    </p>
+                  )}
                 </div>
 
                 <div className="col-span-7">
@@ -610,57 +800,194 @@ export default function LibraryWhatIsTesPage() {
 
                 <div className="relative mt-12 w-full max-w-[980px] overflow-hidden rounded-[28px]">
                   <div className="relative aspect-[16/9] w-full">
-                    <video
-                      className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                    <BackgroundVideo
+                      className="bg-video absolute inset-0 h-full w-full object-cover"
                       src="/assets/tes5.mp4"
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
                     />
-                    <div className="pointer-events-none absolute inset-0 bg-[#3D002680]" />
+                    <div aria-hidden="true" className="absolute inset-0" />
+	                    <div className="pointer-events-none absolute inset-0 bg-[#3D002680]" />
 
-                    <div className="pointer-events-none absolute inset-0 text-white">
+                    <div ref={desktopModelOverlayRef} className="absolute inset-0 text-white">
                       <svg
-                        className="absolute inset-0 h-full w-full"
+                        className="pointer-events-none absolute inset-0 h-full w-full"
                         viewBox="0 0 100 100"
                         preserveAspectRatio="none"
                         aria-hidden="true"
                       >
-                        <path
-                          d="M24 40 L21 74"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.65)"
-                          strokeWidth="0.55"
-                          strokeDasharray="2 3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M21 74 L56 50"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.65)"
-                          strokeWidth="0.55"
-                          strokeDasharray="2 3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M56 50 L80 60"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.65)"
-                          strokeWidth="0.55"
-                          strokeDasharray="2 3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                        <defs>
+                          <mask id={desktopModelMaskId} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="white" />
+                            {desktopModelNodes?.map((node, idx) => {
+                              const padX = Math.max(0.6, Math.min(2.4, node.rx * 0.18));
+                              const padY = Math.max(0.6, Math.min(2.4, node.ry * 0.18));
+                              return (
+                                <ellipse
+                                  key={`desktop-mask-${idx}`}
+                                  cx={node.x}
+                                  cy={node.y}
+                                  rx={node.rx + padX}
+                                  ry={node.ry + padY}
+                                  fill="black"
+                                />
+                              );
+                            })}
+                            {desktopModelTextBoxes?.map((box, idx) => {
+                              const padX = Math.max(0.8, Math.min(2.8, box.w * 0.06));
+                              const padY = Math.max(0.8, Math.min(2.8, box.h * 0.14));
+                              return (
+                                <rect
+                                  key={`desktop-text-mask-${idx}`}
+                                  x={Math.max(0, box.x - padX)}
+                                  y={Math.max(0, box.y - padY)}
+                                  width={Math.min(100, box.w + padX * 2)}
+                                  height={Math.min(100, box.h + padY * 2)}
+                                  rx={Math.max(1.2, Math.min(3.2, box.h * 0.18))}
+                                  ry={Math.max(1.2, Math.min(3.2, box.h * 0.18))}
+                                  fill="black"
+                                />
+                              );
+                            })}
+                          </mask>
+
+                          <mask id={`${desktopModelMaskId}-r1`} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="black" />
+                            <path
+                              d={desktopSegments[0]}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              pathLength={100}
+                              style={{
+                                strokeDasharray: 100,
+                                strokeDashoffset: modelStep >= 1 ? 0 : 100,
+                                transition: `stroke-dashoffset ${MODEL_LINE_ANIM_MS}ms ease`,
+                              }}
+                            />
+                          </mask>
+                          <mask id={`${desktopModelMaskId}-r2`} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="black" />
+                            <path
+                              d={desktopSegments[1]}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              pathLength={100}
+                              style={{
+                                strokeDasharray: 100,
+                                strokeDashoffset: modelStep >= 2 ? 0 : 100,
+                                transition: `stroke-dashoffset ${MODEL_LINE_ANIM_MS}ms ease`,
+                              }}
+                            />
+                          </mask>
+                          <mask id={`${desktopModelMaskId}-r3`} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="black" />
+                            <path
+                              d={desktopSegments[2]}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              pathLength={100}
+                              style={{
+                                strokeDasharray: 100,
+                                strokeDashoffset: modelStep >= 3 ? 0 : 100,
+                                transition: `stroke-dashoffset ${MODEL_LINE_ANIM_MS}ms ease`,
+                              }}
+                            />
+                          </mask>
+                        </defs>
+
+                        <g mask={`url(#${desktopModelMaskId})`}>
+                          <path
+                            d={desktopSegments[0]}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.65)"
+                            strokeWidth="0.55"
+                            strokeDasharray="2 3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d={desktopSegments[1]}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.65)"
+                            strokeWidth="0.55"
+                            strokeDasharray="2 3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d={desktopSegments[2]}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.65)"
+                            strokeWidth="0.55"
+                            strokeDasharray="2 3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+
+                          <g mask={`url(#${desktopModelMaskId}-r1)`}>
+                            <path
+                              d={desktopSegments[0]}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth="0.95"
+                              strokeDasharray="2 3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </g>
+                          <g mask={`url(#${desktopModelMaskId}-r2)`}>
+                            <path
+                              d={desktopSegments[1]}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth="0.95"
+                              strokeDasharray="2 3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </g>
+                          <g mask={`url(#${desktopModelMaskId}-r3)`}>
+                            <path
+                              d={desktopSegments[2]}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth="0.95"
+                              strokeDasharray="2 3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </g>
+                        </g>
                       </svg>
 
                       <div className="absolute left-[12%] top-[10%] flex flex-col items-start gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/80 text-[14px] font-semibold">
+                        <button
+                          ref={desktopModelStep0Ref}
+                          type="button"
+                          aria-pressed={modelStep === 0}
+                          onClick={() => goToModelStep(0)}
+                          className={[
+                            "flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border text-[14px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 0 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           5 phút
-                        </div>
-                        <div className="text-left text-[18px] font-semibold leading-snug">
+                        </button>
+                        <div
+                          ref={desktopModelText0Ref}
+                          className={[
+                            "text-left text-[18px] font-semibold leading-snug transition-colors duration-300",
+                            modelStep === 0 ? "text-white" : "text-white/60",
+                          ].join(" ")}
+                        >
                           Ôn từ bằng
                           <br />
                           Flashcards Leitner
@@ -668,33 +995,84 @@ export default function LibraryWhatIsTesPage() {
                       </div>
 
                       <div className="absolute left-[56%] top-[18%] flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/60 text-[14px] font-semibold text-white/70">
+                        <button
+                          ref={desktopModelStep2Ref}
+                          type="button"
+                          aria-pressed={modelStep === 2}
+                          onClick={() => goToModelStep(2)}
+                          className={[
+                            "flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border text-[14px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 2 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           15 phút
-                        </div>
+                        </button>
                       </div>
-                      <div className="absolute left-[50%] top-[36%] text-left text-[18px] font-semibold leading-snug text-white/55">
+                      <div
+                        ref={desktopModelText2Ref}
+                        style={{ left: `${desktopModelNodes?.[2]?.x ?? 50}%` }}
+                        className={[
+                          "absolute top-[36%] -translate-x-1/2 text-center text-[18px] font-semibold leading-snug transition-colors duration-300",
+                          modelStep === 2 ? "text-white" : "text-white/55",
+                        ].join(" ")}
+                      >
                         Ghép câu phản xạ
                         <br />
                         theo tình huống
                       </div>
 
                       <div className="absolute left-[14%] top-[74%] flex items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/60 text-[14px] font-semibold text-white/70">
+                        <button
+                          ref={desktopModelStep1Ref}
+                          type="button"
+                          aria-pressed={modelStep === 1}
+                          onClick={() => goToModelStep(1)}
+                          className={[
+                            "flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border text-[14px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 1 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           10 phút
-                        </div>
+                        </button>
                       </div>
-                      <div className="absolute left-[20%] top-[86%] text-left text-[18px] font-semibold leading-snug text-white/60">
+                      <div
+                        ref={desktopModelText1Ref}
+                        style={{ left: `${desktopModelNodes?.[1]?.x ?? 20}%` }}
+                        className={[
+                          "absolute top-[86%] -translate-x-1/2 text-center text-[18px] font-semibold leading-snug transition-colors duration-300",
+                          modelStep === 1 ? "text-white" : "text-white/60",
+                        ].join(" ")}
+                      >
                         Luyện phát âm &
                         <br />
                         Đánh vần
                       </div>
 
                       <div className="absolute left-[74%] top-[56%] flex items-center gap-3">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/60 text-[14px] font-semibold text-white/70">
+                        <button
+                          ref={desktopModelStep3Ref}
+                          type="button"
+                          aria-pressed={modelStep === 3}
+                          onClick={() => goToModelStep(3)}
+                          className={[
+                            "flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border text-[14px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 3 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           10 phút
-                        </div>
+                        </button>
                       </div>
-                      <div className="absolute left-[64%] top-[72%] text-left text-[18px] font-semibold leading-snug text-white/60">
+                      <div
+                        ref={desktopModelText3Ref}
+                        style={{ left: `${desktopModelNodes?.[3]?.x ?? 64}%` }}
+                        className={[
+                          "absolute top-[72%] -translate-x-1/2 text-center text-[18px] font-semibold leading-snug transition-colors duration-300",
+                          modelStep === 3 ? "text-white" : "text-white/60",
+                        ].join(" ")}
+                      >
                         Thực hành đóng vai
                         <br />
                         Nói tự nhiên
@@ -715,7 +1093,7 @@ export default function LibraryWhatIsTesPage() {
           style={{ transform: `translateY(-${viewIndex * 100}dvh)` }}
         >
           <section className="relative h-[100dvh]">
-            <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8">
+            <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-6 pt-6">
               <MobileHeader
                 logoSrc="/assets/svg/logo.png"
                 logoAlt="Telesa English logo"
@@ -729,15 +1107,15 @@ export default function LibraryWhatIsTesPage() {
                 onCtaClick={() => router.push("/test?variant=adult")}
               />
 
-              <div className="mt-8 flex flex-1 flex-col items-center text-center">
-                <h1 className="text-[34px] font-semibold leading-[1.1] tracking-tight">
+              <div className="mt-6 flex flex-1 flex-col items-center text-center">
+                <h1 className="text-[31px] font-semibold leading-[1.1] tracking-tight">
                   T.E.S Method –
                   <br />
                   Speak English Naturally
                 </h1>
 
-                <div className="mt-6 flex w-full justify-center">
-                  <div className="flex items-center justify-center gap-6 text-[44px] font-extrabold text-[#D40887]">
+                <div className="mt-5 flex w-full justify-center">
+                  <div className="flex items-center justify-center gap-5 text-[40px] font-extrabold text-[#D40887]">
                     <span
                       className={
                         highlightLetter === "ALL" || highlightLetter === "T" ? "text-[#D40887]" : "text-white"
@@ -769,12 +1147,14 @@ export default function LibraryWhatIsTesPage() {
                   gestureHandlers={gestureHandlers}
                 />
 
-                <p
-                  className={["mt-6 px-2 text-[16px] leading-relaxed text-white/90", textBaseClass].join(" ")}
-                  style={textMotion}
-                >
-                  {descriptionText}
-                </p>
+                {descriptionText && (
+                  <p
+                    className={["mt-5 px-2 text-[15px] leading-relaxed text-white/90", textBaseClass].join(" ")}
+                    style={textMotion}
+                  >
+                    {descriptionText}
+                  </p>
+                )}
               </div>
 
               <div className="pointer-events-none fixed bottom-6 right-6 z-40">
@@ -823,60 +1203,197 @@ export default function LibraryWhatIsTesPage() {
 
                 <div className="relative mt-10 -mx-4 w-[calc(100%+2rem)] overflow-hidden">
                   <div className="relative h-[42vh] w-full">
-                    <video
-                      className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+                    <BackgroundVideo
+                      className="bg-video absolute inset-0 h-full w-full object-cover"
                       src="/assets/tes5.mp4"
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
                     />
+                    <div aria-hidden="true" className="absolute inset-0" />
                     <div className="pointer-events-none absolute inset-0 bg-[#3D002680]" />
 
-                    <div className="pointer-events-none absolute inset-0 text-white">
+                    <div ref={mobileModelOverlayRef} className="absolute inset-0 text-white">
                       <svg
-                        className="absolute inset-0 h-full w-full"
+                        className="pointer-events-none absolute inset-0 h-full w-full"
                         viewBox="0 0 100 100"
                         preserveAspectRatio="none"
                         aria-hidden="true"
                       >
                         {/* 1) Bottom of "Ôn từ..." -> top of "10 phút" (Luyện phát âm) */}
-                        <path
-                          d="M22 42 L18 70"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.65)"
-                          strokeWidth="0.6"
-                          strokeDasharray="2 3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                        <defs>
+                          <mask id={mobileModelMaskId} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="white" />
+                            {mobileModelNodes?.map((node, idx) => {
+                              const padX = Math.max(0.8, Math.min(3.0, node.rx * 0.2));
+                              const padY = Math.max(0.8, Math.min(3.0, node.ry * 0.2));
+                              return (
+                                <ellipse
+                                  key={`mobile-mask-${idx}`}
+                                  cx={node.x}
+                                  cy={node.y}
+                                  rx={node.rx + padX}
+                                  ry={node.ry + padY}
+                                  fill="black"
+                                />
+                              );
+                            })}
+                            {mobileModelTextBoxes?.map((box, idx) => {
+                              const padX = Math.max(0.9, Math.min(3.2, box.w * 0.07));
+                              const padY = Math.max(0.9, Math.min(3.2, box.h * 0.16));
+                              return (
+                                <rect
+                                  key={`mobile-text-mask-${idx}`}
+                                  x={Math.max(0, box.x - padX)}
+                                  y={Math.max(0, box.y - padY)}
+                                  width={Math.min(100, box.w + padX * 2)}
+                                  height={Math.min(100, box.h + padY * 2)}
+                                  rx={Math.max(1.4, Math.min(3.4, box.h * 0.2))}
+                                  ry={Math.max(1.4, Math.min(3.4, box.h * 0.2))}
+                                  fill="black"
+                                />
+                              );
+                            })}
+                          </mask>
+
+                          <mask id={`${mobileModelMaskId}-r1`} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="black" />
+                            <path
+                              d={mobileSegments[0]}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              pathLength={100}
+                              style={{
+                                strokeDasharray: 100,
+                                strokeDashoffset: modelStep >= 1 ? 0 : 100,
+                                transition: `stroke-dashoffset ${MODEL_LINE_ANIM_MS}ms ease`,
+                              }}
+                            />
+                          </mask>
+                          <mask id={`${mobileModelMaskId}-r2`} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="black" />
+                            <path
+                              d={mobileSegments[1]}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              pathLength={100}
+                              style={{
+                                strokeDasharray: 100,
+                                strokeDashoffset: modelStep >= 2 ? 0 : 100,
+                                transition: `stroke-dashoffset ${MODEL_LINE_ANIM_MS}ms ease`,
+                              }}
+                            />
+                          </mask>
+                          <mask id={`${mobileModelMaskId}-r3`} maskUnits="userSpaceOnUse">
+                            <rect x="0" y="0" width="100" height="100" fill="black" />
+                            <path
+                              d={mobileSegments[2]}
+                              fill="none"
+                              stroke="white"
+                              strokeWidth="2.7"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              pathLength={100}
+                              style={{
+                                strokeDasharray: 100,
+                                strokeDashoffset: modelStep >= 3 ? 0 : 100,
+                                transition: `stroke-dashoffset ${MODEL_LINE_ANIM_MS}ms ease`,
+                              }}
+                            />
+                          </mask>
+                        </defs>
+
+                        <g mask={`url(#${mobileModelMaskId})`}>
+                          <path
+                            d={mobileSegments[0]}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.65)"
+                            strokeWidth="0.6"
+                            strokeDasharray="2 3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         {/* 2) Top of "10 phút" (Luyện phát âm) -> bottom of "Ghép câu..." */}
-                        <path
-                          d="M18 70 L52 52"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.65)"
-                          strokeWidth="0.6"
-                          strokeDasharray="2 3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                          <path
+                            d={mobileSegments[1]}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.65)"
+                            strokeWidth="0.6"
+                            strokeDasharray="2 3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         {/* 3) Bottom of "Ghép câu..." -> top of "10 phút" (Thực hành) */}
-                        <path
-                          d="M52 52 L78 58"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.65)"
-                          strokeWidth="0.6"
-                          strokeDasharray="2 3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                          <path
+                            d={mobileSegments[2]}
+                            fill="none"
+                            stroke="rgba(255,255,255,0.65)"
+                            strokeWidth="0.6"
+                            strokeDasharray="2 3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+
+                          <g mask={`url(#${mobileModelMaskId}-r1)`}>
+                            <path
+                              d={mobileSegments[0]}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth="1.0"
+                              strokeDasharray="2 3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </g>
+                          <g mask={`url(#${mobileModelMaskId}-r2)`}>
+                            <path
+                              d={mobileSegments[1]}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth="1.0"
+                              strokeDasharray="2 3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </g>
+                          <g mask={`url(#${mobileModelMaskId}-r3)`}>
+                            <path
+                              d={mobileSegments[2]}
+                              fill="none"
+                              stroke="rgba(255,255,255,0.95)"
+                              strokeWidth="1.0"
+                              strokeDasharray="2 3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </g>
+                        </g>
                       </svg>
 
                       <div className="absolute left-[10%] top-[14%] flex flex-col items-start gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/80 text-[12px] font-semibold">
+                        <button
+                          ref={mobileModelStep0Ref}
+                          type="button"
+                          aria-pressed={modelStep === 0}
+                          onClick={() => goToModelStep(0)}
+                          className={[
+                            "flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border text-[12px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 0 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           5 phút
-                        </div>
-                        <div className="text-left text-[14px] font-semibold leading-snug">
+                        </button>
+                        <div
+                          ref={mobileModelText0Ref}
+                          className={[
+                            "text-left text-[14px] font-semibold leading-snug transition-colors duration-300",
+                            modelStep === 0 ? "text-white" : "text-white/60",
+                          ].join(" ")}
+                        >
                           Ôn từ bằng
                           <br />
                           Flashcards Leitner
@@ -884,33 +1401,84 @@ export default function LibraryWhatIsTesPage() {
                       </div>
 
                       <div className="absolute left-[52%] top-[22%] flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/60 text-[12px] font-semibold text-white/70">
+                        <button
+                          ref={mobileModelStep2Ref}
+                          type="button"
+                          aria-pressed={modelStep === 2}
+                          onClick={() => goToModelStep(2)}
+                          className={[
+                            "flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border text-[12px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 2 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           15 phút
-                        </div>
+                        </button>
                       </div>
-                      <div className="absolute left-[46%] top-[40%] text-left text-[14px] font-semibold leading-snug text-white/55">
+                      <div
+                        ref={mobileModelText2Ref}
+                        style={{ left: `${mobileModelNodes?.[2]?.x ?? 46}%` }}
+                        className={[
+                          "absolute top-[40%] -translate-x-1/2 text-center text-[14px] font-semibold leading-snug transition-colors duration-300",
+                          modelStep === 2 ? "text-white" : "text-white/55",
+                        ].join(" ")}
+                      >
                         Ghép câu phản xạ
                         <br />
                         theo tình huống
                       </div>
 
                       <div className="absolute left-[11%] top-[70%] flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/60 text-[12px] font-semibold text-white/70">
+                        <button
+                          ref={mobileModelStep1Ref}
+                          type="button"
+                          aria-pressed={modelStep === 1}
+                          onClick={() => goToModelStep(1)}
+                          className={[
+                            "flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border text-[12px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 1 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           10 phút
-                        </div>
+                        </button>
                       </div>
-                      <div className="absolute left-[18%] top-[84%] text-left text-[14px] font-semibold leading-snug text-white/60">
+                      <div
+                        ref={mobileModelText1Ref}
+                        style={{ left: `${mobileModelNodes?.[1]?.x ?? 18}%` }}
+                        className={[
+                          "absolute top-[84%] -translate-x-1/2 text-center text-[14px] font-semibold leading-snug transition-colors duration-300",
+                          modelStep === 1 ? "text-white" : "text-white/60",
+                        ].join(" ")}
+                      >
                         Luyện phát âm &
                         <br />
                         Đánh vần
                       </div>
 
                       <div className="absolute left-[72%] top-[58%] flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/60 text-[12px] font-semibold text-white/70">
+                        <button
+                          ref={mobileModelStep3Ref}
+                          type="button"
+                          aria-pressed={modelStep === 3}
+                          onClick={() => goToModelStep(3)}
+                          className={[
+                            "flex h-12 w-12 cursor-pointer items-center justify-center rounded-full border text-[12px] font-semibold transition-colors duration-300",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent",
+                            modelStep === 3 ? "border-white/80 text-white" : "border-white/60 text-white/70 hover:text-white",
+                          ].join(" ")}
+                        >
                           10 phút
-                        </div>
+                        </button>
                       </div>
-                      <div className="absolute left-[62%] top-[74%] text-left text-[14px] font-semibold leading-snug text-white/60">
+                      <div
+                        ref={mobileModelText3Ref}
+                        style={{ left: `${mobileModelNodes?.[3]?.x ?? 62}%` }}
+                        className={[
+                          "absolute top-[74%] -translate-x-1/2 text-center text-[14px] font-semibold leading-snug transition-colors duration-300",
+                          modelStep === 3 ? "text-white" : "text-white/60",
+                        ].join(" ")}
+                      >
                         Thực hành đóng vai
                         <br />
                         Nói tự nhiên

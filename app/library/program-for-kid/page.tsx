@@ -465,8 +465,8 @@ export default function LibraryPage() {
                   <div
                     key={shape.key}
                     className={[
-                      "h-[30vh] max-h-[30vh] shrink-0 aspect-[133/222]",
-                      idx === 0 ? "" : "-ml-[6vh]",
+                      "h-[36vh] max-h-[36vh] shrink-0 aspect-[133/222]",
+                      idx === 0 ? "" : "-ml-[6.6vh]",
                     ].join(" ")}
                     style={{ zIndex: idx + 1 }}
                   >
@@ -497,8 +497,8 @@ export default function LibraryPage() {
                   <div
                     key={shape.key}
                     className={[
-                      "h-[30vh] max-h-[30vh] shrink-0 aspect-[133/222]",
-                      idx === 0 ? "" : "-ml-[6vh]",
+                      "h-[36vh] max-h-[36vh] shrink-0 aspect-[133/222]",
+                      idx === 0 ? "" : "-ml-[6.6vh]",
                     ].join(" ")}
                     style={{ zIndex: idx + 1 }}
                   >
@@ -532,7 +532,7 @@ export default function LibraryPage() {
 	              logoSrc="/assets/logo.png"
 	              logoAlt="Telesa English Kids logo"
 	              logoPriority
-	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
 	              menuAriaLabel="Menu"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 	              menuLineClassName="bg-white"
@@ -542,7 +542,7 @@ export default function LibraryPage() {
 
           <div className="flex flex-1 flex-col items-center justify-center">
             <div className="flex flex-col items-center text-center">
-              <h1 className="text-[26px] font-semibold leading-[1.18] tracking-tight text-slate-800">
+              <h1 className="text-[26px] font-semibold leading-[1.18] tracking-tight text-slate-700">
                 Giáo trình chuẩn <span className="text-[#F4B000]">Cambridge</span>
                 <br />– Học theo cấp độ quốc tế
               </h1>
@@ -554,7 +554,7 @@ export default function LibraryPage() {
             </div>
 
             <div className="mt-4 flex flex-col items-center">
-              <div className="flex items-end justify-center scale-[0.92] origin-center">
+              <div className="flex items-end justify-center scale-[1.012] origin-center">
                 {SHAPES.slice(0, 3).map((shape, idx) => (
                   <div
                     key={shape.key}
@@ -583,7 +583,7 @@ export default function LibraryPage() {
                 ))}
               </div>
 
-              <div className="mt-2 flex items-end justify-center scale-[0.92] origin-center">
+              <div className="mt-2 flex items-end justify-center scale-[1.012] origin-center">
                 {SHAPES.slice(3, 6).map((shape, idx) => (
                   <div
                     key={shape.key}
@@ -650,23 +650,12 @@ export default function LibraryPage() {
             <div className="w-[min(680px,40vw)]">
               <div className="grid grid-cols-2 gap-8">
                 {(SLIDES[activeSlide]?.images ?? []).map((img) => (
-                  <button
+                  <div
                     key={img.src}
-                    type="button"
-                    className="relative w-full aspect-[0.88/1] min-h-[25vh] max-h-[30vh] overflow-hidden rounded-[28px]"
-                    onPointerDown={() => setTiltKey(img.src)}
-                    onPointerUp={() => setTiltKey(null)}
-                    onPointerCancel={() => setTiltKey(null)}
-                    onClick={() => {
-                      setTiltKey(img.src);
-                      window.setTimeout(() => setTiltKey(null), 180);
-                    }}
+                    className="group relative w-full aspect-[0.88/1] min-h-[25vh] max-h-[30vh] overflow-hidden rounded-[28px]"
                   >
                     <div
-                      className={[
-                        "absolute inset-0 transition-transform duration-200 ease-out",
-                        tiltKey === img.src ? "rotate-[2deg] scale-[1.02]" : "rotate-0 scale-100",
-                      ].join(" ")}
+                      className="absolute inset-0 transition-transform duration-200 ease-out group-hover:rotate-[2deg] group-hover:scale-[1.02]"
                     >
                       <Image
                         src={img.src}
@@ -676,7 +665,7 @@ export default function LibraryPage() {
                         className="object-cover"
                       />
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -1035,7 +1024,7 @@ export default function LibraryPage() {
           <MobileHeader
             logoSrc="/assets/logo.png"
             logoAlt="Telesa English Kids logo"
-            ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+            ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
             menuAriaLabel="Menu"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
@@ -1044,7 +1033,7 @@ export default function LibraryPage() {
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <h2 className="text-[28px] font-semibold leading-[1.12] tracking-tight text-slate-800">
+            <h2 className="text-[28px] font-semibold leading-[1.12] tracking-tight text-slate-700">
               Đánh giá định kỳ &<br />
               Báo cáo tiến bộ minh bạch
             </h2>
@@ -1084,7 +1073,7 @@ export default function LibraryPage() {
           <MobileHeader
             logoSrc="/assets/logo.png"
             logoAlt="Telesa English Kids logo"
-            ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+            ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
             menuAriaLabel="Menu"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
@@ -1093,7 +1082,7 @@ export default function LibraryPage() {
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <h2 className="text-[28px] font-semibold leading-[1.12] tracking-tight text-slate-800">
+            <h2 className="text-[28px] font-semibold leading-[1.12] tracking-tight text-slate-700">
               Đánh giá định kỳ &<br />
               Báo cáo tiến bộ minh bạch
             </h2>
@@ -1133,7 +1122,7 @@ export default function LibraryPage() {
           <MobileHeader
             logoSrc="/assets/logo.png"
             logoAlt="Telesa English Kids logo"
-            ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+            ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
             menuAriaLabel="Menu"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
             menuLineClassName="bg-white"
@@ -1142,7 +1131,7 @@ export default function LibraryPage() {
           />
 
           <div className="flex flex-1 flex-col items-center justify-center text-center">
-            <h2 className="text-[28px] font-semibold leading-[1.12] tracking-tight text-slate-800">
+            <h2 className="text-[28px] font-semibold leading-[1.12] tracking-tight text-slate-700">
               Đánh giá định kỳ &<br />
               Báo cáo tiến bộ minh bạch
             </h2>
@@ -1213,9 +1202,11 @@ export default function LibraryPage() {
         >
           <div
             className={[
-              "relative w-[min(92vw,520px)] aspect-[2/3] overflow-hidden rounded-[32px] lg:h-[60vh] lg:w-auto lg:max-w-[80vw]",
+              "relative w-[min(92vw,572px)] aspect-[2/3] overflow-hidden rounded-[32px] lg:h-[66vh] lg:w-auto lg:max-w-[88vw]",
               "transition-[transform,opacity] duration-200 ease-out",
-              modalPhase === "open" ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.98]",
+              modalPhase === "open"
+                ? "opacity-100 translate-y-0 scale-110"
+                : "opacity-0 translate-y-2 scale-105",
             ].join(" ")}
             onClick={(e) => e.stopPropagation()}
           >

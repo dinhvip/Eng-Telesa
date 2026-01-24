@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import ArrowUpIcon from "./ArrowUpIcon";
 
 type MobileFloatingActionsProps = {
   variant?: "kid" | "adult";
@@ -23,13 +24,14 @@ export default function MobileFloatingActions({
   onPhoneClick,
   className,
 }: MobileFloatingActionsProps) {
-  const phoneIconSrc = variant === "adult" ? "/assets/svg/phone-pink.svg" : "/assets/svg/phone.svg";
+  const phoneIconSrc = variant === "adult" ? "/assets/svg/consult-pink.svg" : "/assets/svg/consult.svg";
 
   const navigationLeftStroke = tone === "soft" || tone === "light" ? "#313A4C" : "white";
+  const arrowUpColor = tone === "slate" || tone === "glass" || tone === "darkGlass" ? "white" : "default";
 
   const buttonClassName =
     tone === "light"
-      ? "bg-white text-slate-800"
+      ? "bg-white text-slate-700"
       : tone === "glass"
         ? "bg-white/15 text-white"
         : tone === "darkGlass"
@@ -39,13 +41,17 @@ export default function MobileFloatingActions({
             : "bg-[#323c4f] text-white";
 
   const sizeClassName = size === "sm" ? "h-10 w-10" : "h-11 w-11";
-  const arrowClassName = size === "sm" ? "text-lg" : tone === "soft" ? "text-xl" : "text-lg";
+  const arrowUpSize = size === "sm" ? 18 : 20;
 
   const resolvedNavigationAriaLabel =
     navigationAriaLabel ?? (navigationIcon === "left" ? "Về trang chủ" : "Lên đầu trang");
 
   return (
-    <div className={["flex flex-col items-center gap-3", className].filter(Boolean).join(" ")}>
+    <div
+      className={["relative z-[9999] flex flex-col items-center gap-3", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <button
         type="button"
         onClick={onPhoneClick}
@@ -56,7 +62,9 @@ export default function MobileFloatingActions({
         ].join(" ")}
         aria-label="Gọi tư vấn"
       >
-        <Image src={phoneIconSrc} alt="" width={20} height={20} className="h-5 w-5" />
+        <span className="telesa-wiggle inline-flex">
+          <Image src={phoneIconSrc} alt="" width={20} height={20} className="h-5 w-5" />
+        </span>
       </button>
 
       <button
@@ -77,6 +85,7 @@ export default function MobileFloatingActions({
             viewBox="0 0 18 16"
             fill="none"
             aria-hidden="true"
+            className="telesa-nudge"
           >
             <path
               d="M1 8H17M1 8L7.85714 15M1 8L7.85714 1"
@@ -87,7 +96,13 @@ export default function MobileFloatingActions({
             />
           </svg>
         ) : (
-          <span className={arrowClassName}>↑</span>
+          <span className="telesa-nudge inline-flex">
+            <ArrowUpIcon
+              size={arrowUpSize}
+              color={arrowUpColor}
+              className={size === "sm" ? "h-[18px] w-[18px]" : "h-5 w-5"}
+            />
+          </span>
         )}
       </button>
     </div>

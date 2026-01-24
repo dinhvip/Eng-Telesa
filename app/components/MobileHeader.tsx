@@ -38,7 +38,7 @@ export default function MobileHeader({
   showCta = true,
   ctaLabel = "Làm bài kiểm tra ngay",
   onCtaClick,
-  ctaClassName = "shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm",
+  ctaClassName = "shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm",
   showMenu = true,
   menuDisabled,
   onMenuOpen,

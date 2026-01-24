@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import DesktopNavbar from "../components/DesktopNavbar";
 import FooterContactView from "../components/FooterContactView";
 import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
+import BackgroundVideo from "../components/BackgroundVideo";
 import {
   AUDIO_PRODUCTS,
   BOOK_PRODUCTS,
@@ -135,17 +136,44 @@ function isDiscounted(price: string, originalPrice: string) {
   return current > 0 && original > 0 && current < original;
 }
 
+function clampInt(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.trunc(value)));
+}
+
+function getPaginationItems(currentPage: number, totalPages: number) {
+  const items: Array<number | "ellipsis"> = [];
+  if (totalPages <= 7) {
+    for (let page = 1; page <= totalPages; page += 1) items.push(page);
+    return items;
+  }
+
+  items.push(1);
+
+  const left = Math.max(2, currentPage - 1);
+  const right = Math.min(totalPages - 1, currentPage + 1);
+
+  if (left > 2) items.push("ellipsis");
+  for (let page = left; page <= right; page += 1) items.push(page);
+  if (right < totalPages - 1) items.push("ellipsis");
+
+  items.push(totalPages);
+  return items;
+}
+
 export default function ProductPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mainRef = useRef<HTMLElement | null>(null);
   const mobileFilterRef = useRef<HTMLDivElement | null>(null);
   const desktopFilterRef = useRef<HTMLDivElement | null>(null);
+  const desktopResultsTopRef = useRef<HTMLDivElement | null>(null);
+  const mobileCarouselRef = useRef<HTMLDivElement | null>(null);
   const variant = searchParams.get("variant") === "adult" ? "adult" : "kid";
   const logoSrc = variant === "adult" ? "/assets/svg/logo.png" : "/assets/logo.png";
   const primaryBgClass = variant === "adult" ? "bg-[#D40887]" : "bg-[#FFC000]";
   const primaryBorderClass = variant === "adult" ? "border-[#D40887]" : "border-[#FFC000]";
-  const phoneIconSrc = variant === "adult" ? "/assets/svg/phone-pink.svg" : "/assets/svg/phone.svg";
+  const phoneIconSrc = variant === "adult" ? "/assets/svg/consult-pink.svg" : "/assets/svg/consult.svg";
   const heroVideoSrc =
     variant === "adult" ? "/assets/1-product-adult.mp4" : "/assets/1-product-kid.mp4";
 
@@ -154,6 +182,70 @@ export default function ProductPageClient() {
   const [isPaid, setIsPaid] = useState(true);
   const [isDiscount, setIsDiscount] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [mobilePage, setMobilePage] = useState(1);
+
+  const desktopItemsPerPage = 12;
+  const mobileItemsPerPage = 3;
+  const baseProducts = useMemo(() => {
+    return category === "book"
+      ? BOOK_PRODUCTS
+      : category === "audio"
+        ? AUDIO_PRODUCTS
+        : COURSE_PRODUCTS;
+  }, [category]);
+
+  const filteredProducts = useMemo(() => {
+    return baseProducts.filter((product) => {
+      if (isPaid && parseVnd(product.price) <= 0) return false;
+      if (isDiscount && !isDiscounted(product.price, product.originalPrice)) return false;
+      return true;
+    });
+  }, [baseProducts, isPaid, isDiscount]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / desktopItemsPerPage));
+  const requestedPageRaw = Number(searchParams.get("page") ?? "1");
+  const currentPage = clampInt(requestedPageRaw, 1, totalPages);
+  const mobileTotalPages = Math.max(1, Math.ceil(filteredProducts.length / mobileItemsPerPage));
+  const currentMobilePage = clampInt(mobilePage, 1, mobileTotalPages);
+  const pagedProducts = useMemo(() => {
+    const start = (currentPage - 1) * desktopItemsPerPage;
+    return filteredProducts.slice(start, start + desktopItemsPerPage);
+  }, [currentPage, desktopItemsPerPage, filteredProducts]);
+  const pagedMobileProducts = useMemo(() => {
+    const start = (currentMobilePage - 1) * mobileItemsPerPage;
+    return filteredProducts.slice(start, start + mobileItemsPerPage);
+  }, [currentMobilePage, filteredProducts, mobileItemsPerPage]);
+
+  const paginationItems = useMemo(() => {
+    return getPaginationItems(currentPage, totalPages);
+  }, [currentPage, totalPages]);
+  const mobilePaginationItems = useMemo(() => {
+    return getPaginationItems(currentMobilePage, mobileTotalPages);
+  }, [currentMobilePage, mobileTotalPages]);
+
+  const goToPage = (nextPage: number, options?: { replace?: boolean }) => {
+    const clamped = clampInt(nextPage, 1, totalPages);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("variant", variant);
+    if (clamped <= 1) params.delete("page");
+    else params.set("page", String(clamped));
+
+    const url = `/product?${params.toString()}`;
+    if (options?.replace) router.replace(url as any);
+    else router.push(url as any);
+
+    requestAnimationFrame(() => {
+      desktopResultsTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
+  const goToMobilePage = (nextPage: number) => {
+    const clamped = clampInt(nextPage, 1, mobileTotalPages);
+    setMobilePage(clamped);
+    requestAnimationFrame(() => {
+      mobileCarouselRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+    });
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,6 +269,16 @@ export default function ProductPageClient() {
   }, [isMenuOpen]);
 
   useEffect(() => {
+    const pageParam = searchParams.get("page");
+    if (!pageParam) return;
+    const requested = Number(pageParam);
+    if (!Number.isFinite(requested) || requested < 1 || requested > totalPages) {
+      goToPage(currentPage, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, searchParams, totalPages]);
+
+  useEffect(() => {
     if (!isFilterOpen) return;
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -198,6 +300,10 @@ export default function ProductPageClient() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isFilterOpen]);
+
+  useEffect(() => {
+    setMobilePage(1);
+  }, [category, isPaid, isDiscount]);
 
   return (
     <>
@@ -266,13 +372,9 @@ export default function ProductPageClient() {
         className="relative h-[100dvh] w-full overflow-y-scroll bg-black"
       >
         <section className="relative h-[100dvh] w-full snap-start overflow-hidden bg-black text-white lg:snap-none">
-          <video
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+          <BackgroundVideo
+            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
             src={heroVideoSrc}
-            autoPlay
-            muted
-            loop
-            playsInline
           />
           <div aria-hidden="true" className="absolute inset-0" />
 
@@ -340,7 +442,7 @@ export default function ProductPageClient() {
               logoAlt={variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo"}
               onMenuOpen={() => setIsMenuOpen(true)}
               onCtaClick={() => router.push(variant === "adult" ? "/test?variant=adult" : "/test")}
-              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
             />
@@ -348,7 +450,7 @@ export default function ProductPageClient() {
             <div className="mt-6">
               <div className="relative">
                 <input
-                  className="h-10 w-full rounded-full border border-slate-200 bg-white px-4 pr-11 text-[13px] text-slate-800 shadow-sm placeholder:text-slate-500 focus:outline-none"
+                  className="h-10 w-full rounded-full border border-slate-200 bg-white px-4 pr-11 text-[13px] text-slate-700 shadow-sm placeholder:text-slate-500 focus:outline-none"
                   placeholder="Bạn muốn tìm sản phẩm gì"
                 />
                 <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">
@@ -456,14 +558,9 @@ export default function ProductPageClient() {
                   "snap-x snap-mandatory",
                   "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
                 ].join(" ")}
+                ref={mobileCarouselRef}
               >
-                {(
-                  category === "book"
-                    ? BOOK_PRODUCTS
-                    : category === "audio"
-                      ? AUDIO_PRODUCTS
-                      : COURSE_PRODUCTS
-                ).map((product) => {
+                {pagedMobileProducts.map((product) => {
                   if (category === "book") {
                     const book = product as BookProduct;
                     const bookImageSrc = variant === "adult" ? "/assets/book-adult.jpg" : book.image;
@@ -488,7 +585,7 @@ export default function ProductPageClient() {
                             "flex-1 px-4 pb-3 pt-3.5",
                           ].join(" ")}
                         >
-                          <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-800">
+                          <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-700">
                             {book.title}
                           </h3>
                           <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -576,7 +673,7 @@ export default function ProductPageClient() {
                             "flex-1 px-4 pb-3 pt-3.5",
                           ].join(" ")}
                         >
-                          <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-800">
+                          <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-700">
                             {audio.title}
                           </h3>
                           <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -675,7 +772,7 @@ export default function ProductPageClient() {
                           "flex-1 px-4 pb-3 pt-3.5",
                         ].join(" ")}
                       >
-                        <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-800">
+                        <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-700">
                           {course.title}
                         </h3>
                         <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -729,11 +826,11 @@ export default function ProductPageClient() {
                           </button>
                         </div>
 
-                        <div className="mt-2.5 flex flex-wrap items-center justify-start gap-2.5">
+                        <div className="mt-2.5 flex w-full items-stretch gap-2.5">
                           <button
                             type="button"
                             className={[
-                              "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-semibold text-white shadow-sm",
+                              "inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 py-1.5 text-[9px] font-semibold text-white shadow-sm",
                               primaryBgClass,
                             ].join(" ")}
                             onClick={(e) => e.stopPropagation()}
@@ -744,7 +841,7 @@ export default function ProductPageClient() {
                           <button
                             type="button"
                             className={[
-                              "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-semibold text-white shadow-sm",
+                              "inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 py-1.5 text-[9px] font-semibold text-white shadow-sm",
                               primaryBgClass,
                             ].join(" ")}
                             onClick={(e) => e.stopPropagation()}
@@ -758,15 +855,88 @@ export default function ProductPageClient() {
                   );
                 })}
               </div>
+
+              <div className="mt-6 flex flex-col items-center justify-center gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goToMobilePage(currentMobilePage - 1)}
+                    disabled={currentMobilePage <= 1}
+                    className={[
+                      "h-9 rounded-full border px-4 text-[12px] font-semibold transition-colors",
+                      currentMobilePage <= 1
+                        ? "cursor-not-allowed border-slate-200 bg-white text-slate-300"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                    aria-label="Trang trước"
+                  >
+                    Trước
+                  </button>
+
+                  {mobilePaginationItems.map((item, idx) => {
+                    if (item === "ellipsis") {
+                      return (
+                        <span
+                          key={`m-ellipsis-${idx}`}
+                          className="px-1 text-[14px] font-semibold text-slate-400"
+                          aria-hidden="true"
+                        >
+                          …
+                        </span>
+                      );
+                    }
+
+                    const page = item;
+                    const isActive = page === currentMobilePage;
+                    return (
+                      <button
+                        key={`m-${page}`}
+                        type="button"
+                        onClick={() => goToMobilePage(page)}
+                        className={[
+                          "h-9 min-w-9 rounded-full border px-3 text-[12px] font-semibold transition-colors",
+                          isActive
+                            ? [primaryBorderClass, primaryBgClass, "text-white"].join(" ")
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                        ].join(" ")}
+                        aria-current={isActive ? "page" : undefined}
+                        aria-label={`Trang ${page}`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => goToMobilePage(currentMobilePage + 1)}
+                    disabled={currentMobilePage >= mobileTotalPages}
+                    className={[
+                      "h-9 rounded-full border px-4 text-[12px] font-semibold transition-colors",
+                      currentMobilePage >= mobileTotalPages
+                        ? "cursor-not-allowed border-slate-200 bg-white text-slate-300"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                    aria-label="Trang sau"
+                  >
+                    Sau
+                  </button>
+                </div>
+
+                <p className="text-[12px] text-slate-500">
+                  Trang {currentMobilePage}/{mobileTotalPages} · {filteredProducts.length} sản phẩm
+                </p>
+              </div>
             </div>
           </div>
 
           <div className="relative hidden w-full lg:flex lg:flex-col">
             <div className="mx-auto w-full max-w-[1600px] px-[6vw] pt-[110px]">
               <div className="mx-auto w-full max-w-[760px]">
+                <div ref={desktopResultsTopRef} />
                 <div className="relative">
                   <input
-                    className="h-11 w-full rounded-full border border-slate-200 bg-white px-5 pr-12 text-[14px] text-slate-800 shadow-sm placeholder:text-slate-500 focus:outline-none"
+                    className="h-11 w-full rounded-full border border-slate-200 bg-white px-5 pr-12 text-[14px] text-slate-700 shadow-sm placeholder:text-slate-500 focus:outline-none"
                     placeholder="Bạn muốn tìm sản phẩm gì"
                   />
                   <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-500">
@@ -793,7 +963,10 @@ export default function ProductPageClient() {
                       <button
                         key={item.key}
                         type="button"
-                        onClick={() => setCategory(item.key)}
+                        onClick={() => {
+                          setCategory(item.key);
+                          goToPage(1, { replace: true });
+                        }}
                         className={[
                           "h-11 rounded-full border text-center text-[15px] font-semibold shadow-sm transition-colors",
                           isActive
@@ -844,7 +1017,10 @@ export default function ProductPageClient() {
                       <div className="absolute left-0 top-full z-30 mt-2 w-56 rounded-[18px] border border-slate-200 bg-white p-2 shadow-[0_18px_36px_rgba(15,23,42,0.14)]">
                         <button
                           type="button"
-                          onClick={() => setIsPaid((prev) => !prev)}
+                          onClick={() => {
+                            setIsPaid((prev) => !prev);
+                            goToPage(1, { replace: true });
+                          }}
                           className="flex w-full items-center justify-between rounded-[14px] px-3 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           Có phí
@@ -852,7 +1028,10 @@ export default function ProductPageClient() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setIsDiscount((prev) => !prev)}
+                          onClick={() => {
+                            setIsDiscount((prev) => !prev);
+                            goToPage(1, { replace: true });
+                          }}
                           className="flex w-full items-center justify-between rounded-[14px] px-3 py-2 text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
                         >
                           Giảm giá
@@ -865,7 +1044,10 @@ export default function ProductPageClient() {
                   {isPaid && (
                     <button
                       type="button"
-                      onClick={() => setIsPaid(false)}
+                      onClick={() => {
+                        setIsPaid(false);
+                        goToPage(1, { replace: true });
+                      }}
                       className="rounded-full bg-[#EAECF0] px-4 py-2 text-[13px] font-semibold text-slate-700"
                     >
                       <span className="inline-flex items-center gap-2">
@@ -878,7 +1060,10 @@ export default function ProductPageClient() {
                   {isDiscount && (
                     <button
                       type="button"
-                      onClick={() => setIsDiscount(false)}
+                      onClick={() => {
+                        setIsDiscount(false);
+                        goToPage(1, { replace: true });
+                      }}
                       className="rounded-full bg-[#EAECF0] px-4 py-2 text-[13px] font-semibold text-slate-700"
                     >
                       <span className="inline-flex items-center gap-2">
@@ -893,20 +1078,7 @@ export default function ProductPageClient() {
 
             <div className="mx-auto w-full max-w-[1700px] px-[3vw] pb-16 pt-8">
               <div className="grid grid-cols-3 gap-7 2xl:grid-cols-4">
-                {(() => {
-                  const base =
-                    category === "book"
-                      ? BOOK_PRODUCTS
-                      : category === "audio"
-                        ? AUDIO_PRODUCTS
-                        : COURSE_PRODUCTS;
-
-                  const filteredBase = base.filter((product) => {
-                    if (isPaid && parseVnd(product.price) <= 0) return false;
-                    if (isDiscount && !isDiscounted(product.price, product.originalPrice)) return false;
-                    return true;
-                  });
-                  return filteredBase.map((product) => {
+                {pagedProducts.map((product) => {
                     if (category === "course") {
                       const course = product as CourseProduct;
                       return (
@@ -932,7 +1104,7 @@ export default function ProductPageClient() {
                           </div>
 
                           <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                            <h3 className="text-[16px] font-semibold leading-snug text-slate-800">
+                            <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
                               {course.title}
                             </h3>
                             <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -1029,7 +1201,7 @@ export default function ProductPageClient() {
                             <Image src={bookImageSrc} alt="" fill className="object-contain" />
                           </div>
                           <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                            <h3 className="text-[16px] font-semibold leading-snug text-slate-800">
+                            <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
                               {book.title}
                             </h3>
                             <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -1073,7 +1245,7 @@ export default function ProductPageClient() {
                           <Image src={audio.image} alt="" fill className="object-contain" />
                         </div>
                         <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                          <h3 className="text-[16px] font-semibold leading-snug text-slate-800">
+                          <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
                             {audio.title}
                           </h3>
                           <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
@@ -1110,8 +1282,79 @@ export default function ProductPageClient() {
                         </div>
                       </article>
                     );
-                  });
-                })()}
+                  })}
+              </div>
+
+              <div className="mt-10 flex flex-col items-center justify-center gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className={[
+                      "h-10 rounded-full border px-4 text-[14px] font-semibold transition-colors",
+                      currentPage <= 1
+                        ? "cursor-not-allowed border-slate-200 bg-white text-slate-300"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                    aria-label="Trang trước"
+                  >
+                    Trước
+                  </button>
+
+                  {paginationItems.map((item, idx) => {
+                    if (item === "ellipsis") {
+                      return (
+                        <span
+                          key={`ellipsis-${idx}`}
+                          className="px-2 text-[16px] font-semibold text-slate-400"
+                          aria-hidden="true"
+                        >
+                          …
+                        </span>
+                      );
+                    }
+
+                    const page = item;
+                    const isActive = page === currentPage;
+                    return (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => goToPage(page)}
+                        className={[
+                          "h-10 min-w-10 rounded-full border px-4 text-[14px] font-semibold transition-colors",
+                          isActive
+                            ? [primaryBorderClass, primaryBgClass, "text-white"].join(" ")
+                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                        ].join(" ")}
+                        aria-current={isActive ? "page" : undefined}
+                        aria-label={`Trang ${page}`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    onClick={() => goToPage(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    className={[
+                      "h-10 rounded-full border px-4 text-[14px] font-semibold transition-colors",
+                      currentPage >= totalPages
+                        ? "cursor-not-allowed border-slate-200 bg-white text-slate-300"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                    ].join(" ")}
+                    aria-label="Trang sau"
+                  >
+                    Sau
+                  </button>
+                </div>
+
+                <p className="text-[13px] text-slate-500">
+                  Trang {currentPage}/{totalPages} · {filteredProducts.length} sản phẩm
+                </p>
               </div>
             </div>
           </div>

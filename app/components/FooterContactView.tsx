@@ -106,7 +106,7 @@ export default function FooterContactView({
   return (
     <section
       className={[
-        "relative flex w-full items-stretch justify-center bg-white text-slate-900",
+        "relative flex w-full items-stretch justify-center bg-white text-slate-900 lg:justify-start",
         snapStart ? "snap-start" : null,
         desktopFullHeightClass,
         desktopSnapClass,
@@ -128,14 +128,14 @@ export default function FooterContactView({
             ctaClassName="rounded-full border border-slate-700 bg-white px-6 py-2 text-xs font-medium text-slate-700 shadow-sm"
             onCtaClick={onCtaClick}
             onMenuOpen={onMenuOpen}
-            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
+            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-700"
             menuLineClassName="bg-slate-800"
           />
         )}
 
         <div className={showMobileHeader ? "mt-8 space-y-5" : "space-y-5"}>
           <section>
-            <h2 className="text-[22px] font-extrabold text-slate-800">Thông tin liên hệ</h2>
+            <h2 className="text-[22px] font-extrabold text-slate-700">Thông tin liên hệ</h2>
             <div className="mt-3 space-y-3 text-[16px] font-medium text-slate-500">
               <div className="flex items-center gap-3">
                 <EmailIcon className="h-5 w-5" />
@@ -153,7 +153,7 @@ export default function FooterContactView({
           </section>
 
           <section>
-            <h2 className="text-[22px] font-extrabold text-slate-800">Mạng xã hội</h2>
+            <h2 className="text-[22px] font-extrabold text-slate-700">Mạng xã hội</h2>
             <div className="mt-3 flex items-center gap-3">
               <a
                 href="https://www.facebook.com/TelesaEnglish"
@@ -219,7 +219,7 @@ export default function FooterContactView({
           </section>
 
           <section>
-            <h2 className="text-[22px] font-extrabold text-slate-800">Tải ngay</h2>
+            <h2 className="text-[22px] font-extrabold text-slate-700">Tải ngay</h2>
             <div className="mt-3 flex items-center gap-0">
               <a href="#" className="flex flex-1 items-center justify-start">
                 <Image
@@ -260,7 +260,7 @@ export default function FooterContactView({
       </div>
 
       {/* Desktop */}
-      <div className="relative z-10 hidden w-full max-w-6xl flex-col px-[8vw] pb-10 pt-20 lg:flex">
+      <div className="relative z-10 hidden w-full max-w-none flex-col px-[8vw] pb-10 pt-20 lg:flex">
         <div className="grid grid-cols-12 gap-10 xl:gap-16">
           <div className="col-span-4">
             <div className="relative h-[110px] w-[110px]">
@@ -275,7 +275,7 @@ export default function FooterContactView({
             </div>
 
             <div className="mt-10">
-              <h3 className="text-[20px] font-extrabold text-slate-800">Tải ngay</h3>
+              <h3 className="text-[20px] font-extrabold text-slate-700">Tải ngay</h3>
               <div className="mt-4 flex items-center gap-4">
                 <a href="#" className="inline-flex">
                   <Image
@@ -299,7 +299,7 @@ export default function FooterContactView({
             </div>
           </div>
 
-          <div className="col-span-4 flex justify-center">
+          <div className="col-span-4">
             <nav className="pt-1">
               <ul className="space-y-5 text-[18px] font-semibold text-slate-700">
                 {NAV_ITEMS.map((item) => (
@@ -318,7 +318,7 @@ export default function FooterContactView({
           </div>
 
           <div className="col-span-4">
-            <h3 className="text-[20px] font-extrabold text-slate-800">Thông tin liên hệ</h3>
+            <h3 className="text-[20px] font-extrabold text-slate-700">Thông tin liên hệ</h3>
             <div className="mt-4 space-y-4 text-[16px] font-medium text-slate-500">
               <div className="flex items-center gap-3">
                 <EmailIcon className="h-5 w-5" />
@@ -335,7 +335,7 @@ export default function FooterContactView({
             </div>
 
             <div className="mt-12">
-              <h3 className="text-[20px] font-extrabold text-slate-800">Mạng xã hội</h3>
+              <h3 className="text-[20px] font-extrabold text-slate-700">Mạng xã hội</h3>
               <div className="mt-4 flex items-center gap-4">
                 <a
                   href="https://www.facebook.com/TelesaEnglish"

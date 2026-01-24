@@ -24,6 +24,14 @@ export default function PaymentMethodPage() {
   const introViewRef = useRef<HTMLElement | null>(null);
   const paymentSlidesViewRef = useRef<HTMLElement | null>(null);
   const desktopPaymentSlidesViewRef = useRef<HTMLElement | null>(null);
+  const mobileCarouselRef = useRef<HTMLDivElement | null>(null);
+  const desktopCarouselRef = useRef<HTMLDivElement | null>(null);
+  const mobileUserInteractedAtRef = useRef<number>(0);
+  const desktopUserInteractedAtRef = useRef<number>(0);
+  const mobileIndexRef = useRef<number>(0);
+  const desktopIndexRef = useRef<number>(0);
+  const [isMobileSlidesInView, setIsMobileSlidesInView] = useState(false);
+  const [isDesktopSlidesInView, setIsDesktopSlidesInView] = useState(false);
 
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
@@ -55,6 +63,83 @@ export default function PaymentMethodPage() {
       document.body.style.overflow = previousOverflow;
     };
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mobileSection = paymentSlidesViewRef.current;
+    const desktopSection = desktopPaymentSlidesViewRef.current;
+    if (!mobileSection && !desktopSection) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target === mobileSection) setIsMobileSlidesInView(entry.isIntersecting);
+          if (entry.target === desktopSection) setIsDesktopSlidesInView(entry.isIntersecting);
+        }
+      },
+      { threshold: 0.45 },
+    );
+
+    if (mobileSection) observer.observe(mobileSection);
+    if (desktopSection) observer.observe(desktopSection);
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isMobileSlidesInView) return;
+
+    const container = mobileCarouselRef.current;
+    if (!container) return;
+
+    const intervalMs = 2000;
+    const pauseAfterInteractionMs = 4000;
+
+    const tick = () => {
+      const now = Date.now();
+      if (now - mobileUserInteractedAtRef.current < pauseAfterInteractionMs) return;
+      const slides = Array.from(container.querySelectorAll<HTMLElement>("[data-payment-slide]"));
+      if (slides.length === 0) return;
+      mobileIndexRef.current = (mobileIndexRef.current + 1) % slides.length;
+      slides[mobileIndexRef.current]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "start",
+      });
+    };
+
+    const t = window.setInterval(tick, intervalMs);
+    return () => window.clearInterval(t);
+  }, [isMobileSlidesInView]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isDesktopSlidesInView) return;
+
+    const container = desktopCarouselRef.current;
+    if (!container) return;
+
+    const intervalMs = 2000;
+    const pauseAfterInteractionMs = 4000;
+
+    const tick = () => {
+      const now = Date.now();
+      if (now - desktopUserInteractedAtRef.current < pauseAfterInteractionMs) return;
+      const slides = Array.from(container.querySelectorAll<HTMLElement>("[data-payment-slide]"));
+      if (slides.length === 0) return;
+      desktopIndexRef.current = (desktopIndexRef.current + 1) % slides.length;
+      slides[desktopIndexRef.current]?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "start",
+      });
+    };
+
+    const t = window.setInterval(tick, intervalMs);
+    return () => window.clearInterval(t);
+  }, [isDesktopSlidesInView]);
 
   return (
     <main className="relative min-h-[100dvh] bg-white text-slate-900">
@@ -108,7 +193,7 @@ export default function PaymentMethodPage() {
             logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
             logoImageSize={50}
             logoPriority
-            ctaClassName="rounded-full border border-slate-400 bg-white px-5 py-2 text-xs font-medium text-slate-800 shadow-sm"
+            ctaClassName="rounded-full border border-slate-400 bg-white px-5 py-2 text-xs font-medium text-slate-700 shadow-sm"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
             menuLineClassName="bg-slate-900"
             onMenuOpen={() => setIsMenuOpen(true)}
@@ -157,14 +242,14 @@ export default function PaymentMethodPage() {
               </div>
             </div>
 
-            <div className="mt-10 flex justify-center">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#D40887] px-5 py-3 text-[12px] font-semibold text-white shadow-[0_20px_45px_rgba(0,0,0,0.55),0_0_0_8px_rgba(255,255,255,0.06)]"
-                onClick={() =>
-                  paymentSlidesViewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
-                }
-              >
+	            <div className="mt-10 flex justify-center">
+	              <button
+	                type="button"
+	                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#D40887] px-5 py-3 text-[12px] font-semibold text-white shadow-[0_2px_4px_0_rgba(0,0,0,0.10)]"
+	                onClick={() =>
+	                  paymentSlidesViewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+	                }
+	              >
                 <span>Xem các hình thức thanh toán</span>
                 <Image src="/assets/svg/arrow-down.svg" alt="" width={16} height={16} />
               </button>
@@ -182,7 +267,7 @@ export default function PaymentMethodPage() {
             logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
             logoImageSize={50}
             logoPriority
-            ctaClassName="rounded-full border border-slate-400 bg-white px-5 py-2 text-xs font-medium text-slate-800 shadow-sm"
+            ctaClassName="rounded-full border border-slate-400 bg-white px-5 py-2 text-xs font-medium text-slate-700 shadow-sm"
             menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
             menuLineClassName="bg-slate-900"
             onMenuOpen={() => setIsMenuOpen(true)}
@@ -190,9 +275,21 @@ export default function PaymentMethodPage() {
           />
 
           <div className="flex flex-1 flex-col justify-center">
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div
+              ref={mobileCarouselRef}
+              className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              onPointerDown={() => {
+                mobileUserInteractedAtRef.current = Date.now();
+              }}
+              onTouchStart={() => {
+                mobileUserInteractedAtRef.current = Date.now();
+              }}
+              onWheel={() => {
+                mobileUserInteractedAtRef.current = Date.now();
+              }}
+            >
               {PAYMENT_SLIDES.map((slide) => (
-                <div key={slide.src} className="shrink-0 snap-start">
+                <div key={slide.src} className="shrink-0 snap-start" data-payment-slide>
                   <div className="relative h-[60vh] aspect-[1536/1380] max-w-none overflow-hidden rounded-[28px]">
                     <Image
                       src={slide.src}
@@ -255,15 +352,15 @@ export default function PaymentMethodPage() {
                 </li>
               </ul>
 
-              <div className="mt-10">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#D40887] px-6 py-3 text-[14px] font-semibold text-white shadow-[0_20px_45px_rgba(0,0,0,0.18)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
-                  onClick={() => {
-                    desktopPaymentSlidesViewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                    paymentSlidesViewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                >
+	              <div className="mt-10">
+	                <button
+	                  type="button"
+	                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#D40887] px-6 py-3 text-[14px] font-semibold text-white shadow-[0_2px_4px_0_rgba(0,0,0,0.10)] transition-transform hover:scale-[1.01] active:scale-[0.98]"
+	                  onClick={() => {
+	                    desktopPaymentSlidesViewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+	                    paymentSlidesViewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+	                  }}
+	                >
                   <span>Xem các hình thức thanh toán</span>
                   <Image src="/assets/svg/arrow-down.svg" alt="" width={18} height={18} />
                 </button>
@@ -300,9 +397,22 @@ export default function PaymentMethodPage() {
         </h2>
 
         <div className="mt-16 w-full">
-          <div className="flex snap-x snap-mandatory gap-10 overflow-x-auto pb-8 pr-[6vw] scroll-pl-[5vw] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            ref={desktopCarouselRef}
+            className="flex snap-x snap-mandatory gap-10 overflow-x-auto pb-8 pr-[6vw] scroll-pl-[5vw] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            onPointerDown={() => {
+              desktopUserInteractedAtRef.current = Date.now();
+            }}
+            onWheel={() => {
+              desktopUserInteractedAtRef.current = Date.now();
+            }}
+          >
             {PAYMENT_SLIDES.map((slide) => (
-              <div key={`desktop-${slide.src}`} className="shrink-0 snap-start first:ml-[5vw]">
+              <div
+                key={`desktop-${slide.src}`}
+                className="shrink-0 snap-start first:ml-[5vw]"
+                data-payment-slide
+              >
                 <Image
                   src={slide.src}
                   alt={slide.alt}

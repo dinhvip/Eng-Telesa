@@ -10,6 +10,9 @@ import FooterContactView from "./components/FooterContactView";
 import MobileHeader from "./components/MobileHeader";
 import MobileFloatingActions from "./components/MobileFloatingActions";
 import MobileMenuDrawer from "./components/MobileMenuDrawer";
+import CountUp from "./components/CountUp";
+import ArrowUpIcon from "./components/ArrowUpIcon";
+import BackgroundVideo from "./components/BackgroundVideo";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
@@ -38,6 +41,16 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
   const thresholdPx = options.thresholdPx ?? 40;
   const restraintPx = options.restraintPx ?? 80;
 
+  const isInteractiveTarget = (target: EventTarget | null) => {
+    if (typeof Element === "undefined") return false;
+    if (!(target instanceof Element)) return false;
+    return Boolean(
+      target.closest(
+        'button,a,input,textarea,select,summary,[role="button"],[role="link"],[data-no-swipe]',
+      ),
+    );
+  };
+
   const reset = () => {
     startXRef.current = null;
     startYRef.current = null;
@@ -45,6 +58,7 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
   };
 
   const onTouchStart: React.TouchEventHandler<T> = (e) => {
+    if (isInteractiveTarget(e.target)) return;
     const t = e.touches[0];
     if (!t) return;
     startXRef.current = t.clientX;
@@ -74,6 +88,7 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
   const onTouchCancel: React.TouchEventHandler<T> = () => reset();
 
   const onMouseDown: React.MouseEventHandler<T> = (e) => {
+    if (isInteractiveTarget(e.target)) return;
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     triggeredRef.current = false;
@@ -95,6 +110,7 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
 
   const onPointerDown: React.PointerEventHandler<T> = (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (isInteractiveTarget(e.target)) return;
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     triggeredRef.current = false;
@@ -135,7 +151,74 @@ function useHorizontalSwipe<T extends HTMLElement>(options: {
   };
 }
 
+function useDragToScroll<T extends HTMLElement>(options?: {
+  enabled?: boolean;
+  thresholdPx?: number;
+}): Pick<
+  React.HTMLAttributes<T>,
+  "onPointerDown" | "onPointerMove" | "onPointerUp" | "onPointerCancel" | "onPointerLeave"
+> {
+  const enabled = options?.enabled ?? true;
+  const thresholdPx = options?.thresholdPx ?? 4;
+
+  const isDraggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startScrollLeftRef = useRef(0);
+  const movedRef = useRef(false);
+
+  const stop = () => {
+    isDraggingRef.current = false;
+    movedRef.current = false;
+  };
+
+  return {
+    onPointerDown: (event) => {
+      if (!enabled) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      const element = event.currentTarget as unknown as HTMLElement;
+      isDraggingRef.current = true;
+      movedRef.current = false;
+      startXRef.current = event.clientX;
+      startScrollLeftRef.current = element.scrollLeft;
+
+      element.setPointerCapture?.(event.pointerId);
+    },
+    onPointerMove: (event) => {
+      if (!enabled) return;
+      if (!isDraggingRef.current) return;
+
+      const element = event.currentTarget as unknown as HTMLElement;
+      const deltaX = event.clientX - startXRef.current;
+      if (!movedRef.current && Math.abs(deltaX) >= thresholdPx) movedRef.current = true;
+
+      element.scrollLeft = startScrollLeftRef.current - deltaX;
+      if (movedRef.current) event.preventDefault();
+    },
+    onPointerUp: (event) => {
+      if (!enabled) return;
+      stop();
+      const element = event.currentTarget as unknown as HTMLElement;
+      element.releasePointerCapture?.(event.pointerId);
+    },
+    onPointerCancel: (event) => {
+      if (!enabled) return;
+      stop();
+      const element = event.currentTarget as unknown as HTMLElement;
+      element.releasePointerCapture?.(event.pointerId);
+    },
+    onPointerLeave: () => {
+      if (!enabled) return;
+      stop();
+    },
+  };
+}
+
 export default function LandingPage() {
+  const ZALO_URL = "https://zalo.me/407812786777792624";
+  const MESSENGER_URL =
+    "https://www.messenger.com/t/101413051393124/?messaging_source=source%3Apages%3Amessage_shortlink&source_id=1441792&recurring_notification=0";
+
   const router = useRouter();
   const mainRef = useRef<HTMLElement | null>(null);
   const [selectedAge, setSelectedAge] = useState<"kid" | "adult" | null>(null);
@@ -143,8 +226,6 @@ export default function LandingPage() {
   const [activeSnapIndex, setActiveSnapIndex] = useState(0);
   const [kidSlideIndex, setKidSlideIndex] = useState(0);
   const [kidTextVisible, setKidTextVisible] = useState(true);
-  const [kidQuestionIndex, setKidQuestionIndex] = useState(0);
-  const [kidQuestionVisible, setKidQuestionVisible] = useState(true);
   const [kidView8Index, setKidView8Index] = useState(0);
   const [kidView8TextVisible, setKidView8TextVisible] = useState(true);
   const [adultView8Index, setAdultView8Index] = useState(0);
@@ -160,6 +241,7 @@ export default function LandingPage() {
   const [kidConsultZaloNumber, setKidConsultZaloNumber] = useState("");
   const [kidConsultTopic, setKidConsultTopic] = useState("");
   const [kidConsultAgree, setKidConsultAgree] = useState(false);
+  const [isConsultSubmitting, setIsConsultSubmitting] = useState(false);
   const teleSaTextRef = useRef<HTMLDivElement | null>(null);
   const [teleSaOffsetPx, setTeleSaOffsetPx] = useState(0);
   const [teleSaMaxOffsetPx, setTeleSaMaxOffsetPx] = useState(0);
@@ -233,15 +315,19 @@ export default function LandingPage() {
     },
   ] as const;
 
-  const kidQuestionSlides = [
-    { title: "Telesa có những\nkhóa học nào ?", bg: "/assets/bg-question.jpg" },
+  const kidLibraryTeaserSlides = [
     {
-      title: "Có nhiều hoạt động\nngiải trí để trẻ em\nhứng thú học không",
-      bg: "/assets/8-1-kid.jpg",
+      image: "/assets/8-1-kid.jpg",
+      title:
+        "Tại sao nhiều bố mẹ đã\ncho con học tiếng Anh\nở trường nhưng vẫn\nđăng ký thêm khóa học\ntại Telesa English?",
+      href: "/library/why",
+      objectClassName: "object-[75%_center]",
     },
     {
-      title: "Trẻ em từ bao nhiêu\ntuổi mới học tiếng\nanh ở Telesa được ?",
-      bg: "/assets/8-2-kid.jpg",
+      image: "/assets/8-2-kid.jpg",
+      title: "Chương trình tiếng Anh\ncho trẻ em tại\nTelesa English",
+      href: "/library/program-for-kid",
+      objectClassName: "object-center",
     },
   ] as const;
 
@@ -267,29 +353,14 @@ export default function LandingPage() {
     }, 220);
   };
 
-  const changeKidQuestionSlide = (nextIndex: number) => {
-    if (nextIndex === kidQuestionIndex) return;
-    if (nextIndex < 0 || nextIndex >= kidQuestionSlides.length) return;
-    setKidQuestionVisible(false);
-    setTimeout(() => {
-      setKidQuestionIndex(nextIndex);
-      setKidQuestionVisible(true);
-    }, 220);
-  };
-
   const kidCarouselSwipe = useHorizontalSwipe<HTMLDivElement>({
     onSwipeLeft: () => changeKidSlide(kidSlideIndex + 1),
     onSwipeRight: () => changeKidSlide(kidSlideIndex - 1),
   });
 
-  const kidQuestionSwipe = useHorizontalSwipe<HTMLElement>({
-    onSwipeLeft: () => changeKidQuestionSlide(kidQuestionIndex + 1),
-    onSwipeRight: () => changeKidQuestionSlide(kidQuestionIndex - 1),
-  });
-
   const changeKidView8Slide = (nextIndex: number) => {
     if (nextIndex === kidView8Index) return;
-    if (nextIndex < 0 || nextIndex > 1) return;
+    if (nextIndex < 0 || nextIndex >= kidLibraryTeaserSlides.length) return;
     setKidView8TextVisible(false);
     setTimeout(() => {
       setKidView8Index(nextIndex);
@@ -302,37 +373,38 @@ export default function LandingPage() {
     onSwipeRight: () => changeKidView8Slide(kidView8Index - 1),
   });
 
+  const kidTestimonialsDrag = useDragToScroll<HTMLDivElement>();
+
   const adultWhySlidesMobile = [
-    { image: "/assets/8-1-adult.jpg", title: "T.E.S là gì ? Hiệu quả\nnhư thế nào ?" },
+    {
+      image: "/assets/8-1-adult.jpg",
+      title: "T.E.S là gì ? Hiệu quả\nnhư thế nào ?",
+      href: "/library/what-is-tes",
+    },
     {
       image: "/assets/8-2-adult.jpg",
       title: "Lộ trình học Tiếng Anh\ntại Telesa – Tiến bộ từng\nbước vững chắc",
+      href: "/library/roadmap",
     },
     {
       image: "/assets/8-3-adult.jpg",
       title: "Tại sao nên học Giao\ntiếp nhóm tại\nTelesa English",
+      href: "/library/why-group",
     },
     {
       image: "/assets/8-4-adult.jpg",
       title:
         "Vì sao nên chọn học\nkèm 1-1 tại Telesa\nEnglish thay vì tự tìm\ngiáo viên?",
+      href: "/library/1-1",
+    },
+    {
+      image: "/assets/8-5-adult.jpg",
+      title: "Có được đóng học phí trả góp không",
+      href: "/library/payment-method",
     },
   ] as const;
 
-  const adultView8Slides = [
-    {
-      bg: "/assets/8-6-adult.jpg",
-      title: "T.E.S là gì ? Hiệu quả\nnhư thế nào",
-    },
-    {
-      bg: "/assets/8-5-adult.jpg",
-      title: "Có được đóng học\nphí trả góp không ?",
-    },
-    {
-      bg: "/assets/8-2-adult.jpg",
-      title: "Có lớp tiếng anh buổi\ntối cho người đi làm\nkhông ?",
-    },
-  ] as const;
+  const adultView8Slides = adultWhySlidesMobile;
 
   const changeAdultView8Slide = (nextIndex: number) => {
     if (nextIndex === adultView8Index) return;
@@ -363,6 +435,8 @@ export default function LandingPage() {
     onSwipeLeft: () => changeAdultWhyMobileSlide(adultWhyMobileIndex + 1),
     onSwipeRight: () => changeAdultWhyMobileSlide(adultWhyMobileIndex - 1),
   });
+
+  const adultTestimonialsDrag = useDragToScroll<HTMLDivElement>();
 
   const logoSrc =
     selectedAge === "kid"
@@ -518,12 +592,6 @@ export default function LandingPage() {
     };
   }, []);
 
-  useEffect(() => {
-    setKidQuestionIndex((current) =>
-      current >= kidQuestionSlides.length ? 0 : current,
-    );
-  }, [kidQuestionSlides.length]);
-
   const shouldShowMenu = selectedAge != null && activeSnapIndex > 0;
 
   const activeMenuKey = "home";
@@ -642,6 +710,51 @@ export default function LandingPage() {
     router.push(selectedAge === "adult" ? "/test?variant=adult" : "/test");
   };
 
+  const onSubmitConsultation: React.FormEventHandler<HTMLFormElement> = async (e) => {
+    e.preventDefault();
+    if (isConsultSubmitting) return;
+    if (!kidConsultAgree) return;
+
+    const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3200";
+    const variant = selectedAge === "adult" ? "adult" : "kid";
+    const pageUrl = typeof window === "undefined" ? "" : window.location.href;
+
+    setIsConsultSubmitting(true);
+    try {
+      const response = await fetch(`${backendBaseUrl}/api/consultations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source: "landing",
+          variant,
+          name: kidConsultName,
+          email: kidConsultEmail,
+          phone: kidConsultContactMethod === "phone" ? kidConsultZaloNumber : "",
+          contactMethod: kidConsultContactMethod,
+          zaloCountry: kidConsultZaloCountry,
+          zaloNumber: kidConsultZaloNumber,
+          topic: kidConsultTopic,
+          pageUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text().catch(() => "");
+        throw new Error(message || `HTTP ${response.status}`);
+      }
+
+      setKidConsultAgree(false);
+      setKidConsultName("");
+      setKidConsultEmail("");
+      setKidConsultZaloNumber("");
+      setKidConsultTopic("");
+    } catch (err) {
+      console.error("consultation submit error:", err);
+    } finally {
+      setIsConsultSubmitting(false);
+    }
+  };
+
   return (
     <>
       {shouldShowMenu && (
@@ -696,14 +809,10 @@ export default function LandingPage() {
       >
 	      {/* Slide 1: Age selection */}
 		      <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
-	        <video
-	          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+	        <BackgroundVideo
+	          className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	          key={videoSrc}
 	          src={videoSrc}
-	          autoPlay
-	          muted
-	          loop
-	          playsInline
 	        />
           <div aria-hidden="true" className="absolute inset-0" />
 	
@@ -715,7 +824,7 @@ export default function LandingPage() {
             <div className="flex w-full flex-col justify-between lg:hidden">
               <div className="h-8" />
 
-              <section className="mt-4 rounded-[32px] bg-black/30 px-5 pb-6 pt-5 text-white shadow-lg backdrop-blur-md">
+              <section className="mt-4 rounded-[32px] bg-[linear-gradient(174deg,rgba(0,0,0,0.20)_6.38%,rgba(0,0,0,0)_95.47%)] px-5 pb-6 pt-5 text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]">
                 <div className="mb-6 flex items-center gap-3">
                   <div
                     className={`relative ${
@@ -800,7 +909,7 @@ export default function LandingPage() {
 
             {/* Desktop */}
             <div className="hidden w-full items-center justify-between gap-10 lg:flex">
-              <section className="w-[62%] rounded-[44px] bg-black/25 px-12 py-12 text-white shadow-2xl backdrop-blur-xl">
+              <section className="w-[62%] rounded-[32px] bg-[linear-gradient(174deg,rgba(0,0,0,0.20)_6.38%,rgba(0,0,0,0)_95.47%)] px-12 py-12 text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]">
                 <div className="flex items-center gap-3">
                   <div
                     className={`relative ${
@@ -820,15 +929,15 @@ export default function LandingPage() {
                 </div>
 
                 <h1 className="mt-6 text-[44px] font-semibold leading-[1.04] tracking-wide xl:text-[58px]">
-                  HỌC TIẾNG ANH GIAO TIẾP
+                  Nâng tầm kỹ năng
                   <br />
-                  CÙNG TELESA
+                  giao tiếp tiếng Anh
+                  <br />
+                  với Telesa English
                 </h1>
 
                 <p className="mt-6 max-w-[56ch] text-base text-white/85 xl:text-lg">
-                  Vui lòng chọn độ tuổi để chúng tôi tối ưu hóa giao diện
-                  <br />
-                  và nội dung tương ứng
+                  Chọn độ tuổi để bắt đầu nhé
                 </p>
 
                 <div className="mt-10 flex max-w-xl gap-5">
@@ -889,13 +998,9 @@ export default function LandingPage() {
       {/* Slide 2: Kid follow-up view */}
 	      {selectedAge === "kid" && (
 	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
-	          <video
-	            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+	          <BackgroundVideo
+	            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	            src="/assets/2-kid.mp4"
-	            autoPlay
-	            muted
-	            loop
-	            playsInline
 	          />
             <div aria-hidden="true" className="absolute inset-0" />
 	
@@ -922,17 +1027,11 @@ export default function LandingPage() {
 	                  <h1 className="text-[60px] font-semibold leading-[1.04] tracking-tight xl:text-[72px]">
 	                    Telesa English –
 	                    <br />
-	                    Nói tự tin, giao tiếp tự nhiên!
+	                    Nói tự tin, giao tiếp tự nhiên
 	                  </h1>
 
 	                  <p className="mt-6 text-lg leading-relaxed text-white/90 xl:text-xl">
-	                    Trung tâm Anh ngữ Telesa – với hơn 7 năm kinh nghiệm, chương trình T.E.S
-	                    <br />
-	                    (Học từ vựng với thẻ Leitner + Luyện phản xạ giao tiếp + Phát âm chuẩn IPA)
-	                    <br />
-	                    đã giúp hàng ngàn học viên từ con số 0 tự tin nói tiếng Anh lưu loát và tự nhiên.
-	                    <br />
-	                    Đăng ký ngay để bắt đầu hành trình giao tiếp mới!
+	                    Chọn chương trình để bắt đầu hành trình của bạn
 	                  </p>
 
 	                  <div className="mt-10 flex max-w-[440px] gap-5">
@@ -940,7 +1039,7 @@ export default function LandingPage() {
 	                      type="button"
 	                      className="flex-1 rounded-full bg-white px-7 py-3 text-center text-sm font-semibold text-black shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
 	                    >
-	                      Học thử ngay
+	                      Học thử
 	                    </button>
 	                    <button
 	                      type="button"
@@ -988,7 +1087,7 @@ export default function LandingPage() {
 			              logoPriority
 			              onMenuOpen={() => setIsMenuOpen(true)}
 			              onCtaClick={goToTest}
-			              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+			              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
 			              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 			              menuLineClassName="bg-white"
 			            />
@@ -1139,7 +1238,9 @@ export default function LandingPage() {
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
               <p className="text-base font-medium tracking-wide">Tiếng anh giao tiếp</p>
-              <p className="mt-3 text-[64px] font-extrabold leading-none text-amber-400">3000+</p>
+              <p className="mt-3 text-[64px] font-extrabold leading-none text-amber-400">
+                <CountUp to={3000} suffix="+" durationMs={1500} />
+              </p>
               <p className="mt-4 text-base font-medium">Học viên đang học</p>
             </div>
 
@@ -1154,30 +1255,30 @@ export default function LandingPage() {
             <div className="w-full">
               <div className="grid w-full grid-cols-2 items-start gap-8 text-center 2xl:grid-cols-4 2xl:gap-12">
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiếng anh giao tiếp</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
-                    1000+
+                    <CountUp to={1000} suffix="+" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên đang học</p>
                 </div>
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Giáo viên chuyên môn</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Giáo viên chuyên môn</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
-                    25+
+                    <CountUp to={25} suffix="+" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
                 </div>
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiến bộ rõ rệt</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
-                    98%
+                    <CountUp to={98} suffix="%" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên cảm nhận thực tế</p>
                 </div>
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Ứng dụng công nghệ</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Ứng dụng công nghệ</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
-                    90%
+                    <CountUp to={90} suffix="%" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
                 </div>
@@ -1187,20 +1288,21 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Slide 5 (kid): Question slider */}
-      {/* Slide 5 (kid desktop): Question slider */}
+      {/* Slide 5 (kid desktop): Library teaser slider */}
       {selectedAge === "kid" && (
         <section
-          className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden lg:flex"
+          id="kid-library-teaser-desktop"
+          className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex"
           style={{ touchAction: "pan-y" }}
-          {...kidQuestionSwipe}
+          {...kidView8Swipe}
         >
           <Image
-            src={kidQuestionSlides[kidQuestionIndex].bg}
-            alt="Telesa question background"
+            src={kidLibraryTeaserSlides[kidView8Index].image}
+            alt="Telesa English Kids learning"
             fill
             sizes="100vw"
             quality={100}
+            unoptimized
             className="object-cover"
             priority
             draggable={false}
@@ -1211,20 +1313,42 @@ export default function LandingPage() {
             <div className="absolute bottom-[18vh] left-4 right-4 text-white lg:left-[8vw] lg:right-auto lg:bottom-[18vh]">
               <h2
                 className={`whitespace-pre-line text-[34px] font-semibold leading-[1.05] tracking-tight sm:text-[44px] lg:text-[56px] transform-gpu transition-all duration-300 ease-out ${
-                  kidQuestionVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+                  kidView8TextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
                 }`}
               >
-                {kidQuestionSlides[kidQuestionIndex].title}
+                {kidLibraryTeaserSlides[kidView8Index].title}
               </h2>
 
+              <div className="mt-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem(
+                        "telesa:returnContext",
+                        JSON.stringify({
+                          kind: "landing",
+                          selectedAge: "kid",
+                          anchorId: "kid-library-teaser-desktop",
+                        }),
+                      );
+                    } catch {}
+                    router.push(kidLibraryTeaserSlides[kidView8Index].href);
+                  }}
+                  className="inline-flex items-center justify-center gap-1 rounded-[36px] border-2 border-white bg-white/5 px-4 py-2 text-[14px] font-medium text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)] transition-colors hover:bg-white/10"
+                >
+                  Chi tiết
+                </button>
+              </div>
+
               <div className="mt-10 flex items-center gap-4 lg:mt-12">
-                {kidQuestionSlides.map((_, index) => (
+                {kidLibraryTeaserSlides.map((_, index) => (
                   <button
                     key={index}
                     type="button"
-                    onClick={() => changeKidQuestionSlide(index)}
+                    onClick={() => changeKidView8Slide(index)}
                     className={`h-1.5 rounded-full transition-all ${
-                      index === kidQuestionIndex ? "w-12 bg-[#FEA933]" : "w-12 bg-white/70"
+                      index === kidView8Index ? "w-12 bg-[#FEA933]" : "w-12 bg-white/70"
                     }`}
                   />
                 ))}
@@ -1236,10 +1360,10 @@ export default function LandingPage() {
 
       {/* Slide 6 (kid desktop): Testimonials */}
       {selectedAge === "kid" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
+        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-[#F8F9FA] text-slate-900 lg:flex">
           <div className="relative z-10 flex h-full w-full flex-col">
-            <div className="w-full px-[8vw] pt-[10vh] text-center">
-              <h2 className="text-[44px] font-extrabold tracking-tight text-slate-800">
+            <div className="w-full px-[8vw] pt-[12vh] text-center">
+              <h2 className="text-[44px] font-extrabold tracking-tight text-slate-700">
                 Cảm Nhận Học Viên
               </h2>
               <p className="mt-3 text-lg text-[#667085]">
@@ -1248,29 +1372,36 @@ export default function LandingPage() {
             </div>
 
             <div
-              className="mt-14 w-full flex-1 overflow-x-auto pb-[10vh]"
+              className="mt-14 w-full flex-1 select-none overflow-x-auto pb-[10vh] cursor-grab active:cursor-grabbing"
               style={
-                { scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties
+                {
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  touchAction: "pan-y",
+                } as React.CSSProperties
               }
+              {...kidTestimonialsDrag}
             >
               <div className="flex w-max items-stretch gap-10 px-[8vw] snap-x snap-mandatory">
                 {kidTestimonials.map((t, index) => (
                   <article
                     key={`${t.name}-${index}`}
-                    className="flex w-[23vw] aspect-[1/1.4] flex-col justify-between rounded-[32px] border border-slate-100 bg-white p-10 shadow-sm snap-center"
+                    className="grid h-[55vh] max-h-[55vh] w-[23vw] grid-rows-[1fr_auto] rounded-[32px] border border-slate-100 bg-white p-[clamp(28px,3.2vh,40px)] shadow-sm snap-center"
                   >
-                    <p className="text-[18px] leading-relaxed text-slate-700">
+                    <p className="self-center text-[clamp(16px,2vh,22px)] leading-relaxed text-slate-700">
                       {t.content}
                     </p>
 
-                    <div className="mt-10 flex items-center gap-5">
-                      <div className="h-16 w-16 rounded-full bg-slate-200" />
+                    <div className="flex items-center gap-5">
+                      <div className="h-[clamp(52px,6vh,72px)] w-[clamp(52px,6vh,72px)] rounded-full bg-slate-200" />
                       <div className="text-left">
-                        <p className="text-[26px] font-bold text-slate-800">
+                        <p className="text-[clamp(18px,2.4vh,26px)] font-bold text-slate-700">
                           {t.name}
                         </p>
-                        <p className="mt-1 text-sm text-[#667085]">{t.date}</p>
-                        <div className="mt-2 text-[14px] text-[#FEA933]">
+                        <p className="mt-1 text-[clamp(12px,1.4vh,14px)] text-[#667085]">
+                          {t.date}
+                        </p>
+                        <div className="mt-2 text-[clamp(12px,1.6vh,16px)] text-[#FEA933]">
                           {"★★★★★"}
                         </div>
                       </div>
@@ -1333,7 +1464,7 @@ export default function LandingPage() {
 
             <form
               className="mt-[min(2.9vh,22px)] flex w-full max-w-[920px] flex-col gap-[min(1.7vh,14px)]"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={onSubmitConsultation}
             >
               <div className="space-y-2 text-left">
                 <label className="block text-[13px] font-semibold text-white">Tên</label>
@@ -1341,7 +1472,7 @@ export default function LandingPage() {
                   value={kidConsultName}
                   onChange={(e) => setKidConsultName(e.target.value)}
                   placeholder="Nhập tên của bạn"
-                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
                 />
               </div>
 
@@ -1352,7 +1483,7 @@ export default function LandingPage() {
                   onChange={(e) => setKidConsultEmail(e.target.value)}
                   placeholder="you@company.com"
                   inputMode="email"
-                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
                 />
               </div>
 
@@ -1364,7 +1495,7 @@ export default function LandingPage() {
                   <select
                     value={kidConsultContactMethod}
                     onChange={(e) => setKidConsultContactMethod(e.target.value as any)}
-                    className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
+                    className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
                   >
                     <option value="zalo">Zalo</option>
                     <option value="phone">Điện thoại</option>
@@ -1379,7 +1510,7 @@ export default function LandingPage() {
               <div className="space-y-2 text-left">
                 <label className="block text-[13px] font-semibold text-white">Số Zalo</label>
                 <div className="flex h-[clamp(35px,4.2vh,40px)] w-full overflow-hidden rounded-[16px] bg-white/55 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-md">
-                  <div className="flex items-center gap-2 px-4 text-[13px] text-slate-800">
+                  <div className="flex items-center gap-2 px-4 text-[13px] text-slate-700">
                     <select
                       value={kidConsultZaloCountry}
                       onChange={(e) => setKidConsultZaloCountry(e.target.value as any)}
@@ -1397,7 +1528,7 @@ export default function LandingPage() {
                       onChange={(e) => setKidConsultZaloNumber(e.target.value)}
                       placeholder="(555) 000-0000"
                       inputMode="tel"
-                      className="h-full w-full bg-transparent text-left text-[13px] text-slate-800 outline-none placeholder:text-slate-500"
+                      className="h-full w-full bg-transparent text-left text-[13px] text-slate-700 outline-none placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -1412,7 +1543,7 @@ export default function LandingPage() {
                   onChange={(e) => setKidConsultTopic(e.target.value)}
                   placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
                   rows={3}
-                  className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                  className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
                 />
               </div>
 
@@ -1431,10 +1562,10 @@ export default function LandingPage() {
               <div className="mt-3 flex justify-center">
                 <button
                   type="submit"
-                  disabled={!kidConsultAgree}
+                  disabled={!kidConsultAgree || isConsultSubmitting}
                   className="h-[clamp(40px,5.3vh,44px)] w-full max-w-[506px] rounded-[16px] bg-[#FFC000] text-center text-[15px] font-extrabold text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95"
                 >
-                  Gửi
+                  {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
                 </button>
               </div>
             </form>
@@ -1447,7 +1578,7 @@ export default function LandingPage() {
         <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
           <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)]">
             <div className="w-full max-w-[1100px] text-center">
-              <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
+              <h2 className="text-[48px] font-extrabold tracking-tight text-slate-700">
                 Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
               </h2>
               <p className="mx-auto mt-4 max-w-[760px] text-[20px] font-medium text-slate-500">
@@ -1457,8 +1588,14 @@ export default function LandingPage() {
 
             <div className="mt-[min(5.6vh,51px)] w-full max-w-[1180px]">
               <div className="grid grid-cols-3 gap-12">
-                <div className="rounded-[40px] bg-[#E6F7FE] p-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                <a
+                  href={ZALO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Mở Zalo"
+                  className="rounded-[40px] bg-[#E6F7FE] p-10 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                     <Image
                       src="/assets/svg/zalo.svg"
                       alt="Zalo"
@@ -1467,16 +1604,22 @@ export default function LandingPage() {
                       className="h-10 w-10"
                     />
                   </div>
-                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">
                     Zalo
                   </h3>
                   <p className="mt-3 text-[18px] font-medium text-slate-600">
                     Liên hệ với chúng tôi qua Zalo
                   </p>
-                </div>
+                </a>
 
-                <div className="rounded-[40px] bg-[#FFF5FB] p-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                <a
+                  href={MESSENGER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Mở Messenger"
+                  className="rounded-[40px] bg-[#FFF5FB] p-10 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                     <Image
                       src="/assets/svg/messenger.svg"
                       alt="Messenger"
@@ -1485,16 +1628,16 @@ export default function LandingPage() {
                       className="h-10 w-10"
                     />
                   </div>
-                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">
                     Messenger
                   </h3>
                   <p className="mt-3 text-[18px] font-medium text-slate-600">
                     Nhắn tin với chúng tôi ngay
                   </p>
-                </div>
+                </a>
 
                 <div className="rounded-[40px] bg-[#F4FCE8] p-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                  <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                     <Image
                       src="/assets/svg/whatsapp.svg"
                       alt="Whatsapp"
@@ -1503,7 +1646,7 @@ export default function LandingPage() {
                       className="h-10 w-10"
                     />
                   </div>
-                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">
                     Whatsapp
                   </h3>
                   <p className="mt-3 text-[18px] font-medium text-slate-600">
@@ -1584,13 +1727,9 @@ export default function LandingPage() {
       {/* Slide 2 (adult): Adult follow-up view */}
 	      {selectedAge === "adult" && (
 	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
-	          <video
-	            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
+	          <BackgroundVideo
+	            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	            src="/assets/1-adult2.mp4"
-	            autoPlay
-	            muted
-	            loop
-	            playsInline
 	          />
             <div aria-hidden="true" className="absolute inset-0" />
 	
@@ -1619,17 +1758,11 @@ export default function LandingPage() {
                   <h1 className="text-[60px] font-semibold leading-[1.04] tracking-tight xl:text-[72px]">
                     Telesa English –
                     <br />
-                    Nói tự tin, giao tiếp tự nhiên!
+                    Tự tin giao tiếp trong công việc
                   </h1>
 
                   <p className="mt-6 text-lg leading-relaxed text-white/90 xl:text-xl">
-                    Trung tâm Anh ngữ Telesa – với hơn 7 năm kinh nghiệm, chương trình T.E.S
-                    <br />
-                    (Học từ vựng với thẻ Leitner + Luyện phản xạ giao tiếp + Phát âm chuẩn IPA)
-                    <br />
-                    đã giúp hàng ngàn học viên từ con số 0 tự tin nói tiếng Anh lưu loát và tự nhiên.
-                    <br />
-                    Đăng ký ngay để bắt đầu hành trình giao tiếp mới!
+                    Chọn chương trình để bắt đầu nâng cấp kỹ năng tiếng Anh của bạn
                   </p>
 
                   <div className="mt-10 flex max-w-[440px] gap-5">
@@ -1637,7 +1770,7 @@ export default function LandingPage() {
                       type="button"
                       className="flex-1 rounded-full bg-white px-7 py-3 text-center text-sm font-semibold text-black shadow-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
                     >
-                      Học thử ngay
+                      Học thử
                     </button>
                     <button
                       type="button"
@@ -1685,7 +1818,7 @@ export default function LandingPage() {
 	              logoPriority
 	              onMenuOpen={() => setIsMenuOpen(true)}
 	              onCtaClick={goToTest}
-	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+	              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 	              menuLineClassName="bg-white"
 	            />
@@ -1827,18 +1960,18 @@ export default function LandingPage() {
 		              logoPriority
 		              onMenuOpen={() => setIsMenuOpen(true)}
 		              onCtaClick={goToTest}
-		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
 		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 		              menuLineClassName="bg-white"
 		            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <p className="text-base font-semibold tracking-wide text-slate-800">
+              <p className="text-base font-semibold tracking-wide text-slate-700">
                 Giảng viên chuyên môn
               </p>
               <p className="mt-4 text-[72px] font-extrabold leading-none text-[#ffb800]">
-                100+
+                <CountUp to={100} suffix="+" durationMs={1500} />
               </p>
               <p className="mt-5 text-base font-medium text-slate-700">
                 Giảng viên có trên 5 năm kinh nghiệm
@@ -1875,7 +2008,7 @@ export default function LandingPage() {
                 Tiến bộ rõ rệt
               </p>
               <p className="mt-4 text-[72px] font-extrabold leading-none text-[#ffb800]">
-                98%
+                <CountUp to={98} suffix="%" durationMs={1500} />
               </p>
               <p className="mt-5 text-base font-medium text-white">
                 Học viên cảm nhận thực tế
@@ -1915,11 +2048,11 @@ export default function LandingPage() {
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <p className="text-base font-semibold tracking-wide text-slate-800">
+              <p className="text-base font-semibold tracking-wide text-slate-700">
                 Ứng dụng công nghệ
               </p>
               <p className="mt-4 text-[72px] font-extrabold leading-none text-[#ffb800]">
-                90%
+                <CountUp to={90} suffix="%" durationMs={1500} />
               </p>
               <p className="mt-5 text-base font-medium text-slate-700">
                 Áp dụng công nghệ mới trong dạy học
@@ -1934,7 +2067,7 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Slide 8 (kid): Why choose Telesa view (2 sub-slides) */}
+      {/* Slide 8 (kid): Library teaser view (2 sub-slides) */}
       {selectedAge === "kid" && (
         <section
           id="kid-library-teaser"
@@ -1944,16 +2077,14 @@ export default function LandingPage() {
         >
           {/* Background image */}
           <Image
-            src={kidView8Index === 0 ? "/assets/8-1-kid.jpg" : "/assets/8-2-kid.jpg"}
+            src={kidLibraryTeaserSlides[kidView8Index].image}
             alt="Telesa English Kids learning"
             fill
             priority
             quality={100}
             unoptimized
             sizes="100vw"
-            className={`pointer-events-none select-none object-cover ${
-              kidView8Index === 0 ? "object-[75%_center]" : "object-center"
-            }`}
+            className={`pointer-events-none select-none object-cover ${kidLibraryTeaserSlides[kidView8Index].objectClassName}`}
           />
           {/* Dark overlay for readability */}
           <div className="pointer-events-none absolute inset-0 bg-black/25" />
@@ -1978,27 +2109,9 @@ export default function LandingPage() {
                 kidView8TextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
               }`}
             >
-              {kidView8Index === 0 ? (
-                <p className="text-left text-[22px] font-semibold leading-snug text-white">
-                  Tại sao nhiều bố mẹ đã
-                  <br />
-                  cho con học tiếng Anh
-                  <br />
-                  ở trường nhưng vẫn
-                  <br />
-                  đăng ký thêm khóa học
-                  <br />
-                  tại Telesa English?
-                </p>
-              ) : (
-                <p className="text-left text-[22px] font-semibold leading-snug text-white">
-                  Chương trình tiếng Anh
-                  <br />
-                  cho trẻ em tại
-                  <br />
-                  Telesa English
-                </p>
-              )}
+              <p className="whitespace-pre-line text-left text-2xl font-medium leading-8 text-white">
+                {kidLibraryTeaserSlides[kidView8Index].title}
+              </p>
 
               {/* Bottom actions */}
 	              <div className="mt-3 flex items-center justify-between">
@@ -2017,34 +2130,24 @@ export default function LandingPage() {
 	                            }),
 	                          );
 	                        } catch {}
-	                        router.push(
-	                          kidView8Index === 0 ? "/library/why" : "/library/program-for-kid",
-	                        );
+	                        router.push(kidLibraryTeaserSlides[kidView8Index].href);
 	                      })()
 	                    }
-	                    className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
+	                    className="inline-flex items-center justify-center gap-1 rounded-[36px] border-2 border-white bg-white/5 px-4 py-2 text-[14px] font-medium text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]"
 	                  >
 	                    Chi tiết
 	                  </button>
 	                  <div className="flex items-center gap-2">
-	                    <button
-	                      type="button"
-                      onClick={() => changeKidView8Slide(0)}
-                      className={`h-1.5 rounded-full transition-all ${
-                        kidView8Index === 0
-                          ? "w-4 bg-amber-400"
-                          : "w-3 bg-white/70"
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => changeKidView8Slide(1)}
-                      className={`h-1.5 rounded-full transition-all ${
-                        kidView8Index === 1
-                          ? "w-4 bg-amber-400"
-                          : "w-3 bg-white/70"
-                      }`}
-                    />
+	                    {kidLibraryTeaserSlides.map((_, index) => (
+	                      <button
+	                        key={index}
+	                        type="button"
+	                        onClick={() => changeKidView8Slide(index)}
+	                        className={`h-1.5 rounded-full transition-all ${
+	                          kidView8Index === index ? "w-4 bg-amber-400" : "w-3 bg-white/70"
+	                        }`}
+	                      />
+	                    ))}
                   </div>
                 </div>
                 <MobileFloatingActions variant="kid" tone="darkGlass" onScrollToTop={scrollToTop} />
@@ -2085,7 +2188,7 @@ export default function LandingPage() {
             {/* Testimonial cards: two separate white cards */}
             <div className="mt-5 flex flex-1 flex-col gap-4">
               {/* Card 1 */}
-              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-800 shadow-md">
+              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-700 shadow-md">
                 <p className="text-[13px] leading-relaxed text-slate-700">
                   Ngay từ những ngày đầu, mình đã cảm thấy ấn tượng với môi
                   trường học tập tuyệt vời nơi đây. Các giáo viên không chỉ có
@@ -2108,7 +2211,7 @@ export default function LandingPage() {
               </div>
 
               {/* Card 2 */}
-              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-800 shadow-md">
+              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-700 shadow-md">
                 <p className="text-[13px] leading-relaxed text-slate-700">
                   Trung tâm anh ngữ Telesa mang đến trải nghiệm học vừa nghiêm
                   túc nhưng cũng rất thoải mái. Giáo viên luôn tận tâm trong
@@ -2223,7 +2326,7 @@ export default function LandingPage() {
 
             <form
               className="mt-3 flex flex-1 w-full flex-col gap-2.5"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={onSubmitConsultation}
             >
               <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
                 <label className="block text-[13px] font-semibold text-white">Tên</label>
@@ -2323,10 +2426,10 @@ export default function LandingPage() {
               <div className="mt-1 flex justify-center pb-1">
                   <button
                     type="submit"
-                    disabled={!kidConsultAgree}
+                    disabled={!kidConsultAgree || isConsultSubmitting}
                     className="mx-auto h-[44px] w-[80vw] max-w-full rounded-[14px] bg-[#FFC000] text-center text-[16px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.20)] disabled:opacity-100 disabled:cursor-not-allowed disabled:brightness-95"
                   >
-                    Gửi
+                    {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
                   </button>
               </div>
             </form>
@@ -2334,10 +2437,10 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={scrollToTop}
-              className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+              className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
               aria-label="Lên đầu trang"
             >
-              <span className="text-lg">↑</span>
+              <ArrowUpIcon size={20} className="h-5 w-5" />
             </button>
           </div>
         </section>
@@ -2359,7 +2462,7 @@ export default function LandingPage() {
                   priority
                 />
               </div>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800">
+              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-700">
                 <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
                 <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
                 <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
@@ -2368,7 +2471,7 @@ export default function LandingPage() {
 
             {/* Heading */}
             <div className="mt-6 text-center">
-              <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-tight text-slate-800">
+              <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-tight text-slate-700">
                 Hoặc Liên Hệ Ngay Để
                 <br />
                 Nhận Tư Vấn
@@ -2382,7 +2485,13 @@ export default function LandingPage() {
 
             {/* Cards */}
             <div className="mt-5 flex flex-1 flex-col justify-center gap-2 pb-5">
-              <div className="rounded-[24px] bg-[#E6F7FE] px-5 py-3">
+              <a
+                href={ZALO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Mở Zalo"
+                className="rounded-[24px] bg-[#E6F7FE] px-5 py-3 transition-transform active:scale-[0.99]"
+              >
                 <Image
                   src="/assets/svg/zalo.svg"
                   alt="Zalo"
@@ -2390,15 +2499,21 @@ export default function LandingPage() {
                   height={32}
                   className="h-8 w-8"
                 />
-                <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">
+                <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">
                   Zalo
                 </h3>
                 <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                   Liên hệ với chúng tôi qua Zalo
                 </p>
-              </div>
+              </a>
 
-              <div className="rounded-[24px] bg-[#FFF5FB] px-5 py-3">
+              <a
+                href={MESSENGER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Mở Messenger"
+                className="rounded-[24px] bg-[#FFF5FB] px-5 py-3 transition-transform active:scale-[0.99]"
+              >
                 <Image
                   src="/assets/svg/messenger.svg"
                   alt="Messenger"
@@ -2406,13 +2521,13 @@ export default function LandingPage() {
                   height={32}
                   className="h-8 w-8"
                 />
-                <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">
+                <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">
                   Messenger
                 </h3>
                 <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                   Nhắn tin với chúng tôi ngay
                 </p>
-              </div>
+              </a>
 
               <div className="rounded-[24px] bg-[#F4FCE8] px-5 py-3">
                 <Image
@@ -2422,7 +2537,7 @@ export default function LandingPage() {
                   height={32}
                   className="h-8 w-8"
                 />
-                <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">
+                <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">
                   Whatsapp
                 </h3>
                 <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
@@ -2437,10 +2552,10 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
                   aria-label="Lên đầu trang"
                 >
-                  <span className="text-lg">↑</span>
+                  <ArrowUpIcon size={20} className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -2524,10 +2639,10 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={scrollToTop}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
                 aria-label="Lên đầu trang"
               >
-                <span className="text-lg">↑</span>
+                <ArrowUpIcon size={20} className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -2573,7 +2688,7 @@ export default function LandingPage() {
                 Tiếng anh giao tiếp
               </p>
               <p className="mt-3 text-[64px] font-extrabold leading-none text-[#C1077B]">
-                1000+
+                <CountUp to={1000} suffix="+" durationMs={1500} />
               </p>
               <p className="mt-4 text-base font-medium">Học viên đang học</p>
             </div>
@@ -2589,30 +2704,30 @@ export default function LandingPage() {
             <div className="w-full">
               <div className="grid w-full grid-cols-2 items-start gap-8 text-center 2xl:grid-cols-4 2xl:gap-12">
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiếng anh giao tiếp</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiếng anh giao tiếp</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
-                    1000+
+                    <CountUp to={1000} suffix="+" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên đang học</p>
                 </div>
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Giáo viên chuyên môn</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Giáo viên chuyên môn</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
-                    25+
+                    <CountUp to={25} suffix="+" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
                 </div>
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Tiến bộ rõ rệt</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiến bộ rõ rệt</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
-                    98%
+                    <CountUp to={98} suffix="%" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên cảm nhận thực tế</p>
                 </div>
                 <div>
-                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-800">Ứng dụng công nghệ</p>
+                  <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Ứng dụng công nghệ</p>
                   <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
-                    90%
+                    <CountUp to={90} suffix="%" durationMs={1500} />
                   </p>
                   <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Áp dụng công nghệ mới trong dạy học</p>
                 </div>
@@ -2635,18 +2750,18 @@ export default function LandingPage() {
 		              logoPriority
 		              onMenuOpen={() => setIsMenuOpen(true)}
 		              onCtaClick={goToTest}
-		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
 		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 		              menuLineClassName="bg-white"
 		            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <p className="text-base font-semibold tracking-wide text-slate-800">
+              <p className="text-base font-semibold tracking-wide text-slate-700">
                 Giảng viên chuyên môn
               </p>
               <p className="mt-4 text-[72px] font-extrabold leading-none text-[#C1077B]">
-                25+
+                <CountUp to={25} suffix="+" durationMs={1500} />
               </p>
               <p className="mt-5 text-base font-medium text-slate-700">
                 Giảng viên có trên 5 năm kinh nghiệm
@@ -2685,7 +2800,7 @@ export default function LandingPage() {
                 Tiến bộ rõ rệt
               </p>
               <p className="mt-4 text-[72px] font-extrabold leading-none text-[#C1077B]">
-                98%
+                <CountUp to={98} suffix="%" durationMs={1500} />
               </p>
               <p className="mt-5 text-base font-medium text-white">
                 Học viên cảm nhận thực tế
@@ -2713,18 +2828,18 @@ export default function LandingPage() {
 		              logoPriority
 		              onMenuOpen={() => setIsMenuOpen(true)}
 		              onCtaClick={goToTest}
-		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+		              ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
 		              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
 		              menuLineClassName="bg-white"
 		            />
 
             {/* Center stats */}
             <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <p className="text-base font-semibold tracking-wide text-slate-800">
+              <p className="text-base font-semibold tracking-wide text-slate-700">
                 Ứng dụng công nghệ
               </p>
               <p className="mt-4 text-[72px] font-extrabold leading-none text-[#C1077B]">
-                90%
+                <CountUp to={90} suffix="%" durationMs={1500} />
               </p>
               <p className="mt-5 text-base font-medium text-slate-700">
                 Áp dụng công nghệ mới trong dạy học
@@ -2739,7 +2854,7 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Slide 8 (adult mobile): Why choose view (4 sub-slides) */}
+      {/* Slide 8 (adult mobile): Library teaser view (5 sub-slides) */}
       {selectedAge === "adult" && (
         <section
           id="adult-library-teaser"
@@ -2780,7 +2895,7 @@ export default function LandingPage() {
                 adultWhyMobileTextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
               }`}
             >
-              <p className="whitespace-pre-line text-left text-[22px] font-semibold leading-snug text-white">
+              <p className="whitespace-pre-line text-left text-2xl font-medium leading-8 text-white">
                 {adultWhySlidesMobile[adultWhyMobileIndex].title}
               </p>
 
@@ -2789,7 +2904,6 @@ export default function LandingPage() {
 	                  <button
 	                    type="button"
 	                    onClick={() => {
-	                      if (adultWhyMobileIndex !== 0) return;
 	                      try {
 	                        sessionStorage.setItem(
 	                          "telesa:returnContext",
@@ -2800,9 +2914,9 @@ export default function LandingPage() {
 	                          }),
 	                        );
 	                      } catch {}
-	                      router.push("/library/what-is-tes");
+	                      router.push(adultWhySlidesMobile[adultWhyMobileIndex].href);
 	                    }}
-	                    className="inline-flex items-center justify-center rounded-full border border-white bg-black/30 px-6 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-sm"
+	                    className="inline-flex items-center justify-center gap-1 rounded-[36px] border-2 border-white bg-white/5 px-4 py-2 text-[14px] font-medium text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]"
 	                  >
 	                    Chi tiết
 	                  </button>
@@ -2831,12 +2945,13 @@ export default function LandingPage() {
       {/* Slide 8 (adult): FAQ slider view */}
       {selectedAge === "adult" && (
         <section
+          id="adult-library-teaser-desktop"
           className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden lg:flex"
           style={{ touchAction: "pan-y" }}
           {...adultView8Swipe}
         >
           <Image
-            src={adultView8Slides[adultView8Index].bg}
+            src={adultView8Slides[adultView8Index].image}
             alt="Telesa English background"
             fill
             priority
@@ -2857,6 +2972,28 @@ export default function LandingPage() {
                 {adultView8Slides[adultView8Index].title}
               </h2>
 
+              <div className="mt-8">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      sessionStorage.setItem(
+                        "telesa:returnContext",
+                        JSON.stringify({
+                          kind: "landing",
+                          selectedAge: "adult",
+                          anchorId: "adult-library-teaser-desktop",
+                        }),
+                      );
+                    } catch {}
+                    router.push(adultView8Slides[adultView8Index].href);
+                  }}
+                  className="inline-flex items-center justify-center gap-1 rounded-[36px] border-2 border-white bg-white/5 px-4 py-2 text-[14px] font-medium text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)] transition-colors hover:bg-white/10"
+                >
+                  Chi tiết
+                </button>
+              </div>
+
               <div className="mt-10 flex items-center gap-4 lg:mt-12">
                 {adultView8Slides.map((_, index) => (
                   <button
@@ -2876,7 +3013,7 @@ export default function LandingPage() {
 
       {/* Slide 9 (adult): Testimonials view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
+        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-[#F8F9FA] lg:text-slate-900">
 	          {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
 	            {/* Top bar */}
@@ -2906,7 +3043,7 @@ export default function LandingPage() {
 
             {/* Testimonial cards */}
             <div className="mt-5 flex flex-1 flex-col gap-4">
-              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-800 shadow-md">
+              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-700 shadow-md">
                 <p className="text-[13px] leading-relaxed text-slate-700">
                   Ngay từ những ngày đầu, mình đã cảm thấy ấn tượng với môi
                   trường học tập tuyệt vời nơi đây. Các giáo viên không chỉ có
@@ -2928,7 +3065,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-800 shadow-md">
+              <div className="rounded-[26px] bg-white px-4 py-4 text-slate-700 shadow-md">
                 <p className="text-[13px] leading-relaxed text-slate-700">
                   Trung tâm anh ngữ Telesa mang đến trải nghiệm học vừa nghiêm
                   túc nhưng cũng rất thoải mái. Giáo viên luôn tận tâm trong
@@ -2958,8 +3095,8 @@ export default function LandingPage() {
 
           {/* Desktop */}
           <div className="relative z-10 hidden h-full w-full flex-col lg:flex">
-            <div className="w-full px-[8vw] pt-[10vh] text-center">
-              <h2 className="text-[44px] font-extrabold tracking-tight text-slate-800">
+            <div className="w-full px-[8vw] pt-[12vh] text-center">
+              <h2 className="text-[44px] font-extrabold tracking-tight text-slate-700">
                 Cảm Nhận Học Viên
               </h2>
               <p className="mt-3 text-lg text-[#667085]">
@@ -2968,29 +3105,36 @@ export default function LandingPage() {
             </div>
 
             <div
-              className="mt-14 w-full flex-1 overflow-x-auto pb-[10vh]"
+              className="mt-14 w-full flex-1 select-none overflow-x-auto pb-[10vh] cursor-grab active:cursor-grabbing"
               style={
-                { scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties
+                {
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  touchAction: "pan-y",
+                } as React.CSSProperties
               }
+              {...adultTestimonialsDrag}
             >
               <div className="flex w-max items-stretch gap-10 px-[8vw] snap-x snap-mandatory">
                 {kidTestimonials.map((t, index) => (
                   <article
                     key={`adult-${t.name}-${index}`}
-                    className="flex w-[23vw] aspect-[1/1.4] flex-col justify-between rounded-[32px] border border-slate-100 bg-white p-10 shadow-sm snap-center"
+                    className="grid h-[55vh] max-h-[55vh] w-[23vw] grid-rows-[1fr_auto] rounded-[32px] border border-slate-100 bg-white p-[clamp(28px,3.2vh,40px)] shadow-sm snap-center"
                   >
-                    <p className="text-[18px] leading-relaxed text-slate-700">
+                    <p className="self-center text-[clamp(16px,2vh,22px)] leading-relaxed text-slate-700">
                       {t.content}
                     </p>
 
-                    <div className="mt-10 flex items-center gap-5">
-                      <div className="h-16 w-16 rounded-full bg-slate-200" />
+                    <div className="flex items-center gap-5">
+                      <div className="h-[clamp(52px,6vh,72px)] w-[clamp(52px,6vh,72px)] rounded-full bg-slate-200" />
                       <div className="text-left">
-                        <p className="text-[26px] font-bold text-slate-800">
+                        <p className="text-[clamp(18px,2.4vh,26px)] font-bold text-slate-700">
                           {t.name}
                         </p>
-                        <p className="mt-1 text-sm text-[#667085]">{t.date}</p>
-                        <div className="mt-2 text-[14px] text-[#C1077B]">
+                        <p className="mt-1 text-[clamp(12px,1.4vh,14px)] text-[#667085]">
+                          {t.date}
+                        </p>
+                        <div className="mt-2 text-[clamp(12px,1.6vh,16px)] text-[#C1077B]">
                           {"★★★★★"}
                         </div>
                       </div>
@@ -3115,7 +3259,7 @@ export default function LandingPage() {
 
             <form
               className="mt-3 flex w-full flex-1 flex-col gap-2.5"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={onSubmitConsultation}
             >
               <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
                 <label className="block text-[14px] font-semibold text-white">
@@ -3218,10 +3362,10 @@ export default function LandingPage() {
               <div className="mt-1 flex justify-center pb-1">
                 <button
                   type="submit"
-                  disabled={!kidConsultAgree}
+                  disabled={!kidConsultAgree || isConsultSubmitting}
                   className="mx-auto h-[44px] w-[80vw] max-w-full rounded-[14px] bg-[#D40887] text-center text-[16px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.20)] disabled:opacity-100 disabled:cursor-not-allowed disabled:brightness-95"
                 >
-                  Gửi
+                  {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
                 </button>
               </div>
             </form>
@@ -3229,10 +3373,10 @@ export default function LandingPage() {
             <button
               type="button"
               onClick={scrollToTop}
-              className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+              className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
               aria-label="Lên đầu trang"
             >
-              <span className="text-lg">↑</span>
+              <ArrowUpIcon size={20} className="h-5 w-5" />
             </button>
           </div>
 
@@ -3249,7 +3393,7 @@ export default function LandingPage() {
 
             <form
               className="mt-[min(2.9vh,22px)] flex w-full max-w-[920px] flex-col gap-[min(1.7vh,14px)]"
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={onSubmitConsultation}
             >
               <div className="space-y-2 text-left">
                 <label className="block text-[13px] font-semibold text-white">Tên</label>
@@ -3257,7 +3401,7 @@ export default function LandingPage() {
                   value={kidConsultName}
                   onChange={(e) => setKidConsultName(e.target.value)}
                   placeholder="Nhập tên của bạn"
-                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
                 />
               </div>
 
@@ -3268,7 +3412,7 @@ export default function LandingPage() {
                   onChange={(e) => setKidConsultEmail(e.target.value)}
                   placeholder="you@company.com"
                   inputMode="email"
-                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                  className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
                 />
               </div>
 
@@ -3280,7 +3424,7 @@ export default function LandingPage() {
                   <select
                     value={kidConsultContactMethod}
                     onChange={(e) => setKidConsultContactMethod(e.target.value as any)}
-                    className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
+                    className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
                   >
                     <option value="zalo">Zalo</option>
                     <option value="phone">Điện thoại</option>
@@ -3295,7 +3439,7 @@ export default function LandingPage() {
               <div className="space-y-2 text-left">
                 <label className="block text-[13px] font-semibold text-white">Số Zalo</label>
                 <div className="flex h-[clamp(35px,4.2vh,40px)] w-full overflow-hidden rounded-[16px] bg-white/55 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-md">
-                  <div className="flex items-center gap-2 px-4 text-[13px] text-slate-800">
+                  <div className="flex items-center gap-2 px-4 text-[13px] text-slate-700">
                     <select
                       value={kidConsultZaloCountry}
                       onChange={(e) => setKidConsultZaloCountry(e.target.value as any)}
@@ -3313,7 +3457,7 @@ export default function LandingPage() {
                       onChange={(e) => setKidConsultZaloNumber(e.target.value)}
                       placeholder="(555) 000-0000"
                       inputMode="tel"
-                      className="h-full w-full bg-transparent text-left text-[13px] text-slate-800 outline-none placeholder:text-slate-500"
+                      className="h-full w-full bg-transparent text-left text-[13px] text-slate-700 outline-none placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -3328,7 +3472,7 @@ export default function LandingPage() {
                   onChange={(e) => setKidConsultTopic(e.target.value)}
                   placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
                   rows={3}
-                  className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-800 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+                  className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
                 />
               </div>
 
@@ -3347,10 +3491,10 @@ export default function LandingPage() {
               <div className="mt-3 flex justify-center">
                 <button
                   type="submit"
-                  disabled={!kidConsultAgree}
+                  disabled={!kidConsultAgree || isConsultSubmitting}
                   className="h-[clamp(40px,5.3vh,44px)] w-full max-w-[506px] rounded-[16px] bg-[#C1077B] text-center text-[15px] font-extrabold text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95"
                 >
-                  Gửi
+                  {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
                 </button>
               </div>
             </form>
@@ -3375,7 +3519,7 @@ export default function LandingPage() {
                   priority
                 />
               </div>
-              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800">
+              <button type="button" aria-label="Open menu" onClick={() => setIsMenuOpen(true)} className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-700">
                 <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
                 <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
                 <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
@@ -3384,7 +3528,7 @@ export default function LandingPage() {
 
             {/* Heading */}
             <div className="mt-6 text-center">
-              <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-tight text-slate-800">
+              <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-tight text-slate-700">
                 Hoặc Liên Hệ Ngay Để
                 <br />
                 Nhận Tư Vấn
@@ -3398,7 +3542,13 @@ export default function LandingPage() {
 
             {/* Cards */}
             <div className="mt-5 flex flex-1 flex-col justify-center gap-2 pb-5">
-              <div className="rounded-[24px] bg-[#E6F7FE] px-5 py-3">
+              <a
+                href={ZALO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Mở Zalo"
+                className="rounded-[24px] bg-[#E6F7FE] px-5 py-3 transition-transform active:scale-[0.99]"
+              >
                 <Image
                   src="/assets/svg/zalo.svg"
                   alt="Zalo"
@@ -3406,15 +3556,21 @@ export default function LandingPage() {
                   height={32}
                   className="h-8 w-8"
                 />
-                <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">
+                <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">
                   Zalo
                 </h3>
                 <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                   Liên hệ với chúng tôi qua Zalo
                 </p>
-              </div>
+              </a>
 
-              <div className="rounded-[24px] bg-[#FFF5FB] px-5 py-3">
+              <a
+                href={MESSENGER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Mở Messenger"
+                className="rounded-[24px] bg-[#FFF5FB] px-5 py-3 transition-transform active:scale-[0.99]"
+              >
                 <Image
                   src="/assets/svg/messenger.svg"
                   alt="Messenger"
@@ -3422,13 +3578,13 @@ export default function LandingPage() {
                   height={32}
                   className="h-8 w-8"
                 />
-                <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">
+                <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">
                   Messenger
                 </h3>
                 <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                   Nhắn tin với chúng tôi ngay
                 </p>
-              </div>
+              </a>
 
               <div className="rounded-[24px] bg-[#F4FCE8] px-5 py-3">
                 <Image
@@ -3438,7 +3594,7 @@ export default function LandingPage() {
                   height={32}
                   className="h-8 w-8"
                 />
-                <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">
+                <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">
                   Whatsapp
                 </h3>
                 <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
@@ -3453,10 +3609,10 @@ export default function LandingPage() {
                 <button
                   type="button"
                   onClick={scrollToTop}
-                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
                   aria-label="Lên đầu trang"
                 >
-                  <span className="text-lg">↑</span>
+                  <ArrowUpIcon size={20} className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -3465,7 +3621,7 @@ export default function LandingPage() {
           {/* Desktop */}
           <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)] lg:flex">
             <div className="w-full max-w-[1100px] text-center">
-              <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
+              <h2 className="text-[48px] font-extrabold tracking-tight text-slate-700">
                 Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
               </h2>
               <p className="mx-auto mt-4 max-w-[760px] text-[20px] font-medium text-slate-500">
@@ -3475,8 +3631,14 @@ export default function LandingPage() {
 
             <div className="mt-[min(5.6vh,51px)] w-full max-w-[1180px]">
               <div className="grid grid-cols-3 gap-12">
-                <div className="rounded-[40px] bg-[#E6F7FE] p-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                <a
+                  href={ZALO_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Mở Zalo"
+                  className="rounded-[40px] bg-[#E6F7FE] p-10 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                     <Image
                       src="/assets/svg/zalo.svg"
                       alt="Zalo"
@@ -3485,16 +3647,22 @@ export default function LandingPage() {
                       className="h-10 w-10"
                     />
                   </div>
-                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">
                     Zalo
                   </h3>
                   <p className="mt-3 text-[18px] font-medium text-slate-600">
                     Liên hệ với chúng tôi qua Zalo
                   </p>
-                </div>
+                </a>
 
-                <div className="rounded-[40px] bg-[#FFF5FB] p-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                <a
+                  href={MESSENGER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Mở Messenger"
+                  className="rounded-[40px] bg-[#FFF5FB] p-10 transition-transform hover:-translate-y-0.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                     <Image
                       src="/assets/svg/messenger.svg"
                       alt="Messenger"
@@ -3503,16 +3671,16 @@ export default function LandingPage() {
                       className="h-10 w-10"
                     />
                   </div>
-                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">
                     Messenger
                   </h3>
                   <p className="mt-3 text-[18px] font-medium text-slate-600">
                     Nhắn tin với chúng tôi ngay
                   </p>
-                </div>
+                </a>
 
                 <div className="rounded-[40px] bg-[#F4FCE8] p-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                  <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                     <Image
                       src="/assets/svg/whatsapp.svg"
                       alt="Whatsapp"
@@ -3521,7 +3689,7 @@ export default function LandingPage() {
                       className="h-10 w-10"
                     />
                   </div>
-                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">
+                  <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">
                     Whatsapp
                   </h3>
                   <p className="mt-3 text-[18px] font-medium text-slate-600">
@@ -3675,10 +3843,10 @@ export default function LandingPage() {
               <button
                 type="button"
                 onClick={scrollToTop}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
                 aria-label="Lên đầu trang"
               >
-                <span className="text-lg">↑</span>
+                <ArrowUpIcon size={20} className="h-5 w-5" />
               </button>
             </div>
           </div>

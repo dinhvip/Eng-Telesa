@@ -6,17 +6,25 @@ import { useEffect, useRef, useState } from "react";
 import DesktopNavbar from "../components/DesktopNavbar";
 import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
+import ArrowUpIcon from "../components/ArrowUpIcon";
 
 export default function TestPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const variant = searchParams.get("variant") === "adult" ? "adult" : "kid";
+  const ZALO_URL = "https://zalo.me/407812786777792624";
+  const MESSENGER_URL =
+    "https://www.messenger.com/t/101413051393124/?messaging_source=source%3Apages%3Amessage_shortlink&source_id=1441792&recurring_notification=0";
   const logoSrc = variant === "adult" ? "/assets/svg/logo.png" : "/assets/logo.png";
   const brandAlt = variant === "adult" ? "Telesa English logo" : "Telesa English Kids logo";
   const primaryBgClass = variant === "adult" ? "bg-[#D40887]" : "bg-[#FFC000]";
   const primaryTextClass = variant === "adult" ? "text-[#D40887]" : "text-[#FFC000]";
   const testVideoSrc = variant === "adult" ? "/assets/test-adult.mp4" : "/assets/test.mp4";
-  const phoneIconSrc = variant === "adult" ? "/assets/svg/phone-pink.svg" : "/assets/svg/phone.svg";
+  const testFormUrl =
+    variant === "adult"
+      ? "https://docs.google.com/forms/d/e/1FAIpQLSfs1WE2JgmVRNPUqP0dowsK-54kme3GKkRH_sDtzyuKisI2pg/viewform?usp=dialog"
+      : "https://docs.google.com/forms/d/e/1FAIpQLSdg__vgNH_5yGNGSjppreujeZJ87R6FuDfjglh2GWP_aBB56Q/viewform?usp=dialog";
+  const phoneIconSrc = variant === "adult" ? "/assets/svg/consult-pink.svg" : "/assets/svg/consult.svg";
   const consultBgSrc = variant === "adult" ? "/assets/10-2.jpg" : "/assets/10-1.jpg";
   const consultOverlayStyle = variant === "adult" ? { backgroundColor: "#59033933" } : undefined;
   const consultOverlayClassName = variant === "adult" ? "" : "bg-[#6B510033]";
@@ -40,6 +48,9 @@ export default function TestPageClient() {
 
   const onSubmitInfo: React.FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
+    if (typeof window !== "undefined") {
+      window.open(testFormUrl, "_blank", "noopener,noreferrer");
+    }
     uploadSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -123,7 +134,7 @@ export default function TestPageClient() {
         {/* View 1 (desktop): Personal info */}
         <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex">
           <video
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            className="bg-video pointer-events-none absolute inset-0 h-full w-full object-cover"
             autoPlay
             muted
             loop
@@ -250,7 +261,7 @@ export default function TestPageClient() {
         {/* View 1 (mobile): Personal info */}
         <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden">
           <video
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+            className="bg-video pointer-events-none absolute inset-0 h-full w-full object-cover"
             autoPlay
             muted
             loop
@@ -543,7 +554,7 @@ export default function TestPageClient() {
               onClick={scrollToTop}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-black/25 shadow-lg backdrop-blur-md"
             >
-              <span className="text-[22px] leading-none">↑</span>
+              <ArrowUpIcon size={22} color="white" className="h-[22px] w-[22px]" />
             </button>
           </div>
         </div>
@@ -791,7 +802,7 @@ export default function TestPageClient() {
                 className="mt-10 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/10 text-white shadow-sm backdrop-blur-sm hover:bg-white/15 active:opacity-90"
                 aria-label="Lên đầu trang"
               >
-                <span className="text-[18px] leading-none">↑</span>
+                <ArrowUpIcon size={18} color="white" className="h-[18px] w-[18px]" />
               </button>
             </div>
 
@@ -1042,10 +1053,10 @@ export default function TestPageClient() {
           <button
             type="button"
             onClick={scrollToTop}
-            className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+            className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
             aria-label="Lên đầu trang"
           >
-            <span className="text-lg">↑</span>
+            <ArrowUpIcon size={20} className="h-5 w-5" />
           </button>
         </div>
       </section>
@@ -1058,7 +1069,7 @@ export default function TestPageClient() {
         {/* Desktop */}
         <div className="relative z-10 hidden h-full w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)] pt-[96px] lg:flex">
           <div className="w-full max-w-[1100px] text-center">
-            <h2 className="text-[48px] font-extrabold tracking-tight text-slate-800">
+            <h2 className="text-[48px] font-extrabold tracking-tight text-slate-700">
               Liên Hệ Ngay Để Nhận Tư Vấn
             </h2>
             <p className="mx-auto mt-4 max-w-[760px] text-[20px] font-medium text-slate-500">
@@ -1068,8 +1079,14 @@ export default function TestPageClient() {
 
           <div className="mt-[min(5.6vh,51px)] w-full max-w-[1180px]">
             <div className="grid grid-cols-3 gap-12">
-              <div className="rounded-[40px] bg-[#E6F7FE] p-10">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+              <a
+                href={ZALO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Mở Zalo"
+                className="rounded-[40px] bg-[#E6F7FE] p-10 transition-transform hover:-translate-y-0.5"
+              >
+                <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                   <Image
                     src="/assets/svg/zalo.svg"
                     alt="Zalo"
@@ -1078,14 +1095,20 @@ export default function TestPageClient() {
                     className="h-10 w-10"
                   />
                 </div>
-                <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">Zalo</h3>
+                <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">Zalo</h3>
                 <p className="mt-3 text-[18px] font-medium text-slate-600">
                   Liên hệ với chúng tôi qua Zalo
                 </p>
-              </div>
+              </a>
 
-              <div className="rounded-[40px] bg-[#FFF5FB] p-10">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+              <a
+                href={MESSENGER_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Mở Messenger"
+                className="rounded-[40px] bg-[#FFF5FB] p-10 transition-transform hover:-translate-y-0.5"
+              >
+                <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                   <Image
                     src="/assets/svg/messenger.svg"
                     alt="Messenger"
@@ -1094,14 +1117,14 @@ export default function TestPageClient() {
                     className="h-10 w-10"
                   />
                 </div>
-                <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">Messenger</h3>
+                <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">Messenger</h3>
                 <p className="mt-3 text-[18px] font-medium text-slate-600">
                   Nhắn tin với chúng tôi ngay
                 </p>
-              </div>
+              </a>
 
               <div className="rounded-[40px] bg-[#F4FCE8] p-10">
-                <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white shadow-sm">
+                <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                   <Image
                     src="/assets/svg/whatsapp.svg"
                     alt="Whatsapp"
@@ -1110,7 +1133,7 @@ export default function TestPageClient() {
                     className="h-10 w-10"
                   />
                 </div>
-                <h3 className="mt-8 text-[34px] font-extrabold text-slate-800">Whatsapp</h3>
+                <h3 className="mt-8 text-[34px] font-extrabold text-slate-700">Whatsapp</h3>
                 <p className="mt-3 text-[18px] font-medium text-slate-600">
                   Liên hệ với chúng tôi qua Whatsapp
                 </p>
@@ -1136,7 +1159,7 @@ export default function TestPageClient() {
               type="button"
               aria-label="Open menu"
               onClick={() => setIsMenuOpen(true)}
-              className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-800"
+              className="flex h-9 w-9 flex-col items-center justify-center rounded-full bg-transparent text-slate-700"
             >
               <span className="block h-[2px] w-4 rounded-full bg-slate-800" />
               <span className="mt-[3px] block h-[2px] w-4 rounded-full bg-slate-800" />
@@ -1145,7 +1168,7 @@ export default function TestPageClient() {
           </div>
 
           <div className="mt-6 text-center">
-            <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-tight text-slate-800">
+            <h2 className="text-[28px] font-extrabold leading-[1.1] tracking-tight text-slate-700">
               Liên hệ ngay để
               <br />
               nhận tư vấn
@@ -1158,7 +1181,13 @@ export default function TestPageClient() {
           </div>
 
           <div className="mt-5 flex flex-1 flex-col justify-center gap-2 pb-5">
-            <div className="rounded-[24px] bg-[#E6F7FE] px-5 py-3">
+            <a
+              href={ZALO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Mở Zalo"
+              className="rounded-[24px] bg-[#E6F7FE] px-5 py-3 transition-transform active:scale-[0.99]"
+            >
               <Image
                 src="/assets/svg/zalo.svg"
                 alt="Zalo"
@@ -1167,13 +1196,19 @@ export default function TestPageClient() {
                 className="h-8 w-8"
                 unoptimized
               />
-              <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">Zalo</h3>
+              <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">Zalo</h3>
               <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                 Liên hệ với chúng tôi qua Zalo
               </p>
-            </div>
+            </a>
 
-            <div className="rounded-[24px] bg-[#FFF5FB] px-5 py-3">
+            <a
+              href={MESSENGER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Mở Messenger"
+              className="rounded-[24px] bg-[#FFF5FB] px-5 py-3 transition-transform active:scale-[0.99]"
+            >
               <Image
                 src="/assets/svg/messenger.svg"
                 alt="Messenger"
@@ -1182,11 +1217,11 @@ export default function TestPageClient() {
                 className="h-8 w-8"
                 unoptimized
               />
-              <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">Messenger</h3>
+              <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">Messenger</h3>
               <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                 Nhắn tin với chúng tôi ngay
               </p>
-            </div>
+            </a>
 
             <div className="rounded-[24px] bg-[#F4FCE8] px-5 py-3">
               <Image
@@ -1197,7 +1232,7 @@ export default function TestPageClient() {
                 className="h-8 w-8"
                 unoptimized
               />
-              <h3 className="mt-2 text-[22px] font-extrabold text-slate-800">Whatsapp</h3>
+              <h3 className="mt-2 text-[22px] font-extrabold text-slate-700">Whatsapp</h3>
               <p className="mt-1 text-[14px] font-medium leading-snug text-slate-500">
                 Liên hệ với chúng tôi qua Whatsapp
               </p>
@@ -1209,10 +1244,10 @@ export default function TestPageClient() {
               <button
                 type="button"
                 onClick={scrollToTop}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-800 shadow-md"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
                 aria-label="Lên đầu trang"
               >
-                <span className="text-lg">↑</span>
+                <ArrowUpIcon size={20} className="h-5 w-5" />
               </button>
             </div>
           </div>

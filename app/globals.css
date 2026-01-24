@@ -13,7 +13,74 @@
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "Segoe UI", sans-serif;
+  font-family: var(--font-inter), system-ui, -apple-system, BlinkMacSystemFont,
+    "SF Pro Text", "Segoe UI", sans-serif;
 }
 
+.bg-video {
+  pointer-events: none;
+}
+
+:where(input, textarea)::placeholder {
+  color: #667085 !important;
+  opacity: 1;
+}
+
+@keyframes telesa-wiggle {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0deg);
+  }
+  72% {
+    transform: rotate(-10deg);
+  }
+  74% {
+    transform: rotate(10deg);
+  }
+  76% {
+    transform: rotate(-7deg);
+  }
+  78% {
+    transform: rotate(7deg);
+  }
+  80% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes telesa-nudge {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  74% {
+    transform: translateY(-4px);
+  }
+  78% {
+    transform: translateY(0);
+  }
+  82% {
+    transform: translateY(-2px);
+  }
+  86% {
+    transform: translateY(0);
+  }
+}
+
+.telesa-wiggle {
+  animation: telesa-wiggle 2.8s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+.telesa-nudge {
+  animation: telesa-nudge 2.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .telesa-wiggle,
+  .telesa-nudge {
+    animation: none;
+  }
+}

@@ -93,6 +93,7 @@ export default function OneOnOnePage() {
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
   const rafRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [edgePaddingPx, setEdgePaddingPx] = useState(0);
 
   const setCardRef = useMemo(
     () => (index: number) => (el: HTMLElement | null) => {
@@ -142,6 +143,36 @@ export default function OneOnOnePage() {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const updateEdgePadding = () => {
+      const scroller = scrollerRef.current;
+      const firstCard = cardRefs.current[0];
+      if (!scroller || !firstCard) return;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const cardRect = firstCard.getBoundingClientRect();
+      const padding = Math.max(0, (scrollerRect.width - cardRect.width) / 2);
+      setEdgePaddingPx(padding);
+    };
+
+    const raf = window.requestAnimationFrame(updateEdgePadding);
+    window.addEventListener("resize", updateEdgePadding);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => updateEdgePadding());
+      const scroller = scrollerRef.current;
+      const firstCard = cardRefs.current[0];
+      if (scroller) ro.observe(scroller);
+      if (firstCard) ro.observe(firstCard);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", updateEdgePadding);
+      ro?.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -205,31 +236,34 @@ export default function OneOnOnePage() {
         }}
       />
 
-      {/* Mobile */}
-      <section className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
-        <MobileHeader
-          logoSrc="/assets/svg/logo.png"
-          logoAlt="Telesa English logo"
-          logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
-          logoImageSize={50}
-          logoPriority
-          ctaClassName="rounded-full border border-white/90 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
-          menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
-          menuLineClassName="bg-white"
-          onMenuOpen={() => setIsMenuOpen(true)}
-          onCtaClick={() => router.push("/test?variant=adult")}
-        />
+      {/* Mobile + Desktop (desktop now matches mobile carousel animation) */}
+      <section className="relative mx-auto flex min-h-[100dvh] w-full flex-col px-4 pb-6 pt-8 lg:px-[6vw] lg:pb-16 lg:pt-[92px]">
+        <div className="lg:hidden">
+          <MobileHeader
+            logoSrc="/assets/svg/logo.png"
+            logoAlt="Telesa English logo"
+            logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
+            logoImageSize={50}
+            logoPriority
+            ctaClassName="rounded-full border border-white/90 bg-transparent px-4 py-2 text-xs font-medium text-white shadow-sm"
+            menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-white"
+            menuLineClassName="bg-white"
+            onMenuOpen={() => setIsMenuOpen(true)}
+            onCtaClick={() => router.push("/test?variant=adult")}
+          />
+        </div>
 
         <div className="mt-12 flex flex-1 flex-col">
-          <h1 className="text-center text-[24px] font-semibold leading-none tracking-tight">
+          <h1 className="text-center text-[24px] font-semibold leading-none tracking-tight lg:text-[clamp(34px,2.6vw,52px)] lg:leading-[1.12] lg:tracking-tight">
             Học kèm 1-1
           </h1>
 
-          <div className="mt-10 flex-1">
+          <div className="mt-10 flex-1 lg:mt-14">
             <div
               ref={scrollerRef}
               onScroll={onScroll}
-              className="relative left-1/2 flex w-screen -translate-x-1/2 items-end gap-6 overflow-x-auto px-[11vw] pb-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
+              className="relative left-1/2 flex w-screen -translate-x-1/2 items-end gap-6 overflow-x-auto pb-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory lg:pb-4"
+              style={{ paddingLeft: edgePaddingPx, paddingRight: edgePaddingPx }}
             >
               {CARDS.map((card, index) => {
                 const isActive = index === activeIndex;
@@ -238,21 +272,23 @@ export default function OneOnOnePage() {
                     key={card.title}
                     ref={setCardRef(index)}
                     className={[
-                      "w-[78vw] max-w-[340px] shrink-0 snap-center rounded-[48px] bg-white p-5 text-[#313A4C] shadow-[0_18px_50px_rgba(0,0,0,0.25)]",
+                      "w-[78vw] max-w-[340px] shrink-0 snap-center rounded-[48px] bg-white p-5 text-[#313A4C] shadow-[0_18px_50px_rgba(0,0,0,0.25)] lg:w-[28vw] lg:max-w-[440px] lg:rounded-[44px] lg:p-7",
                       "transition-[transform,height,opacity] duration-200 ease-out",
                       isActive ? "h-[60vh] opacity-100" : "h-[52vh] opacity-90",
+                      isActive ? "lg:h-[62vh]" : "lg:h-[56vh]",
+                      "max-h-[560px] lg:max-h-[680px]",
                       isActive ? "scale-100" : "scale-[0.96]",
                       "flex flex-col justify-center",
                     ].join(" ")}
                   >
-                    <h2 className="text-center text-[16px] font-semibold leading-snug tracking-tight whitespace-pre-line">
+                    <h2 className="text-center text-[16px] font-semibold leading-snug tracking-tight whitespace-pre-line lg:text-[18px] lg:leading-tight">
                       {card.title}
                     </h2>
 
-                    <ul className="mt-5 space-y-3 text-[12px] leading-relaxed">
+                    <ul className="mt-5 space-y-3 text-[12px] leading-relaxed lg:mt-6 lg:space-y-4 lg:text-[14px]">
                       {card.bullets.map((b, idx) => (
                         <li key={idx} className="flex gap-2.5">
-                          <span className="mt-[7px] inline-block h-[5px] w-[5px] shrink-0 rounded-full bg-[#313A4C]" />
+                          <span className="mt-[7px] inline-block h-[5px] w-[5px] shrink-0 rounded-full bg-[#313A4C] lg:mt-[8px] lg:h-[6px] lg:w-[6px]" />
                           <div className="flex-1">
                             {b}
                           </div>
@@ -260,13 +296,13 @@ export default function OneOnOnePage() {
                       ))}
                     </ul>
 
-                    <div className="mt-6 overflow-hidden rounded-[28px]">
+                    <div className="mt-6 overflow-hidden rounded-[28px] lg:mt-8 lg:rounded-[24px]">
                       <div className="relative aspect-[4/3] w-full">
                         <Image
                           src={card.imageSrc}
                           alt={card.imageAlt}
                           fill
-                          sizes="320px"
+                          sizes="(min-width: 1024px) 440px, 320px"
                           className="z-0 object-cover"
                           priority={false}
                         />
@@ -289,59 +325,6 @@ export default function OneOnOnePage() {
               navigationAriaLabel="Về trang chủ"
               onScrollToTop={goBack}
             />
-          </div>
-        </div>
-      </section>
-
-      {/* Desktop */}
-      <section className="hidden lg:block">
-        <div className="mx-auto w-full px-[6vw] pb-16 pt-[92px]">
-          <h1 className="text-center text-[clamp(34px,2.6vw,52px)] font-semibold leading-[1.12] tracking-tight">
-            Học kèm 1-1
-          </h1>
-
-          <div className="mt-14 grid grid-cols-4 justify-items-center gap-8">
-            {CARDS.map((card) => (
-              <article
-                key={`desktop-${card.title}`}
-                className={[
-                  "w-full max-w-[60vh]",
-                  "rounded-[28px] bg-white p-7 text-[#313A4C] shadow-[0_18px_50px_rgba(0,0,0,0.25)]",
-                  "flex min-h-[520px] flex-col overflow-hidden",
-                ].join(" ")}
-              >
-                <h2 className="text-center text-[18px] font-semibold leading-tight tracking-tight whitespace-pre-line">
-                  {card.title}
-                </h2>
-
-                <div className="mt-6 flex flex-1 flex-col justify-center">
-                  <ul className="space-y-4 text-[14px] leading-relaxed text-slate-700">
-                    {card.bullets.map((b, idx) => (
-                      <li key={idx} className="flex gap-3">
-                        <span className="mt-[8px] inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-[#313A4C]" />
-                        <div className="flex-1">{b}</div>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="mt-8">
-                    <div className="overflow-hidden rounded-[20px] bg-slate-100 p-3">
-                      <div className="relative aspect-[4/3] w-full">
-                        <Image
-                          src={card.imageSrc}
-                          alt={card.imageAlt}
-                          fill
-                          sizes="(min-width: 1024px) 25vw, 0px"
-                          className="z-0 object-contain"
-                          priority={false}
-                        />
-                        <div aria-hidden className="absolute inset-0 z-10 bg-[#99005F33]" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ))}
           </div>
         </div>
       </section>

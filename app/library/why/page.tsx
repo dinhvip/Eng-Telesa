@@ -17,10 +17,124 @@ const DESKTOP_SUMMARY_ITEMS = [
   "Quan trọng hơn, con sẽ hình thành đam mê thật sự với tiếng Anh, chứ không chỉ học để làm bài kiểm tra.",
 ] as const;
 
+type WhyDirection = "forward" | "back";
+
+function useWhyTextDeck(options: {
+  itemCount: number;
+  onOverflowForward?: () => void;
+  onOverflowBack?: () => void;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [textPhase, setTextPhase] = useState<{
+    state: "leaving" | "entering";
+    direction: WhyDirection;
+  } | null>(null);
+  const isTransitioningRef = useRef(false);
+  const animTimerRef = useRef<number | null>(null);
+  const textTimerRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const clearAnimTimer = () => {
+    if (animTimerRef.current == null) return;
+    window.clearTimeout(animTimerRef.current);
+    animTimerRef.current = null;
+  };
+
+  const clearTextTimer = () => {
+    if (textTimerRef.current == null) return;
+    window.clearTimeout(textTimerRef.current);
+    textTimerRef.current = null;
+  };
+
+  useEffect(() => {
+    return () => {
+      clearAnimTimer();
+      clearTextTimer();
+    };
+  }, []);
+
+  const startTransition = (direction: WhyDirection) => {
+    if (isTransitioningRef.current) return;
+    const to = direction === "forward" ? activeIndex + 1 : activeIndex - 1;
+
+    if (to < 0) {
+      options.onOverflowBack?.();
+      return;
+    }
+    if (to >= options.itemCount) {
+      options.onOverflowForward?.();
+      return;
+    }
+
+    isTransitioningRef.current = true;
+    setTextPhase({ state: "leaving", direction });
+    clearTextTimer();
+
+    clearAnimTimer();
+    animTimerRef.current = window.setTimeout(() => {
+      setActiveIndex(to);
+      isTransitioningRef.current = false;
+      animTimerRef.current = null;
+
+      setTextPhase({ state: "entering", direction });
+      clearTextTimer();
+      textTimerRef.current = window.setTimeout(() => {
+        setTextPhase(null);
+        textTimerRef.current = null;
+      }, 220);
+    }, 320);
+  };
+
+  const onWheelNonPassive = (e: WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isTransitioningRef.current) return;
+    if (e.deltaY > 12) startTransition("forward");
+    else if (e.deltaY < -12) startTransition("back");
+  };
+
+  const onTouchStart: React.TouchEventHandler<HTMLElement> = (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    touchStartYRef.current = t.clientY;
+  };
+
+  const onTouchEnd: React.TouchEventHandler<HTMLElement> = (e) => {
+    const startY = touchStartYRef.current;
+    touchStartYRef.current = null;
+    if (startY == null) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dy = t.clientY - startY;
+    if (Math.abs(dy) < 42) return;
+    if (dy < 0) startTransition("forward");
+    else startTransition("back");
+  };
+
+  return {
+    activeIndex,
+    textPhase,
+    onWheelNonPassive,
+    gestureHandlers: {
+      onTouchStart,
+      onTouchEnd,
+      onTouchCancel: () => {
+        touchStartYRef.current = null;
+      },
+    },
+  };
+}
+
 export default function LibraryWhyPage() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const mobileHeroRef = useRef<HTMLElement | null>(null);
+  const mobileFooterRef = useRef<HTMLDivElement | null>(null);
+  const mobileDeckRef = useRef<HTMLDivElement | null>(null);
+  const desktopSectionRef = useRef<HTMLElement | null>(null);
+  const desktopFooterRef = useRef<HTMLDivElement | null>(null);
+  const desktopDeckRef = useRef<HTMLDivElement | null>(null);
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
     else router.push("/");
@@ -28,6 +142,78 @@ export default function LibraryWhyPage() {
   const scrollToTop = () => {
     scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const {
+    activeIndex: desktopActiveIndex,
+    textPhase: desktopTextPhase,
+    onWheelNonPassive: desktopDeckWheel,
+    gestureHandlers: desktopDeckHandlers,
+  } = useWhyTextDeck({
+    itemCount: DESKTOP_SUMMARY_ITEMS.length,
+    onOverflowBack: () => {
+      mobileHeroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    onOverflowForward: () => {
+      desktopFooterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+  });
+
+  const {
+    activeIndex: mobileActiveIndex,
+    textPhase: mobileTextPhase,
+    onWheelNonPassive: mobileDeckWheel,
+    gestureHandlers: mobileDeckHandlers,
+  } =
+    useWhyTextDeck({
+      itemCount: DESKTOP_SUMMARY_ITEMS.length,
+      onOverflowBack: () => {
+        mobileHeroRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      },
+      onOverflowForward: () => {
+        mobileFooterRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      },
+    });
+
+  useEffect(() => {
+    const element = mobileDeckRef.current;
+    if (!element) return;
+    element.addEventListener("wheel", mobileDeckWheel, { passive: false });
+    return () => {
+      element.removeEventListener("wheel", mobileDeckWheel);
+    };
+  }, [mobileDeckWheel]);
+
+  useEffect(() => {
+    const element = desktopDeckRef.current;
+    if (!element) return;
+    element.addEventListener("wheel", desktopDeckWheel, { passive: false });
+    return () => {
+      element.removeEventListener("wheel", desktopDeckWheel);
+    };
+  }, [desktopDeckWheel]);
+
+  const textBaseClass =
+    "transition-[transform,opacity] duration-300 ease-out will-change-transform will-change-opacity";
+
+  const mobileTextMotion =
+    mobileTextPhase?.state === "leaving"
+      ? {
+          opacity: 0,
+          transform: `translateY(${mobileTextPhase.direction === "forward" ? "-14px" : "14px"})`,
+        }
+      : mobileTextPhase?.state === "entering"
+        ? { opacity: 1, transform: "translateY(0px)" }
+        : { opacity: 1, transform: "translateY(0px)" };
+
+  const desktopTextMotion =
+    desktopTextPhase?.state === "leaving"
+      ? {
+          opacity: 0,
+          transform: `translateY(${desktopTextPhase.direction === "forward" ? "-14px" : "14px"})`,
+        }
+      : desktopTextPhase?.state === "entering"
+        ? { opacity: 1, transform: "translateY(0px)" }
+        : { opacity: 1, transform: "translateY(0px)" };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -120,13 +306,13 @@ export default function LibraryWhyPage() {
         ref={scrollContainerRef}
         className={["h-[100dvh] bg-[#F8F9FA]", "overflow-y-auto", "snap-y snap-mandatory"].join(" ")}
       >
-        <section className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900">
+        <section ref={mobileHeroRef} className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900">
           <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:max-w-5xl lg:px-8 lg:pt-[110px]">
             <MobileHeader
               className="lg:hidden"
               logoSrc="/assets/logo.png"
               logoAlt="Telesa English Kids logo"
-              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
               menuAriaLabel="Menu"
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
@@ -158,9 +344,17 @@ export default function LibraryWhyPage() {
         </section>
 
         {/* Desktop: combine slides 2-5 into one view (footer attached) */}
-        <section className="relative hidden min-h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:block">
+        <section
+          ref={desktopSectionRef}
+          className="relative hidden min-h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:block"
+        >
           <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-8 pt-[110px]">
-            <div className="flex flex-1 items-center pb-16">
+            <div
+              ref={desktopDeckRef}
+              className="flex flex-1 items-center pb-16"
+              style={{ touchAction: "none" }}
+              {...desktopDeckHandlers}
+            >
               <div className="grid w-full grid-cols-12 gap-6">
                 <div className="col-span-5 flex items-center">
                   <div className="min-w-max whitespace-nowrap text-[clamp(32px,2.6vw,44px)] font-semibold leading-[1.1] tracking-tight text-[#343B4A]">
@@ -170,14 +364,15 @@ export default function LibraryWhyPage() {
 
                 <div className="col-span-7 flex">
                   <div className="flex w-full flex-col items-center justify-center gap-[clamp(28px,4vh,64px)]">
-                    {DESKTOP_SUMMARY_ITEMS.map((item) => (
-                      <p
-                        key={item}
-                        className="max-w-[40ch] text-center text-[clamp(22px,2vw,30px)] font-medium leading-[1.22] tracking-tight text-[#FFC000]"
-                      >
-                        {item}
-                      </p>
-                    ))}
+                    <p
+                      className={[
+                        "max-w-[40ch] text-center text-[clamp(22px,2vw,30px)] font-medium leading-[1.22] tracking-tight text-[#FFC000]",
+                        textBaseClass,
+                      ].join(" ")}
+                      style={desktopTextMotion}
+                    >
+                      {DESKTOP_SUMMARY_ITEMS[desktopActiveIndex]}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -196,39 +391,43 @@ export default function LibraryWhyPage() {
             </div>
           </div>
 
-          <FooterContactView
-            variant="kid"
-            logoSrc="/assets/logo.png"
-            snapStart={false}
-            onMenuOpen={() => {}}
-            onScrollToTop={scrollToTop}
-            showFloatingActions={false}
-            showMobileHeader={false}
-            onNavigate={(key) => {
-              if (key === "home") router.push("/");
-              if (key === "product") router.push("/product?variant=kid");
-              if (key === "library") router.push("/library");
-              if (key === "library-why") router.push("/library/why");
-              if (key === "library-program-for-kid") router.push("/library/program-for-kid");
-              if (key === "library-what-is-tes") router.push("/library/what-is-tes");
-              if (key === "library-1-1") router.push("/library/1-1");
-              if (key === "library-payment-method") router.push("/library/payment-method");
-              if (key === "library-why-group") router.push("/library/why-group");
-              if (key === "library-roadmap") router.push("/library/roadmap");
-              if (key === "teacher") router.push("/");
-              if (key === "about") router.push("/");
-              if (key === "career") router.push("/");
-            }}
-          />
+          <div ref={desktopFooterRef}>
+            <FooterContactView
+              variant="kid"
+              logoSrc="/assets/logo.png"
+              snapStart={false}
+              onMenuOpen={() => {}}
+              onScrollToTop={scrollToTop}
+              showFloatingActions={false}
+              showMobileHeader={false}
+              onNavigate={(key) => {
+                if (key === "home") router.push("/");
+                if (key === "product") router.push("/product?variant=kid");
+                if (key === "library") router.push("/library");
+                if (key === "library-why") router.push("/library/why");
+                if (key === "library-program-for-kid") router.push("/library/program-for-kid");
+                if (key === "library-what-is-tes") router.push("/library/what-is-tes");
+                if (key === "library-1-1") router.push("/library/1-1");
+                if (key === "library-payment-method") router.push("/library/payment-method");
+                if (key === "library-why-group") router.push("/library/why-group");
+                if (key === "library-roadmap") router.push("/library/roadmap");
+                if (key === "teacher") router.push("/");
+                if (key === "about") router.push("/");
+                if (key === "career") router.push("/");
+              }}
+            />
+          </div>
         </section>
 
         {/* Mobile slides */}
-        <section className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:hidden">
+        <section
+          className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:hidden"
+        >
           <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:max-w-5xl lg:px-8 lg:pt-[110px]">
             <MobileHeader
               logoSrc="/assets/logo.png"
               logoAlt="Telesa English Kids logo"
-              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
               menuAriaLabel="Menu"
               menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
               menuLineClassName="bg-white"
@@ -236,14 +435,25 @@ export default function LibraryWhyPage() {
               onCtaClick={() => router.push("/test")}
             />
 
-            <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <div className="w-full">
+            <div
+              ref={mobileDeckRef}
+              className="relative flex flex-1 flex-col text-center"
+              style={{ touchAction: "none" }}
+              {...mobileDeckHandlers}
+            >
+              <div className="absolute left-0 right-0 top-[25vh]">
                 <div className="text-[34px] font-medium leading-[1.2] tracking-tight text-[#343B4A] lg:text-[clamp(42px,3.6vw,52px)] lg:leading-[1.05]">
                   Ở Telesa English
                 </div>
-                <div className="mt-10 text-[28px] font-medium leading-[1.25] tracking-tight text-[#FFC000] lg:text-[clamp(32px,2.9vw,42px)] lg:leading-[1.15]">
-                  Con được rèn luyện đủ 4 kỹ năng, đặc biệt là nghe – nói chuẩn ngay từ nhỏ.
-                </div>
+	                <div
+	                  className={[
+	                    "mt-10 text-[28px] font-medium leading-[1.25] tracking-tight text-[#FFC000] lg:text-[clamp(32px,2.9vw,42px)] lg:leading-[1.15]",
+	                    textBaseClass,
+	                  ].join(" ")}
+	                  style={mobileTextMotion}
+	                >
+	                  {DESKTOP_SUMMARY_ITEMS[mobileActiveIndex]}
+	                </div>
               </div>
             </div>
 
@@ -261,123 +471,7 @@ export default function LibraryWhyPage() {
           </div>
         </section>
 
-        <section className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:hidden">
-          <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:max-w-5xl lg:px-8 lg:pt-[110px]">
-            <MobileHeader
-              logoSrc="/assets/logo.png"
-              logoAlt="Telesa English Kids logo"
-              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-              menuAriaLabel="Menu"
-              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
-              menuLineClassName="bg-white"
-              onMenuOpen={() => setIsMenuOpen(true)}
-              onCtaClick={() => router.push("/test")}
-            />
-
-            <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <div className="w-full">
-                <div className="text-[34px] font-medium leading-[1.2] tracking-tight text-[#343B4A] lg:text-[clamp(42px,3.6vw,52px)] lg:leading-[1.05]">
-                  Ở Telesa English
-                </div>
-                <div className="mt-10 text-[28px] font-medium leading-[1.25] tracking-tight text-[#FFC000] lg:text-[clamp(32px,2.9vw,42px)] lg:leading-[1.15]">
-                  Con tự tin tập nói, giao tiếp với giáo viên và bạn bè hoàn toàn bằng tiếng Anh.
-                </div>
-              </div>
-            </div>
-
-            <div className="pointer-events-none absolute bottom-6 right-6">
-              <div className="pointer-events-auto">
-                <MobileFloatingActions
-                  variant="kid"
-                  tone="soft"
-                  navigationIcon="left"
-                  navigationAriaLabel="Về trang chủ"
-                  onScrollToTop={goBack}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:hidden">
-          <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:max-w-5xl lg:px-8 lg:pt-[110px]">
-            <MobileHeader
-              logoSrc="/assets/logo.png"
-              logoAlt="Telesa English Kids logo"
-              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-              menuAriaLabel="Menu"
-              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
-              menuLineClassName="bg-white"
-              onMenuOpen={() => setIsMenuOpen(true)}
-              onCtaClick={() => router.push("/test")}
-            />
-
-            <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <div className="w-full">
-                <div className="text-[34px] font-medium leading-[1.2] tracking-tight text-[#343B4A] lg:text-[clamp(42px,3.6vw,52px)] lg:leading-[1.05]">
-                  Ở Telesa English
-                </div>
-                <div className="mt-10 text-[28px] font-medium leading-[1.25] tracking-tight text-[#FFC000] lg:text-[clamp(32px,2.9vw,42px)] lg:leading-[1.15]">
-                  Mỗi buổi học giống như một buổi vui chơi – kết nối – thư giãn sau giờ học trên
-                  trường, nhưng vẫn tràn đầy kiến thức.
-                </div>
-              </div>
-            </div>
-
-            <div className="pointer-events-none absolute bottom-6 right-6">
-              <div className="pointer-events-auto">
-                <MobileFloatingActions
-                  variant="kid"
-                  tone="soft"
-                  navigationIcon="left"
-                  navigationAriaLabel="Về trang chủ"
-                  onScrollToTop={goBack}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="relative h-[100dvh] snap-start bg-[#F8F9FA] text-slate-900 lg:hidden">
-          <div className="mx-auto flex h-full w-full max-w-md flex-col px-4 pb-8 pt-8 lg:max-w-5xl lg:px-8 lg:pt-[110px]">
-            <MobileHeader
-              logoSrc="/assets/logo.png"
-              logoAlt="Telesa English Kids logo"
-              ctaClassName="shrink-0 rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
-              menuAriaLabel="Menu"
-              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-slate-900 text-white shadow-sm"
-              menuLineClassName="bg-white"
-              onMenuOpen={() => setIsMenuOpen(true)}
-              onCtaClick={() => router.push("/test")}
-            />
-
-            <div className="flex flex-1 flex-col items-center justify-center text-center">
-              <div className="w-full">
-                <div className="text-[34px] font-medium leading-[1.2] tracking-tight text-[#343B4A] lg:text-[clamp(42px,3.6vw,52px)] lg:leading-[1.05]">
-                  Ở Telesa English
-                </div>
-                <div className="mt-10 text-[28px] font-medium leading-[1.25] tracking-tight text-[#FFC000] lg:text-[clamp(32px,2.9vw,42px)] lg:leading-[1.15]">
-                  Quan trọng hơn, con sẽ hình thành đam mê thật sự với tiếng Anh, chứ không chỉ học để
-                  làm bài kiểm tra.
-                </div>
-              </div>
-            </div>
-
-            <div className="pointer-events-none absolute bottom-6 right-6">
-              <div className="pointer-events-auto">
-                <MobileFloatingActions
-                  variant="kid"
-                  tone="soft"
-                  navigationIcon="left"
-                  navigationAriaLabel="Về trang chủ"
-                  onScrollToTop={goBack}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="lg:hidden">
+        <div ref={mobileFooterRef} className="lg:hidden">
           <FooterContactView
             variant="kid"
             logoSrc="/assets/logo.png"

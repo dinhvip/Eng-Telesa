@@ -175,7 +175,7 @@ export default function RoadmapPage() {
           logoWrapperClassName="relative h-[50px] w-[50px] shrink-0"
           logoImageSize={50}
           logoPriority
-          ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-800 shadow-sm"
+          ctaClassName="rounded-full border border-slate-400 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm"
           menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-transparent text-slate-900"
           menuLineClassName="bg-slate-900"
           onMenuOpen={() => setIsMenuOpen(true)}

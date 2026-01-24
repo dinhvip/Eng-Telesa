@@ -353,7 +353,7 @@ export default function ProductDetailClient(props: { course: CourseProduct }) {
                 ].map((review) => (
                   <div
                     key={review.name}
-                    className="rounded-[26px] bg-white px-4 py-4 text-slate-800 shadow-md"
+                    className="rounded-[26px] bg-white px-4 py-4 text-slate-700 shadow-md"
                   >
                     <p className="text-[13px] leading-relaxed text-slate-700">{review.content}</p>
 

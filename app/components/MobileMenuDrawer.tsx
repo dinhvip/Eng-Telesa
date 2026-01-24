@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { Open_Sans } from "next/font/google";
 import { useEffect, useMemo, useState } from "react";
 
 type MenuVariant = "kid" | "adult";
@@ -51,6 +52,12 @@ const MenuIcon = (props: React.SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
+
+const openSans = Open_Sans({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "700"],
+  display: "swap",
+});
 
 export const MobileMenuButton = ({
   onClick,
@@ -162,12 +169,12 @@ export default function MobileMenuDrawer({
         <div className="mx-auto flex h-full max-w-md flex-col">
           <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+12px)]">
             <div className="flex items-center gap-3">
-              <div className="relative h-10 w-10">
+              <div className="relative h-12 w-12">
                 <Image
                   src={logoSrc}
                   alt={variant === "kid" ? "Telesa English Kids" : "Telesa English"}
                   fill
-                  sizes="40px"
+                  sizes="48px"
                   className="object-contain"
                   priority
                 />
@@ -200,7 +207,9 @@ export default function MobileMenuDrawer({
                         onNavigate?.(item.key);
                         onClose();
                       }}
-                      className={`block w-full text-left text-[18px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                      className={`block w-full text-left text-[18px] ${
+                        item.key === "home" ? "font-[700]" : "font-[400]"
+                      } leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
                         isActive
                           ? "text-[#D40887]"
                           : "text-slate-900 hover:text-[#D40887]"
@@ -217,7 +226,7 @@ export default function MobileMenuDrawer({
                     <button
                       type="button"
                       onClick={() => setIsLibraryExpanded((prev) => !prev)}
-                      className={`flex w-full items-center justify-between text-left text-[18px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                      className={`flex w-full items-center justify-between text-left text-[18px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
                         isActive
                           ? "text-[#D40887]"
                           : "text-slate-900 hover:text-[#D40887]"
@@ -264,10 +273,10 @@ export default function MobileMenuDrawer({
                               onNavigate?.(child.key);
                               onClose();
                             }}
-                            className={`block w-full rounded-xl px-3 py-2 text-left text-[15px] font-semibold leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
+                            className={`block w-full rounded-xl px-3 py-2 text-left text-[15px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
                               isChildActive
                                 ? "bg-[#D40887]/10 text-[#D40887]"
-                                : "text-slate-800 hover:bg-slate-50 hover:text-[#D40887]"
+                                : "text-slate-700 hover:bg-slate-50 hover:text-[#D40887]"
                             }`}
                             aria-current={isChildActive ? "page" : undefined}
                           >
@@ -289,11 +298,11 @@ export default function MobileMenuDrawer({
                 aria-controls="mobile-menu-account"
                 onClick={() => setIsAccountExpanded((prev) => !prev)}
               >
-                <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-[12px] font-semibold text-slate-700">
+                <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-[12px] font-[400] text-slate-700">
                   AN
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[14px] font-medium text-slate-800">
+                  <p className="truncate text-[14px] font-medium text-slate-700">
                     An Nguyễn
                   </p>
                   <p className="truncate text-[12px] text-slate-500">
@@ -315,7 +324,7 @@ export default function MobileMenuDrawer({
               >
                 <button
                   type="button"
-                  className="mt-3 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left text-[14px] font-medium text-slate-800 hover:bg-slate-50 active:bg-slate-100"
+                  className="mt-3 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left text-[14px] font-medium text-slate-700 hover:bg-slate-50 active:bg-slate-100"
                 >
                   <Image
                     src="/assets/svg/user-pen-alt.svg"
@@ -406,19 +415,19 @@ export default function MobileMenuDrawer({
           <footer className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-md bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-4">
             <button
               type="button"
-              className="w-full rounded-[16px] bg-[#D40887] px-6 py-3 text-center text-[14px] font-semibold text-white shadow-[0_12px_28px_rgba(212,8,135,0.35)] active:opacity-90"
+              className={`${openSans.className} w-full rounded-[16px] bg-[#D40887] px-6 py-3 text-center text-[14px] font-[700] text-white shadow-[0_12px_28px_rgba(212,8,135,0.35)] active:opacity-90`}
             >
               Góc học tập
             </button>
             <button
               type="button"
-              className="mt-3 flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-6 py-3 text-center text-[14px] font-semibold text-red-500 active:bg-red-50"
+              className={`${openSans.className} mt-3 flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-6 py-3 text-center text-[14px] font-[700] text-red-500 active:bg-red-50`}
             >
               <Image
                 src="/assets/svg/logout.svg"
                 alt=""
-                width={16}
-                height={16}
+                width={24}
+                height={24}
                 className="h-4 w-4"
                 unoptimized
               />
