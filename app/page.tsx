@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import DesktopFloatingActions from "./components/DesktopFloatingActions";
 import DesktopNavbar from "./components/DesktopNavbar";
 import { KidWorldMap } from "./components/KidWorldMap";
@@ -13,6 +14,9 @@ import MobileMenuDrawer from "./components/MobileMenuDrawer";
 import CountUp from "./components/CountUp";
 import ArrowUpIcon from "./components/ArrowUpIcon";
 import BackgroundVideo from "./components/BackgroundVideo";
+import type { BackgroundVideoHandle } from "./components/BackgroundVideo";
+import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSet";
+import type { PreloadedBackgroundVideoSetHandle } from "./components/PreloadedBackgroundVideoSet";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
@@ -222,7 +226,11 @@ export default function LandingPage() {
 
   const router = useRouter();
   const mainRef = useRef<HTMLElement | null>(null);
+  const slide1VideoRef = useRef<PreloadedBackgroundVideoSetHandle | null>(null);
+  const slide2VideoRef = useRef<BackgroundVideoHandle | null>(null);
+  const preloadedVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const [selectedAge, setSelectedAge] = useState<"kid" | "adult" | null>(null);
+  const [isAgeSwitchLocked, setIsAgeSwitchLocked] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSnapIndex, setActiveSnapIndex] = useState(0);
   const [kidSlideIndex, setKidSlideIndex] = useState(0);
@@ -634,6 +642,51 @@ export default function LandingPage() {
       : selectedAge === "adult"
         ? "/assets/1-adult.mp4"
         : "/assets/1.mp4";
+
+  const slide1ActiveVideo: "default" | "kid" | "adult" =
+    selectedAge === "kid" ? "kid" : selectedAge === "adult" ? "adult" : "default";
+
+  const preloadVideo = (src: string) => {
+    if (typeof window === "undefined") return;
+    if (preloadedVideosRef.current.has(src)) return;
+    try {
+      const el = document.createElement("video");
+      el.muted = true;
+      el.playsInline = true;
+      el.setAttribute("playsinline", "");
+      el.setAttribute("webkit-playsinline", "true");
+      el.preload = "auto";
+      el.src = src;
+      el.load?.();
+      preloadedVideosRef.current.set(src, el);
+    } catch {}
+  };
+
+  const handleSelectAge = (age: "kid" | "adult") => {
+    if (isAgeSwitchLocked) return;
+    if (selectedAge === age) return;
+    setIsAgeSwitchLocked(true);
+    flushSync(() => {
+      setSelectedAge(age);
+    });
+    slide1VideoRef.current?.play(age);
+    preloadVideo(age === "kid" ? "/assets/2-kid.mp4" : "/assets/2-adult.mp4");
+    slide2VideoRef.current?.play();
+  };
+
+  useEffect(() => {
+    if (activeSnapIndex === 0) {
+      slide1VideoRef.current?.play(slide1ActiveVideo);
+    } else {
+      slide1VideoRef.current?.pauseAll();
+    }
+
+    if (activeSnapIndex === 1) {
+      slide2VideoRef.current?.play();
+    } else {
+      slide2VideoRef.current?.pause();
+    }
+  }, [activeSnapIndex, slide1ActiveVideo]);
 
   const leftImageSrc =
     selectedAge === "kid"
@@ -1260,10 +1313,18 @@ export default function LandingPage() {
 	      >
 	      {/* Slide 1: Age selection */}
 		      <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
-	        <BackgroundVideo
+	        <PreloadedBackgroundVideoSet
+	          ref={slide1VideoRef}
 	          className="bg-video absolute inset-0 h-full w-full object-cover object-center"
-	          key={videoSrc}
-	          src={videoSrc}
+	          sources={{
+	            default: "/assets/1.mp4",
+	            kid: "/assets/1-kid.mp4",
+	            adult: "/assets/1-adult.mp4",
+	          }}
+	          active={slide1ActiveVideo}
+            onVisibleChange={(key) => {
+              if (key === slide1ActiveVideo || key === "default") setIsAgeSwitchLocked(false);
+            }}
 	        />
           <div aria-hidden="true" className="absolute inset-0" />
 	
@@ -1277,16 +1338,12 @@ export default function LandingPage() {
 
               <section className="mt-4 rounded-[32px] bg-[linear-gradient(174deg,rgba(0,0,0,0.20)_6.38%,rgba(0,0,0,0)_95.47%)] px-5 pb-6 pt-5 text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]">
                 <div className="mb-6 flex items-center gap-3">
-                  <div
-                    className={`relative ${
-                      selectedAge === "kid" ? "h-16 w-16" : "h-[50px] w-[50px]"
-                    }`}
-                  >
+                  <div className="relative h-16 w-16">
                     <Image
                       src={logoSrc}
                       alt="Telesa English logo"
-                      width={selectedAge === "kid" ? 64 : 50}
-                      height={selectedAge === "kid" ? 64 : 50}
+                      width={64}
+                      height={64}
                       className="h-full w-full object-contain"
                       priority
                     />
@@ -1307,8 +1364,9 @@ export default function LandingPage() {
                 <div className="mt-5 flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setSelectedAge("kid")}
-                    className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                    disabled={isAgeSwitchLocked}
+                    onClick={() => handleSelectAge("kid")}
+                    className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${
                       selectedAge === "kid"
                         ? "border-white bg-white text-black shadow-lg scale-[1.02]"
                         : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
@@ -1318,8 +1376,9 @@ export default function LandingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedAge("adult")}
-                    className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                    disabled={isAgeSwitchLocked}
+                    onClick={() => handleSelectAge("adult")}
+                    className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${
                       selectedAge === "adult"
                         ? "border-white bg-white text-black shadow-lg scale-[1.02]"
                         : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
@@ -1362,16 +1421,12 @@ export default function LandingPage() {
             <div className="hidden w-full items-center justify-between gap-10 lg:flex">
               <section className="w-[62%] rounded-[32px] bg-[linear-gradient(174deg,rgba(0,0,0,0.20)_6.38%,rgba(0,0,0,0)_95.47%)] px-12 py-12 text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]">
                 <div className="flex items-center gap-3">
-                  <div
-                    className={`relative ${
-                      selectedAge === "kid" ? "h-[56px] w-[56px]" : "h-[44px] w-[44px]"
-                    }`}
-                  >
+                  <div className="relative h-[56px] w-[56px]">
                     <Image
                       src={logoSrc}
                       alt="Telesa English logo"
-                      width={selectedAge === "kid" ? 56 : 44}
-                      height={selectedAge === "kid" ? 56 : 44}
+                      width={56}
+                      height={56}
                       className="h-full w-full object-contain"
                       priority
                     />
@@ -1394,8 +1449,9 @@ export default function LandingPage() {
                 <div className="mt-10 flex max-w-xl gap-5">
                   <button
                     type="button"
-                    onClick={() => setSelectedAge("kid")}
-                    className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                    disabled={isAgeSwitchLocked}
+                    onClick={() => handleSelectAge("kid")}
+                    className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${
                       selectedAge === "kid"
                         ? "border-white bg-white text-black shadow-lg scale-[1.01]"
                         : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
@@ -1405,8 +1461,9 @@ export default function LandingPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedAge("adult")}
-                    className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out ${
+                    disabled={isAgeSwitchLocked}
+                    onClick={() => handleSelectAge("adult")}
+                    className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${
                       selectedAge === "adult"
                         ? "border-white bg-white text-black shadow-lg scale-[1.01]"
                         : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
@@ -1450,8 +1507,10 @@ export default function LandingPage() {
 	      {selectedAge === "kid" && (
 	        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
 	          <BackgroundVideo
+              ref={slide2VideoRef}
 	            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	            src="/assets/2-kid.mp4"
+              poster="/assets/2-kid-library.jpg"
 	          />
             <div aria-hidden="true" className="absolute inset-0" />
 	
@@ -1494,6 +1553,7 @@ export default function LandingPage() {
 	                    </button>
 	                    <button
 	                      type="button"
+                        onClick={openConsultOverlay}
 	                      className="flex-1 rounded-full border border-white/80 bg-black/10 px-7 py-3 text-center text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
 	                    >
 	                      Tư vấn ngay
@@ -1517,7 +1577,11 @@ export default function LandingPage() {
                 <button className="flex-1 rounded-full bg-white px-4 py-2 text-center text-xs font-semibold text-black shadow-sm">
                   Học thử
                 </button>
-                <button className="flex-1 rounded-full border border-white/80 bg-black/20 px-4 py-2 text-center text-xs font-semibold text-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={openConsultOverlay}
+                  className="flex-1 rounded-full border border-white/80 bg-black/20 px-4 py-2 text-center text-xs font-semibold text-white shadow-sm"
+                >
                   Tư vấn ngay
                 </button>
               </div>
@@ -2189,8 +2253,10 @@ export default function LandingPage() {
 	      {selectedAge === "adult" && (
 	        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
 	          <BackgroundVideo
+              ref={slide2VideoRef}
 	            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
-	            src="/assets/1-adult2.mp4"
+	            src="/assets/2-adult.mp4"
+              poster="/assets/8-2-adult.jpg"
 	          />
             <div aria-hidden="true" className="absolute inset-0" />
 	
@@ -2233,12 +2299,13 @@ export default function LandingPage() {
                     >
                       Học thử
                     </button>
-                    <button
-                      type="button"
-                      className="flex-1 rounded-full border border-white/80 bg-black/10 px-7 py-3 text-center text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
-                    >
-                      Tư vấn ngay
-                    </button>
+                      <button
+                        type="button"
+                        onClick={openConsultOverlay}
+                        className="flex-1 rounded-full border border-white/80 bg-black/10 px-7 py-3 text-center text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition-transform hover:scale-[1.01] active:scale-[0.98]"
+                      >
+                        Tư vấn ngay
+                      </button>
                   </div>
                 </div>
               </div>
@@ -2258,7 +2325,11 @@ export default function LandingPage() {
                 <button className="flex-1 rounded-full bg-white px-4 py-2 text-center text-xs font-semibold text-black shadow-sm">
                   Học thử
                 </button>
-                <button className="flex-1 rounded-full border border-white/80 bg-black/20 px-4 py-2 text-center text-xs font-semibold text-white shadow-sm">
+                <button
+                  type="button"
+                  onClick={openConsultOverlay}
+                  className="flex-1 rounded-full border border-white/80 bg-black/20 px-4 py-2 text-center text-xs font-semibold text-white shadow-sm"
+                >
                   Tư vấn ngay
                 </button>
               </div>
