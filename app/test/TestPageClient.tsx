@@ -7,6 +7,7 @@ import DesktopNavbar from "../components/DesktopNavbar";
 import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
 import ArrowUpIcon from "../components/ArrowUpIcon";
+import { useWheelStepSnap } from "../components/useWheelStepSnap";
 
 export default function TestPageClient() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function TestPageClient() {
   const consultOverlayClassName = variant === "adult" ? "" : "bg-[#6B510033]";
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const uploadSectionRef = useRef<HTMLElement | null>(null);
   const resultSectionRef = useRef<HTMLElement | null>(null);
@@ -84,6 +86,8 @@ export default function TestPageClient() {
     };
   }, [isSendModalOpen]);
 
+  useWheelStepSnap(mainRef, { enabled: !isMenuOpen && !isSendModalOpen });
+
   return (
     <>
       <DesktopNavbar
@@ -109,7 +113,10 @@ export default function TestPageClient() {
         }}
       />
 
-      <main className="relative h-[100dvh] w-full overflow-y-scroll snap-y snap-mandatory bg-black text-white">
+      <main
+        ref={mainRef}
+        className="relative h-[100dvh] w-full overflow-y-scroll snap-y snap-mandatory bg-black text-white"
+      >
         <MobileMenuDrawer
           open={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}

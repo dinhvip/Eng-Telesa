@@ -221,7 +221,12 @@ export default function FooterContactView({
           <section>
             <h2 className="text-[22px] font-extrabold text-slate-700">Tải ngay</h2>
             <div className="mt-3 flex items-center gap-0">
-              <a href="#" className="flex flex-1 items-center justify-start">
+              <a
+                href="https://apps.apple.com/vn/app/telesa-english/id6479183587"
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-1 items-center justify-start"
+              >
                 <Image
                   src="/assets/svg/apple-button.svg"
                   alt="Download on the App Store"
@@ -230,7 +235,12 @@ export default function FooterContactView({
                   className="h-12 w-full object-contain object-left"
                 />
               </a>
-              <a href="#" className="flex flex-1 items-center justify-start">
+              <a
+                href="https://play.google.com/store/apps/details?id=com.telesa_english"
+                target="_blank"
+                rel="noreferrer"
+                className="flex flex-1 items-center justify-start"
+              >
                 <Image
                   src="/assets/svg/google-play-button.svg"
                   alt="Get it on Google Play"
@@ -277,7 +287,12 @@ export default function FooterContactView({
             <div className="mt-10">
               <h3 className="text-[20px] font-extrabold text-slate-700">Tải ngay</h3>
               <div className="mt-4 flex items-center gap-4">
-                <a href="#" className="inline-flex">
+                <a
+                  href="https://apps.apple.com/vn/app/telesa-english/id6479183587"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex"
+                >
                   <Image
                     src="/assets/svg/apple-button.svg"
                     alt="Download on the App Store"
@@ -286,7 +301,12 @@ export default function FooterContactView({
                     className="h-12 w-auto object-contain"
                   />
                 </a>
-                <a href="#" className="inline-flex">
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.telesa_english"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex"
+                >
                   <Image
                     src="/assets/svg/google-play-button.svg"
                     alt="Get it on Google Play"

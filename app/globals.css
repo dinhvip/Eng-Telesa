@@ -17,6 +17,19 @@ body {
     "SF Pro Text", "Segoe UI", sans-serif;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+.telesa-vh-100 {
+  height: calc(var(--vh, 1vh) * 100);
+}
+
+.telesa-min-vh-100 {
+  min-height: calc(var(--vh, 1vh) * 100);
+}
+
 .bg-video {
   pointer-events: none;
 }
@@ -24,6 +37,15 @@ body {
 :where(input, textarea)::placeholder {
   color: #667085 !important;
   opacity: 1;
+}
+
+/* iOS Safari: prevent viewport zoom on focus when font-size < 16px */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width: 1024px) {
+    :where(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+      font-size: 16px !important;
+    }
+  }
 }
 
 @keyframes telesa-wiggle {
@@ -79,6 +101,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .telesa-wiggle,
   .telesa-nudge {
     animation: none;

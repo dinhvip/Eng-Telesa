@@ -54,6 +54,11 @@ export default function DesktopNavbar(props: {
   activeKey: DesktopNavbarKey;
   onNavigate: (key: DesktopNavbarActionKey) => void;
   onTestClick?: () => void;
+  accountName?: string;
+  accountEmail?: string;
+  accountAvatarSrc?: string;
+  onAccountUpdate?: () => void;
+  onLogout?: () => void;
   activeColor?: string;
   backgroundClassName?: string;
 }) {
@@ -61,7 +66,11 @@ export default function DesktopNavbar(props: {
   const backgroundClassName = props.backgroundClassName ?? "bg-[#3b3b3b]/90";
   const variant = props.variant ?? "adult";
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isAccountMounted, setIsAccountMounted] = useState(false);
+  const [isAccountVisible, setIsAccountVisible] = useState(false);
   const libraryCloseTimerRef = useRef<number | null>(null);
+  const accountRef = useRef<HTMLDivElement | null>(null);
 
   const openLibraryMenu = () => {
     if (libraryCloseTimerRef.current != null) {
@@ -88,6 +97,38 @@ export default function DesktopNavbar(props: {
   }, []);
 
   useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsAccountOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    if (!isAccountOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const el = accountRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setIsAccountOpen(false);
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [isAccountOpen]);
+
+  useEffect(() => {
+    if (isAccountOpen) {
+      setIsAccountMounted(true);
+      const raf = window.requestAnimationFrame(() => setIsAccountVisible(true));
+      return () => window.cancelAnimationFrame(raf);
+    }
+
+    setIsAccountVisible(false);
+    const t = window.setTimeout(() => setIsAccountMounted(false), 180);
+    return () => window.clearTimeout(t);
+  }, [isAccountOpen]);
+
+  useEffect(() => {
     return () => {
       if (libraryCloseTimerRef.current != null) {
         window.clearTimeout(libraryCloseTimerRef.current);
@@ -95,6 +136,15 @@ export default function DesktopNavbar(props: {
       }
     };
   }, []);
+
+  const accountName = props.accountName ?? "An Nguyễn";
+  const accountEmail = props.accountEmail ?? "annguyen@gmail.com";
+  const accountInitials = accountName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 hidden lg:block">
@@ -279,14 +329,118 @@ export default function DesktopNavbar(props: {
               <span className="hidden xl:inline">Góc học tập</span>
             </button>
 
-            <button
-              type="button"
-              aria-label="Account menu"
-              className="flex items-center gap-2 rounded-full py-1 pl-2 pr-1 text-white/90 hover:text-white"
-            >
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-200 to-amber-500 ring-2 ring-white/70" />
-              <ChevronDownIcon className="h-4 w-4 text-white/80" />
-            </button>
+            <div ref={accountRef} className="relative">
+              <button
+                type="button"
+                aria-label="Account menu"
+                aria-expanded={isAccountOpen}
+                className="flex items-center gap-2 rounded-full py-1 pl-2 pr-1 text-white/90 hover:text-white"
+                onClick={() => setIsAccountOpen((prev) => !prev)}
+              >
+                {props.accountAvatarSrc ? (
+                  <div className="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-white/70">
+                    <Image
+                      src={props.accountAvatarSrc}
+                      alt=""
+                      fill
+                      sizes="40px"
+                      className="object-cover"
+                      priority={false}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 text-[14px] font-semibold text-slate-900 ring-2 ring-white/70">
+                    {accountInitials || "AN"}
+                  </div>
+                )}
+                <ChevronDownIcon className="h-4 w-4 text-white/80" />
+              </button>
+
+              {isAccountMounted && (
+                <div
+                  className={[
+                    "absolute right-0 top-full z-50 mt-3 w-[230px] origin-top-right",
+                    "transition-[transform,opacity,filter] duration-200 ease-out will-change-transform will-change-opacity",
+                    "motion-reduce:transition-none motion-reduce:transform-none motion-reduce:filter-none",
+                    isAccountVisible
+                      ? "opacity-100 translate-y-0 scale-100 blur-0"
+                      : "pointer-events-none opacity-0 -translate-y-1 scale-[0.98] blur-[1px]",
+                  ].join(" ")}
+                >
+                  <div
+                    role="menu"
+                    className="overflow-hidden rounded-[28px] bg-white shadow-[0_22px_60px_rgba(0,0,0,0.22)] ring-1 ring-black/5"
+                  >
+                    <div className="flex items-center gap-3 px-4 pb-3 pt-4">
+                      {props.accountAvatarSrc ? (
+                        <div className="relative h-[48px] w-[48px] overflow-hidden rounded-full">
+                          <Image
+                            src={props.accountAvatarSrc}
+                            alt=""
+                            fill
+                            sizes="48px"
+                            className="object-cover"
+                            priority={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 text-[16px] font-semibold text-slate-900">
+                          {accountInitials || "AN"}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="truncate text-[14px] font-normal leading-tight text-slate-800">
+                          {accountName}
+                        </p>
+                        <p className="truncate text-[12px] font-normal text-slate-600">{accountEmail}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] font-normal text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+                      onClick={() => {
+                        setIsAccountOpen(false);
+                        props.onAccountUpdate?.();
+                      }}
+                    >
+                      <Image
+                        src="/assets/svg/user-pen-alt.svg"
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="h-5 w-5"
+                        unoptimized
+                      />
+                      <span>Cập nhật thông tin cá nhân</span>
+                    </button>
+
+                    <div className="px-4 pb-4 pt-3">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-4 py-3 text-[13px] font-bold text-red-500 hover:bg-red-50 active:bg-red-100"
+                        onClick={() => {
+                          setIsAccountOpen(false);
+                          props.onLogout?.();
+                        }}
+                      >
+                        <Image
+                          src="/assets/svg/logout.svg"
+                          alt=""
+                          width={20}
+                          height={20}
+                          className="h-5 w-5"
+                          unoptimized
+                        />
+                        Đăng xuất
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

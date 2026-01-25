@@ -9,6 +9,7 @@ import FooterContactView from "../../components/FooterContactView";
 import MobileHeader from "../../components/MobileHeader";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
+import { useWheelStepSnap } from "../../components/useWheelStepSnap";
 
 const DESKTOP_SUMMARY_ITEMS = [
   "Con được rèn luyện đủ 4 kỹ năng, đặc biệt là nghe – nói chuẩn ngay từ nhỏ.",
@@ -33,6 +34,10 @@ function useWhyTextDeck(options: {
   const animTimerRef = useRef<number | null>(null);
   const textTimerRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const wheelAccumRef = useRef(0);
+  const wheelLockRef = useRef(false);
+  const wheelUnlockTimerRef = useRef<number | null>(null);
+  const wheelLastTimeRef = useRef<number>(0);
 
   const clearAnimTimer = () => {
     if (animTimerRef.current == null) return;
@@ -46,10 +51,17 @@ function useWhyTextDeck(options: {
     textTimerRef.current = null;
   };
 
+  const clearWheelUnlockTimer = () => {
+    if (wheelUnlockTimerRef.current == null) return;
+    window.clearTimeout(wheelUnlockTimerRef.current);
+    wheelUnlockTimerRef.current = null;
+  };
+
   useEffect(() => {
     return () => {
       clearAnimTimer();
       clearTextTimer();
+      clearWheelUnlockTimer();
     };
   }, []);
 
@@ -89,8 +101,26 @@ function useWhyTextDeck(options: {
     e.preventDefault();
     e.stopPropagation();
     if (isTransitioningRef.current) return;
-    if (e.deltaY > 12) startTransition("forward");
-    else if (e.deltaY < -12) startTransition("back");
+
+    const now = performance.now();
+    if (now - wheelLastTimeRef.current > 240) wheelAccumRef.current = 0;
+    wheelLastTimeRef.current = now;
+    wheelAccumRef.current += e.deltaY;
+
+    if (wheelLockRef.current) return;
+    if (Math.abs(wheelAccumRef.current) < 70) return;
+
+    const direction: WhyDirection = wheelAccumRef.current > 0 ? "forward" : "back";
+    wheelAccumRef.current = 0;
+
+    wheelLockRef.current = true;
+    clearWheelUnlockTimer();
+    wheelUnlockTimerRef.current = window.setTimeout(() => {
+      wheelLockRef.current = false;
+      wheelUnlockTimerRef.current = null;
+    }, 520);
+
+    startTransition(direction);
   };
 
   const onTouchStart: React.TouchEventHandler<HTMLElement> = (e) => {
@@ -235,6 +265,8 @@ export default function LibraryWhyPage() {
       document.body.style.overflow = previousOverflow;
     };
   }, [isMenuOpen]);
+
+  useWheelStepSnap(scrollContainerRef, { enabled: !isMenuOpen });
 
   return (
     <>

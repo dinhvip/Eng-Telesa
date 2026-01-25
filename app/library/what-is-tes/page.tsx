@@ -38,6 +38,10 @@ function useTesDeck(options: {
   const animTimerRef = useRef<number | null>(null);
   const textTimerRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const wheelAccumRef = useRef(0);
+  const wheelLockRef = useRef(false);
+  const wheelUnlockTimerRef = useRef<number | null>(null);
+  const wheelLastTimeRef = useRef<number>(0);
 
   const clearAnimTimer = () => {
     if (animTimerRef.current == null) return;
@@ -51,10 +55,17 @@ function useTesDeck(options: {
     textTimerRef.current = null;
   };
 
+  const clearWheelUnlockTimer = () => {
+    if (wheelUnlockTimerRef.current == null) return;
+    window.clearTimeout(wheelUnlockTimerRef.current);
+    wheelUnlockTimerRef.current = null;
+  };
+
   useEffect(() => {
     return () => {
       clearAnimTimer();
       clearTextTimer();
+      clearWheelUnlockTimer();
     };
   }, []);
 
@@ -97,8 +108,26 @@ function useTesDeck(options: {
     e.preventDefault();
     e.stopPropagation();
     if (transition) return;
-    if (e.deltaY > 12) startTransition("forward");
-    else if (e.deltaY < -12) startTransition("back");
+
+    const now = performance.now();
+    if (now - wheelLastTimeRef.current > 240) wheelAccumRef.current = 0;
+    wheelLastTimeRef.current = now;
+    wheelAccumRef.current += e.deltaY;
+
+    if (wheelLockRef.current) return;
+    if (Math.abs(wheelAccumRef.current) < 70) return;
+
+    const direction: TesDirection = wheelAccumRef.current > 0 ? "forward" : "back";
+    wheelAccumRef.current = 0;
+
+    wheelLockRef.current = true;
+    clearWheelUnlockTimer();
+    wheelUnlockTimerRef.current = window.setTimeout(() => {
+      wheelLockRef.current = false;
+      wheelUnlockTimerRef.current = null;
+    }, 520);
+
+    startTransition(direction);
   };
 
   const onTouchStart: React.TouchEventHandler<HTMLElement> = (e) => {
@@ -1108,14 +1137,14 @@ export default function LibraryWhatIsTesPage() {
               />
 
               <div className="mt-6 flex flex-1 flex-col items-center text-center">
-                <h1 className="text-[31px] font-semibold leading-[1.1] tracking-tight">
+                <h1 className="text-[calc(31px*0.9)] font-semibold leading-[1.1] tracking-tight">
                   T.E.S Method –
                   <br />
                   Speak English Naturally
                 </h1>
 
                 <div className="mt-5 flex w-full justify-center">
-                  <div className="flex items-center justify-center gap-5 text-[40px] font-extrabold text-[#D40887]">
+                  <div className="flex items-center justify-center gap-5 text-[calc(40px*0.9)] font-extrabold text-[#D40887]">
                     <span
                       className={
                         highlightLetter === "ALL" || highlightLetter === "T" ? "text-[#D40887]" : "text-white"
@@ -1149,7 +1178,9 @@ export default function LibraryWhatIsTesPage() {
 
                 {descriptionText && (
                   <p
-                    className={["mt-5 px-2 text-[15px] leading-relaxed text-white/90", textBaseClass].join(" ")}
+                    className={["mt-5 px-2 text-[calc(15px*0.9)] leading-relaxed text-white/90", textBaseClass].join(
+                      " ",
+                    )}
                     style={textMotion}
                   >
                     {descriptionText}

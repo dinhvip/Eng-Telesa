@@ -10,6 +10,7 @@ import Group3ShapeCard from "../../components/Group3ShapeCard";
 import MobileHeader from "../../components/MobileHeader";
 import MobileFloatingActions from "../../components/MobileFloatingActions";
 import MobileMenuDrawer from "../../components/MobileMenuDrawer";
+import { useWheelStepSnap } from "../../components/useWheelStepSnap";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
@@ -389,6 +390,8 @@ export default function LibraryPage() {
   const scrollToTop = () => {
     mainScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  useWheelStepSnap(mainScrollRef, { enabled: !isMenuOpen && !isModalVisible });
 
   return (
     <>

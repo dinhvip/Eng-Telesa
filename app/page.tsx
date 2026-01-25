@@ -13,6 +13,7 @@ import MobileMenuDrawer from "./components/MobileMenuDrawer";
 import CountUp from "./components/CountUp";
 import ArrowUpIcon from "./components/ArrowUpIcon";
 import BackgroundVideo from "./components/BackgroundVideo";
+import { useWheelStepSnap } from "./components/useWheelStepSnap";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
@@ -242,6 +243,13 @@ export default function LandingPage() {
   const [kidConsultTopic, setKidConsultTopic] = useState("");
   const [kidConsultAgree, setKidConsultAgree] = useState(false);
   const [isConsultSubmitting, setIsConsultSubmitting] = useState(false);
+  const [isConsultOverlayOpen, setIsConsultOverlayOpen] = useState(false);
+  const consultOverlayRestoreRef = useRef<{
+    scrollTop: number;
+    snapIndex: number;
+    overflowY: string;
+    scrollSnapType: string;
+  } | null>(null);
   const teleSaTextRef = useRef<HTMLDivElement | null>(null);
   const [teleSaOffsetPx, setTeleSaOffsetPx] = useState(0);
   const [teleSaMaxOffsetPx, setTeleSaMaxOffsetPx] = useState(0);
@@ -253,9 +261,184 @@ export default function LandingPage() {
     startOffset: number;
     pointerId: number | null;
   }>({ isDragging: false, startY: 0, startOffset: 0, pointerId: null });
+  const teleSaDesktopTextRef = useRef<HTMLDivElement | null>(null);
+  const [teleSaDesktopOffsetPx, setTeleSaDesktopOffsetPx] = useState(0);
+  const [teleSaDesktopMaxOffsetPx, setTeleSaDesktopMaxOffsetPx] = useState(0);
+  const [teleSaDesktopMaskBaseHeightPx, setTeleSaDesktopMaskBaseHeightPx] = useState(0);
+  const [teleSaDesktopIsDragging, setTeleSaDesktopIsDragging] = useState(false);
+
+  useWheelStepSnap(mainRef, { enabled: !isMenuOpen });
+  const teleSaDesktopDragRef = useRef<{
+    isDragging: boolean;
+    startY: number;
+    startOffset: number;
+    pointerId: number | null;
+  }>({ isDragging: false, startY: 0, startOffset: 0, pointerId: null });
   const restoreAnchorIdRef = useRef<string | null>(null);
   const restoreScrollTopRef = useRef<number | null>(null);
   const restoreShouldOpenMenuRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const previousBodyBg = document.body.style.backgroundColor;
+    const previousHtmlBg = document.documentElement.style.backgroundColor;
+    document.body.style.backgroundColor = "#000";
+    document.documentElement.style.backgroundColor = "#000";
+
+    const baselineHeightRef = { current: 0 };
+    let pendingTimeouts: number[] = [];
+
+    const clearPendingTimeouts = () => {
+      pendingTimeouts.forEach((id) => window.clearTimeout(id));
+      pendingTimeouts = [];
+    };
+
+    const isTextFieldFocused = () => {
+      const active = document.activeElement;
+      if (!active) return false;
+      if (!(active instanceof HTMLElement)) return false;
+      if (active.isContentEditable) return true;
+
+      if (active instanceof HTMLTextAreaElement) return true;
+      if (active instanceof HTMLSelectElement) return true;
+
+      if (active instanceof HTMLInputElement) {
+        const type = active.type?.toLowerCase?.() ?? "";
+        if (["checkbox", "radio", "button", "submit", "reset", "range", "color", "file", "image"].includes(type)) {
+          return false;
+        }
+        return true;
+      }
+
+      return false;
+    };
+
+    const setVh = () => {
+      const vvHeight = window.visualViewport?.height;
+      const innerHeight = window.innerHeight;
+      const candidate = vvHeight ?? innerHeight;
+
+      const largeDelta = vvHeight != null ? innerHeight - vvHeight > 150 : false;
+      const keyboardLikelyOpen = isTextFieldFocused() && largeDelta;
+
+      if (baselineHeightRef.current === 0) baselineHeightRef.current = candidate;
+
+      if (keyboardLikelyOpen) {
+        baselineHeightRef.current = Math.max(baselineHeightRef.current, candidate);
+      } else {
+        baselineHeightRef.current = largeDelta ? innerHeight : candidate;
+      }
+
+      document.documentElement.style.setProperty("--vh", `${baselineHeightRef.current * 0.01}px`);
+    };
+
+    const refreshVh = () => {
+      clearPendingTimeouts();
+      setVh();
+      window.requestAnimationFrame(setVh);
+      [50, 150, 300, 600, 1000, 1500].forEach((ms) => {
+        pendingTimeouts.push(window.setTimeout(setVh, ms));
+      });
+    };
+
+    refreshVh();
+
+    window.addEventListener("resize", refreshVh);
+    window.addEventListener("orientationchange", refreshVh);
+    window.addEventListener("pageshow", refreshVh);
+    document.addEventListener("focusin", refreshVh, true);
+    document.addEventListener("focusout", refreshVh, true);
+    window.visualViewport?.addEventListener("resize", refreshVh);
+    window.visualViewport?.addEventListener("scroll", refreshVh);
+
+    return () => {
+      clearPendingTimeouts();
+      document.body.style.backgroundColor = previousBodyBg;
+      document.documentElement.style.backgroundColor = previousHtmlBg;
+      window.removeEventListener("resize", refreshVh);
+      window.removeEventListener("orientationchange", refreshVh);
+      window.removeEventListener("pageshow", refreshVh);
+      document.removeEventListener("focusin", refreshVh, true);
+      document.removeEventListener("focusout", refreshVh, true);
+      window.visualViewport?.removeEventListener("resize", refreshVh);
+      window.visualViewport?.removeEventListener("scroll", refreshVh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+
+    if (isConsultOverlayOpen) {
+      const clientHeight = Math.max(1, main.clientHeight);
+      const snapIndex = Math.round(main.scrollTop / clientHeight);
+      consultOverlayRestoreRef.current = {
+        scrollTop: main.scrollTop,
+        snapIndex,
+        overflowY: main.style.overflowY,
+        scrollSnapType: main.style.scrollSnapType,
+      };
+      main.style.overflowY = "hidden";
+      main.style.scrollSnapType = "none";
+      return;
+    }
+
+    const restore = consultOverlayRestoreRef.current;
+    if (!restore) return;
+
+    const computeTargetTop = () => {
+      const clientHeight = Math.max(1, main.clientHeight);
+      const maxScrollTop = Math.max(0, main.scrollHeight - clientHeight);
+      const rawTop = restore.snapIndex * clientHeight;
+      return Math.max(0, Math.min(rawTop, maxScrollTop));
+    };
+
+    const restoreScroll = () => {
+      main.scrollTo({ top: computeTargetTop(), behavior: "auto" });
+    };
+
+    const setVh = () => {
+      const vvHeight = window.visualViewport?.height;
+      const innerHeight = window.innerHeight;
+      const largeDelta = vvHeight != null ? innerHeight - vvHeight > 150 : false;
+      const viewportHeight = largeDelta ? innerHeight : (vvHeight ?? innerHeight);
+      document.documentElement.style.setProperty("--vh", `${viewportHeight * 0.01}px`);
+    };
+
+    const forceLayoutRefresh = () => {
+      void main.offsetHeight;
+      const maxScrollTop = Math.max(0, main.scrollHeight - main.clientHeight);
+      if (maxScrollTop <= 0) return;
+      const current = main.scrollTop;
+      const bumped = Math.min(maxScrollTop, current + 1);
+      main.scrollTo({ top: bumped, behavior: "auto" });
+      main.scrollTo({ top: current, behavior: "auto" });
+    };
+
+    restoreScroll();
+    requestAnimationFrame(restoreScroll);
+    window.setTimeout(restoreScroll, 50);
+    window.setTimeout(restoreScroll, 150);
+
+    setVh();
+    requestAnimationFrame(setVh);
+    window.setTimeout(setVh, 50);
+    window.setTimeout(setVh, 150);
+    window.setTimeout(setVh, 300);
+
+    requestAnimationFrame(forceLayoutRefresh);
+    window.setTimeout(forceLayoutRefresh, 80);
+    window.setTimeout(forceLayoutRefresh, 200);
+
+    window.setTimeout(() => {
+      main.style.overflowY = restore.overflowY;
+      main.style.scrollSnapType = restore.scrollSnapType;
+      consultOverlayRestoreRef.current = null;
+      restoreScroll();
+      requestAnimationFrame(restoreScroll);
+    }, 220);
+  }, [isConsultOverlayOpen, selectedAge]);
 
   const kidSlides = [
     {
@@ -322,12 +505,14 @@ export default function LandingPage() {
         "Tại sao nhiều bố mẹ đã\ncho con học tiếng Anh\nở trường nhưng vẫn\nđăng ký thêm khóa học\ntại Telesa English?",
       href: "/library/why",
       objectClassName: "object-[75%_center]",
+      desktopTitleClassName: "not-italic font-medium",
     },
     {
       image: "/assets/8-2-kid.jpg",
       title: "Chương trình tiếng Anh\ncho trẻ em tại\nTelesa English",
       href: "/library/program-for-kid",
       objectClassName: "object-center",
+      desktopTitleClassName: "",
     },
   ] as const;
 
@@ -640,17 +825,48 @@ export default function LandingPage() {
     };
   }, [selectedAge]);
 
+  useEffect(() => {
+    if (selectedAge == null) return;
+
+    const measureDesktop = () => {
+      const el = teleSaDesktopTextRef.current;
+      if (!el) return;
+      const height = el.offsetHeight;
+      if (!Number.isFinite(height) || height <= 0) return;
+
+      const viewportHeight = window.innerHeight || 0;
+      const max = Math.max(0, Math.round(height * (2 / 3)));
+      setTeleSaDesktopMaxOffsetPx(max);
+      setTeleSaDesktopOffsetPx((prev) => Math.max(-max, Math.min(0, prev)));
+
+      if (viewportHeight > 0) {
+        // Desktop: same ratio as mobile, but pushed down by 20vh => base cover includes `10vh` + ~80% of text height.
+        const minHeight = Math.round(viewportHeight * 0.35);
+        const coverHeight = Math.round(viewportHeight * 0.1 + height * 0.8);
+        setTeleSaDesktopMaskBaseHeightPx(
+          Math.max(minHeight, Math.max(0, Math.min(viewportHeight, coverHeight))),
+        );
+      }
+    };
+
+    const raf = requestAnimationFrame(measureDesktop);
+    window.addEventListener("resize", measureDesktop);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", measureDesktop);
+    };
+  }, [selectedAge]);
+
   const startTeleSaDrag: React.PointerEventHandler<HTMLElement> = (e) => {
-    if (e.pointerType !== "mouse") return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
     if (teleSaDragRef.current.isDragging) return;
-    teleSaDragRef.current.isDragging = true;
-    setTeleSaIsDragging(true);
-    teleSaDragRef.current.startY = e.clientY;
-    teleSaDragRef.current.startOffset = teleSaOffsetPx;
-    teleSaDragRef.current.pointerId = e.pointerId;
+
+    e.preventDefault();
+    const pointerTarget = e.currentTarget as HTMLElement;
     const pointerId = e.pointerId;
     const startY = e.clientY;
     const startOffset = teleSaOffsetPx;
+
     const measuredHeight = teleSaTextRef.current?.offsetHeight ?? 0;
     const max = Math.max(
       teleSaMaxOffsetPx,
@@ -658,10 +874,17 @@ export default function LandingPage() {
     );
     if (max !== teleSaMaxOffsetPx) setTeleSaMaxOffsetPx(max);
 
+    teleSaDragRef.current.isDragging = true;
+    teleSaDragRef.current.startY = startY;
+    teleSaDragRef.current.startOffset = startOffset;
+    teleSaDragRef.current.pointerId = pointerId;
+    setTeleSaIsDragging(true);
+
     const cleanup = () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onEnd);
       window.removeEventListener("pointercancel", onCancel);
+      pointerTarget.releasePointerCapture?.(pointerId);
     };
 
     const onMove = (ev: PointerEvent) => {
@@ -672,31 +895,83 @@ export default function LandingPage() {
       setTeleSaOffsetPx(next);
     };
 
-    const onEnd = (ev: PointerEvent) => {
+    const finish = (ev: PointerEvent, resetToZero: boolean) => {
       if (teleSaDragRef.current.pointerId !== ev.pointerId) return;
       cleanup();
       teleSaDragRef.current.isDragging = false;
-      setTeleSaIsDragging(false);
       teleSaDragRef.current.pointerId = null;
-      setTeleSaOffsetPx((current) => Math.max(-max, Math.min(0, current)));
+      setTeleSaIsDragging(false);
+      if (resetToZero) setTeleSaOffsetPx(0);
+      else setTeleSaOffsetPx((current) => Math.max(-max, Math.min(0, current)));
     };
 
-    const onCancel = (ev: PointerEvent) => {
-      if (teleSaDragRef.current.pointerId !== ev.pointerId) return;
+    const onEnd = (ev: PointerEvent) => finish(ev, false);
+    const onCancel = (ev: PointerEvent) => finish(ev, true);
+
+    pointerTarget.setPointerCapture?.(pointerId);
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onCancel);
+  };
+
+  const startTeleSaDesktopDrag: React.PointerEventHandler<HTMLElement> = (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (teleSaDesktopDragRef.current.isDragging) return;
+
+    e.preventDefault();
+    const pointerTarget = e.currentTarget as HTMLElement;
+    const pointerId = e.pointerId;
+    const startY = e.clientY;
+    const startOffset = teleSaDesktopOffsetPx;
+
+    const measuredHeight = teleSaDesktopTextRef.current?.offsetHeight ?? 0;
+    const max = Math.max(
+      teleSaDesktopMaxOffsetPx,
+      Math.max(0, Math.round(measuredHeight * (2 / 3))),
+    );
+    if (max !== teleSaDesktopMaxOffsetPx) setTeleSaDesktopMaxOffsetPx(max);
+
+    teleSaDesktopDragRef.current.isDragging = true;
+    teleSaDesktopDragRef.current.startY = startY;
+    teleSaDesktopDragRef.current.startOffset = startOffset;
+    teleSaDesktopDragRef.current.pointerId = pointerId;
+    setTeleSaDesktopIsDragging(true);
+
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onCancel);
+      pointerTarget.releasePointerCapture?.(pointerId);
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      if (teleSaDesktopDragRef.current.pointerId !== ev.pointerId) return;
+      ev.preventDefault();
+      const delta = ev.clientY - startY;
+      const next = Math.max(-max, Math.min(0, startOffset + delta));
+      setTeleSaDesktopOffsetPx(next);
+    };
+
+    const finish = (ev: PointerEvent, resetToZero: boolean) => {
+      if (teleSaDesktopDragRef.current.pointerId !== ev.pointerId) return;
       cleanup();
-      teleSaDragRef.current.isDragging = false;
-      setTeleSaIsDragging(false);
-      teleSaDragRef.current.pointerId = null;
-      setTeleSaOffsetPx(0);
+      teleSaDesktopDragRef.current.isDragging = false;
+      teleSaDesktopDragRef.current.pointerId = null;
+      setTeleSaDesktopIsDragging(false);
+      if (resetToZero) setTeleSaDesktopOffsetPx(0);
+      else setTeleSaDesktopOffsetPx((current) => Math.max(-max, Math.min(0, current)));
     };
 
+    const onEnd = (ev: PointerEvent) => finish(ev, false);
+    const onCancel = (ev: PointerEvent) => finish(ev, true);
+
+    pointerTarget.setPointerCapture?.(pointerId);
     window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onEnd);
     window.addEventListener("pointercancel", onCancel);
   };
 
   const toggleTeleSaReveal = () => {
-    if (teleSaDragRef.current.isDragging) return;
     const measuredHeight = teleSaTextRef.current?.offsetHeight ?? 0;
     const max = Math.max(
       teleSaMaxOffsetPx,
@@ -706,8 +981,28 @@ export default function LandingPage() {
     setTeleSaOffsetPx(next);
   };
 
+  const toggleTeleSaDesktopReveal = () => {
+    const measuredHeight = teleSaDesktopTextRef.current?.offsetHeight ?? 0;
+    const max = Math.max(
+      teleSaDesktopMaxOffsetPx,
+      Math.max(0, Math.round(measuredHeight * (2 / 3))),
+    );
+    const next = teleSaDesktopOffsetPx < 0 ? 0 : -max;
+    setTeleSaDesktopOffsetPx(next);
+  };
+
   const goToTest = () => {
     router.push(selectedAge === "adult" ? "/test?variant=adult" : "/test");
+  };
+
+  const closeConsultOverlay = () => {
+    setIsConsultOverlayOpen(false);
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+  };
+
+  const openConsultOverlay = () => {
+    setIsConsultOverlayOpen(true);
   };
 
   const onSubmitConsultation: React.FormEventHandler<HTMLFormElement> = async (e) => {
@@ -748,6 +1043,7 @@ export default function LandingPage() {
       setKidConsultEmail("");
       setKidConsultZaloNumber("");
       setKidConsultTopic("");
+      setIsConsultOverlayOpen(false);
     } catch (err) {
       console.error("consultation submit error:", err);
     } finally {
@@ -757,11 +1053,11 @@ export default function LandingPage() {
 
   return (
     <>
-      {shouldShowMenu && (
-        <>
-          <DesktopNavbar
-            logoSrc={logoSrc}
-            variant={selectedAge === "kid" ? "kid" : "adult"}
+	      {shouldShowMenu && (
+	        <>
+	          <DesktopNavbar
+	            logoSrc={logoSrc}
+	            variant={selectedAge === "kid" ? "kid" : "adult"}
             activeKey="home"
             onTestClick={goToTest}
             onNavigate={(key) => {
@@ -800,15 +1096,170 @@ export default function LandingPage() {
               if (key === "library-roadmap") navigateToLibraryFromMenu("/library/roadmap");
             }}
           />
-        </>
-      )}
+	        </>
+	      )}
 
-      <main
-        ref={mainRef}
-        className="relative h-[100dvh] w-full overflow-y-scroll snap-y snap-mandatory bg-black text-foreground lg:snap-proximity"
-      >
+        {isConsultOverlayOpen && (
+          <div
+            className="fixed inset-0 z-[200] overflow-y-auto bg-black text-white"
+            style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+          >
+            <Image
+              src={selectedAge === "adult" ? "/assets/10-2.jpg" : "/assets/10-1.jpg"}
+              alt="Telesa English consultation"
+              fill
+              priority
+              quality={100}
+              sizes="100vw"
+              className="pointer-events-none select-none object-cover"
+            />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                backgroundColor: selectedAge === "adult" ? "#59033955" : "#6B510055",
+              }}
+            />
+
+            <div className="relative z-10 flex w-full flex-col">
+              <div className="flex items-center justify-between gap-4 px-4 pt-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-12 w-12 shrink-0">
+                    <Image
+                      src={logoSrc}
+                      alt="Telesa English logo"
+                      fill
+                      sizes="48px"
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-[14px] font-semibold leading-tight">Form đăng ký tư vấn</p>
+                    <p className="mt-0.5 text-[12px] text-white/85">Điền nhanh trong 30 giây</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeConsultOverlay}
+                  className="rounded-full border border-white/50 bg-black/20 px-4 py-2 text-[13px] font-medium text-white backdrop-blur-md"
+                >
+                  Đóng
+                </button>
+              </div>
+
+              <div
+                className="mt-4 px-4 pb-[calc(env(safe-area-inset-bottom)+32px)]"
+              >
+                <form className="mx-auto flex w-full max-w-md flex-col gap-3" onSubmit={onSubmitConsultation}>
+                  <div className="space-y-1 text-left">
+                    <label className="block text-[13px] font-semibold text-white">Tên</label>
+                    <input
+                      value={kidConsultName}
+                      onChange={(e) => setKidConsultName(e.target.value)}
+                      placeholder="Nhập tên của bạn"
+                      className="h-11 w-full rounded-[14px] bg-white/75 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.20)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <label className="block text-[13px] font-semibold text-white">Email</label>
+                    <input
+                      value={kidConsultEmail}
+                      onChange={(e) => setKidConsultEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      inputMode="email"
+                      className="h-11 w-full rounded-[14px] bg-white/75 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.20)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
+                    />
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <label className="block text-[13px] font-semibold text-white">Hình thức liên hệ</label>
+                    <div className="relative">
+                      <select
+                        value={kidConsultContactMethod}
+                        onChange={(e) => setKidConsultContactMethod(e.target.value as any)}
+                        className="h-11 w-full appearance-none rounded-[14px] bg-white/75 px-4 pr-10 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.20)] outline-none backdrop-blur-md focus:bg-white/90"
+                      >
+                        <option value="zalo">Zalo</option>
+                        <option value="phone">Điện thoại</option>
+                        <option value="email">Email</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                        <span className="text-[13px] text-slate-600">⌄</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <label className="block text-[13px] font-semibold text-white">
+                      {kidConsultContactMethod === "phone" ? "Số điện thoại" : "Số Zalo"}
+                    </label>
+                    <div className="flex h-11 w-full overflow-hidden rounded-[14px] bg-white/75 shadow-[0_10px_24px_rgba(0,0,0,0.20)] backdrop-blur-md">
+                      <div className="flex items-center gap-2 px-4 text-[14px] text-slate-700">
+                        <select
+                          value={kidConsultZaloCountry}
+                          onChange={(e) => setKidConsultZaloCountry(e.target.value as any)}
+                          className="appearance-none bg-transparent font-semibold outline-none"
+                        >
+                          <option value="VN">VN</option>
+                        </select>
+                        <span className="text-slate-500">⌄</span>
+                      </div>
+                      <div className="my-2 w-px bg-white/60" />
+                      <div className="flex flex-1 items-center px-4">
+                        <span className="mr-2 text-[14px] text-slate-500">+84</span>
+                        <input
+                          value={kidConsultZaloNumber}
+                          onChange={(e) => setKidConsultZaloNumber(e.target.value)}
+                          placeholder="(555) 000-0000"
+                          inputMode="tel"
+                          className="h-full w-full bg-transparent text-left text-[14px] text-slate-700 outline-none placeholder:text-slate-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1 text-left">
+                    <label className="block text-[13px] font-semibold text-white">Vấn đề cần tư vấn</label>
+                    <textarea
+                      value={kidConsultTopic}
+                      onChange={(e) => setKidConsultTopic(e.target.value)}
+                      placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
+                      rows={3}
+                      className="w-full resize-none rounded-[14px] bg-white/75 px-4 py-3 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.20)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
+                    />
+                  </div>
+
+                  <label className="mt-1 flex items-start gap-3 text-left text-[13px] text-white/90">
+                    <input
+                      type="checkbox"
+                      checked={kidConsultAgree}
+                      onChange={(e) => setKidConsultAgree(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded-md border-2 border-white/80 bg-transparent accent-white"
+                    />
+                    <span className="leading-snug">Bạn đồng ý với tất cả điều khoản bảo mật của Telesa</span>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={!kidConsultAgree || isConsultSubmitting}
+                    className="mt-2 h-11 w-full rounded-[14px] bg-[#FFC000] text-center text-[15px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.22)] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95"
+                  >
+                    {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+	      <main
+	        ref={mainRef}
+	        className="relative telesa-vh-100 w-full overflow-y-scroll overscroll-y-none snap-y snap-mandatory bg-black text-foreground"
+	      >
 	      {/* Slide 1: Age selection */}
-		      <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+		      <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
 	        <BackgroundVideo
 	          className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	          key={videoSrc}
@@ -997,7 +1448,7 @@ export default function LandingPage() {
 
       {/* Slide 2: Kid follow-up view */}
 	      {selectedAge === "kid" && (
-	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+	        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
 	          <BackgroundVideo
 	            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	            src="/assets/2-kid.mp4"
@@ -1077,7 +1528,7 @@ export default function LandingPage() {
 
 		      {/* Slide 3 (kid): Horizontal feature carousel with 4 slides */}
 		      {selectedAge === "kid" && (
-		        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
+		        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white">
 			          {/* Mobile */}
 			          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
 			            {/* Top bar (same as kid) */}
@@ -1220,7 +1671,7 @@ export default function LandingPage() {
 
       {/* Slide 4 (kid): Stats view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
 	          {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
 	            {/* Top bar */}
@@ -1292,7 +1743,7 @@ export default function LandingPage() {
       {selectedAge === "kid" && (
         <section
           id="kid-library-teaser-desktop"
-          className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex"
+          className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex"
           style={{ touchAction: "pan-y" }}
           {...kidView8Swipe}
         >
@@ -1314,7 +1765,7 @@ export default function LandingPage() {
               <h2
                 className={`whitespace-pre-line text-[34px] font-semibold leading-[1.05] tracking-tight sm:text-[44px] lg:text-[56px] transform-gpu transition-all duration-300 ease-out ${
                   kidView8TextVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-                }`}
+                } ${kidLibraryTeaserSlides[kidView8Index].desktopTitleClassName}`}
               >
                 {kidLibraryTeaserSlides[kidView8Index].title}
               </h2>
@@ -1360,7 +1811,7 @@ export default function LandingPage() {
 
       {/* Slide 6 (kid desktop): Testimonials */}
       {selectedAge === "kid" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-[#F8F9FA] text-slate-900 lg:flex">
+        <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#F8F9FA] text-slate-900 lg:flex">
           <div className="relative z-10 flex h-full w-full flex-col">
             <div className="w-full px-[8vw] pt-[12vh] text-center">
               <h2 className="text-[44px] font-extrabold tracking-tight text-slate-700">
@@ -1416,7 +1867,7 @@ export default function LandingPage() {
 
       {/* Slide 7 (kid desktop): Global connections view */}
       {selectedAge === "kid" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:flex">
+        <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:flex">
           <div className="relative z-10 flex h-full w-full flex-col">
             <div className="w-full px-[8vw] pt-[10vh] text-center">
               <h2 className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
@@ -1439,7 +1890,7 @@ export default function LandingPage() {
 
       {/* Slide 8 (kid desktop): Consultation form view */}
       {selectedAge === "kid" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex">
+        <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:flex">
           <Image
             src="/assets/10-1.jpg"
             alt="Telesa English Kids consultation"
@@ -1575,7 +2026,7 @@ export default function LandingPage() {
 
       {/* Slide 9 (kid desktop): Contact options view */}
       {selectedAge === "kid" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
+        <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:flex">
           <div className="relative z-10 mt-[80px] flex h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)]">
             <div className="w-full max-w-[1100px] text-center">
               <h2 className="text-[48px] font-extrabold tracking-tight text-slate-700">
@@ -1662,7 +2113,7 @@ export default function LandingPage() {
 
       {/* Slide 10 (kid desktop): TELESA view */}
       {selectedAge === "kid" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:flex">
+        <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:flex">
           <Image
             src="/assets/11-top.jpg"
             alt="Telesa background"
@@ -1676,16 +2127,16 @@ export default function LandingPage() {
 
           <div
             className="absolute inset-x-0 bottom-0 top-[80px] z-10"
-            onPointerDown={startTeleSaDrag}
+            onPointerDown={startTeleSaDesktopDrag}
             style={{ touchAction: "none" }}
           >
-            {teleSaMaskBaseHeightPx > 0 && (
+            {teleSaDesktopMaskBaseHeightPx > 0 && (
               <div
                 className={`pointer-events-none absolute bottom-0 left-0 right-0 z-30 ${
-                  teleSaIsDragging ? "" : "transition-[height] duration-600 ease-out"
+                  teleSaDesktopIsDragging ? "" : "transition-[height] duration-600 ease-out"
                 }`}
                 style={{
-                  height: Math.max(0, teleSaMaskBaseHeightPx + teleSaOffsetPx / 2),
+                  height: Math.max(0, teleSaDesktopMaskBaseHeightPx + teleSaDesktopOffsetPx / 2),
                 }}
               >
                 <Image
@@ -1703,18 +2154,28 @@ export default function LandingPage() {
 
             <div
               className={`absolute left-0 right-0 ${
-                teleSaIsDragging ? "" : "transition-transform duration-600 ease-out"
+                teleSaDesktopIsDragging ? "" : "transition-transform duration-600 ease-out"
               }`}
               style={{
-                bottom: "30vh",
-                transform: `translateY(${teleSaOffsetPx}px)`,
+                bottom: "10vh",
+                transform: `translateY(${teleSaDesktopOffsetPx}px)`,
                 zIndex: 20,
               }}
             >
               <div className="flex w-full items-end justify-center pb-2">
                 <div
-                  ref={teleSaTextRef}
-                  className="w-[80vw] max-w-full select-none whitespace-nowrap text-center text-[clamp(72px,17vw,300px)] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)]"
+                  ref={teleSaDesktopTextRef}
+                  role="button"
+                  tabIndex={0}
+                  onPointerDown={startTeleSaDesktopDrag}
+                  onClick={toggleTeleSaDesktopReveal}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    toggleTeleSaDesktopReveal();
+                  }}
+                  className="w-[80vw] max-w-full cursor-grab select-none whitespace-nowrap text-center text-[clamp(72px,17vw,300px)] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)] active:cursor-grabbing"
+                  style={{ touchAction: "none" }}
                 >
                   TELESA
                 </div>
@@ -1726,7 +2187,7 @@ export default function LandingPage() {
 
       {/* Slide 2 (adult): Adult follow-up view */}
 	      {selectedAge === "adult" && (
-	        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden">
+	        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
 	          <BackgroundVideo
 	            className="bg-video absolute inset-0 h-full w-full object-cover object-center"
 	            src="/assets/1-adult2.mp4"
@@ -1808,7 +2269,7 @@ export default function LandingPage() {
 
       {/* Slide 3 (adult): Same structure as kid view 3 */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white">
 	          {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 text-slate-900 lg:hidden">
 	            {/* Top bar */}
@@ -1951,7 +2412,7 @@ export default function LandingPage() {
 
       {/* Slide 5 (kid): Stats view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
 	            {/* Top bar */}
 	            <MobileHeader
@@ -1988,7 +2449,7 @@ export default function LandingPage() {
 
       {/* Slide 6 (kid): Progress view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
 	            {/* Top bar */}
 	            <MobileHeader
@@ -2025,7 +2486,7 @@ export default function LandingPage() {
 
       {/* Slide 7 (kid): Technology application view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -2071,7 +2532,7 @@ export default function LandingPage() {
       {selectedAge === "kid" && (
         <section
           id="kid-library-teaser"
-          className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
+          className="relative flex telesa-min-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
           style={{ touchAction: "pan-y" }}
           {...kidView8Swipe}
         >
@@ -2159,7 +2620,7 @@ export default function LandingPage() {
 
       {/* Slide 9 (kid): Testimonials view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
           {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
 	            {/* Top bar */}
@@ -2245,7 +2706,7 @@ export default function LandingPage() {
 
       {/* Slide 10 (kid): Global connections view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
 	            {/* Top bar */}
 	            <MobileHeader
@@ -2287,7 +2748,10 @@ export default function LandingPage() {
 
       {/* Slide 11 (kid): Consultation form view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden">
+        <section
+          id="consultation-kid"
+          className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
+        >
           <Image
             src="/assets/10-1.jpg"
             alt="Telesa English Kids consultation"
@@ -2311,132 +2775,30 @@ export default function LandingPage() {
 	              ctaClassName="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md"
 	              menuLineClassName="bg-white"
-	            />
+		            />
 
-            <div className="mx-auto mt-4 w-[80vw] max-w-full text-center">
-              <h2 className="text-[26px] font-extrabold leading-[1.05] tracking-tight text-white">
-                Form Đăng Ký Tư Vấn
-              </h2>
-              <p className="mt-1.5 text-[13px] font-medium leading-snug text-white/90">
-                Để lại thông tin của bạn, chúng tôi sẽ
-                <br />
-                liên hệ để tư vấn ngay!
-              </p>
-            </div>
-
-            <form
-              className="mt-3 flex flex-1 w-full flex-col gap-2.5"
-              onSubmit={onSubmitConsultation}
-            >
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[13px] font-semibold text-white">Tên</label>
-                <input
-                  value={kidConsultName}
-                  onChange={(e) => setKidConsultName(e.target.value)}
-                  placeholder="Nhập tên của bạn"
-                  className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
-                />
-              </div>
-
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[13px] font-semibold text-white">Email</label>
-                <input
-                  value={kidConsultEmail}
-                  onChange={(e) => setKidConsultEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  inputMode="email"
-                  className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
-                />
-              </div>
-
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[13px] font-semibold text-white">
-                  Hình thức liên hệ
-                </label>
-                <div className="relative">
-                  <select
-                    value={kidConsultContactMethod}
-                    onChange={(e) =>
-                      setKidConsultContactMethod(e.target.value as any)
-                    }
-                    className="h-[40px] w-full appearance-none rounded-[14px] bg-white/70 px-4 pr-10 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md focus:bg-white/80"
-                  >
-                    <option value="zalo">Zalo</option>
-                    <option value="phone">Điện thoại</option>
-                    <option value="email">Email</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    <span className="text-[13px] text-slate-500">⌄</span>
+                <div className="flex w-full flex-1 flex-col items-center justify-center pb-16">
+                  <div className="mx-auto w-[80vw] max-w-full text-center">
+                    <h2 className="text-[26px] font-extrabold leading-[1.05] tracking-tight text-white">
+                      Form Đăng Ký Tư Vấn
+                    </h2>
+                    <p className="mt-2 text-[13px] font-medium leading-snug text-white/90">
+                      Mở form để nhập thông tin tư vấn
+                    </p>
                   </div>
-                </div>
-              </div>
 
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[13px] font-semibold text-white">Số Zalo</label>
-                <div className="flex h-[40px] w-full overflow-hidden rounded-[14px] bg-white/70 shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-md">
-                  <div className="flex items-center gap-2 px-4 text-[14px] text-slate-700">
-                    <select
-                      value={kidConsultZaloCountry}
-                      onChange={(e) => setKidConsultZaloCountry(e.target.value as any)}
-                      className="appearance-none bg-transparent font-medium outline-none"
-                    >
-                      <option value="VN">VN</option>
-                    </select>
-                    <span className="text-slate-500">⌄</span>
-                  </div>
-                  <div className="my-2 w-px bg-white/50" />
-                  <div className="flex flex-1 items-center px-4">
-                    <span className="mr-2 text-[14px] text-slate-500">+84</span>
-                    <input
-                      value={kidConsultZaloNumber}
-                      onChange={(e) => setKidConsultZaloNumber(e.target.value)}
-                      placeholder="(555) 000-0000"
-                      inputMode="tel"
-                      className="h-full w-full bg-transparent text-left text-[14px] text-slate-700 outline-none placeholder:text-slate-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="text-[13px] font-semibold text-white">
-                  Vấn đề cần tư vấn
-                </label>
-                <textarea
-                  value={kidConsultTopic}
-                  onChange={(e) => setKidConsultTopic(e.target.value)}
-                  placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
-                  rows={2}
-                  className="w-full resize-none rounded-[14px] bg-white/70 px-4 py-2.5 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
-                />
-              </div>
-
-              <label className="mx-auto mt-0.5 flex w-[80vw] max-w-full items-start gap-3 text-left text-[13px] text-white/90">
-                <input
-                  type="checkbox"
-                  checked={kidConsultAgree}
-                  onChange={(e) => setKidConsultAgree(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded-md border-2 border-white/80 bg-transparent accent-white"
-                />
-                <span className="leading-snug">
-                  Bạn đồng ý với tất cả điều khoản bảo mật của Telesa
-                </span>
-              </label>
-
-              <div className="mt-1 flex justify-center pb-1">
                   <button
-                    type="submit"
-                    disabled={!kidConsultAgree || isConsultSubmitting}
-                    className="mx-auto h-[44px] w-[80vw] max-w-full rounded-[14px] bg-[#FFC000] text-center text-[16px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.20)] disabled:opacity-100 disabled:cursor-not-allowed disabled:brightness-95"
+                    type="button"
+                    onClick={openConsultOverlay}
+                    className="mt-6 w-[80vw] max-w-full rounded-[14px] bg-[#FFC000] px-4 py-3 text-center text-[15px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.22)] active:scale-[0.99]"
                   >
-                    {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
+                    Mở form tư vấn
                   </button>
-              </div>
-            </form>
+                </div>
 
-            <button
-              type="button"
-              onClick={scrollToTop}
+	            <button
+	              type="button"
+	              onClick={scrollToTop}
               className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
               aria-label="Lên đầu trang"
             >
@@ -2448,7 +2810,7 @@ export default function LandingPage() {
 
       {/* Slide 12 (kid): Contact options view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
           <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8">
             {/* Top bar */}
             <div className="flex items-center justify-between">
@@ -2565,7 +2927,7 @@ export default function LandingPage() {
 
       {/* Slide 13 (kid): TELESA reveal view */}
       {selectedAge === "kid" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:hidden">
           <Image
             src="/assets/11-top.jpg"
             alt="Telesa background"
@@ -2579,8 +2941,6 @@ export default function LandingPage() {
 
           <div
             className="absolute inset-0 z-10 lg:pointer-events-none"
-            onPointerDown={startTeleSaDrag}
-            style={{ touchAction: "pan-y" }}
           >
             {teleSaMaskBaseHeightPx > 0 && (
               <div
@@ -2619,13 +2979,15 @@ export default function LandingPage() {
                   ref={teleSaTextRef}
                   role="button"
                   tabIndex={0}
+                  onPointerDown={startTeleSaDrag}
                   onClick={toggleTeleSaReveal}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter" && e.key !== " ") return;
                     e.preventDefault();
                     toggleTeleSaReveal();
                   }}
-                  className="w-[90vw] max-w-full cursor-pointer select-none whitespace-nowrap text-center text-[72px] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)]"
+                  className="w-[90vw] max-w-full cursor-grab select-none whitespace-nowrap text-center text-[72px] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)] active:cursor-grabbing"
+                  style={{ touchAction: "none" }}
                 >
                   TELESA
                 </div>
@@ -2665,7 +3027,7 @@ export default function LandingPage() {
 
       {/* Slide 4 (adult): Stats view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-white lg:text-slate-900">
 	          {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
 	            {/* Top bar */}
@@ -2739,7 +3101,7 @@ export default function LandingPage() {
 
       {/* Slide 5 (adult): Teacher stats view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
 	            {/* Top bar */}
 	            <MobileHeader
@@ -2778,7 +3140,7 @@ export default function LandingPage() {
 
       {/* Slide 6 (adult): Progress view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:hidden">
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
 	            {/* Top bar */}
 	            <MobileHeader
@@ -2817,7 +3179,7 @@ export default function LandingPage() {
 
       {/* Slide 7 (adult): Technology application view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900 lg:hidden">
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8">
 	            {/* Top bar */}
 	            <MobileHeader
@@ -2858,7 +3220,7 @@ export default function LandingPage() {
       {selectedAge === "adult" && (
         <section
           id="adult-library-teaser"
-          className="relative flex min-h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
+          className="relative flex telesa-min-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white lg:hidden"
           style={{ touchAction: "pan-y" }}
           {...adultWhyMobileSwipe}
         >
@@ -2946,7 +3308,7 @@ export default function LandingPage() {
       {selectedAge === "adult" && (
         <section
           id="adult-library-teaser-desktop"
-          className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden lg:flex"
+          className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden lg:flex"
           style={{ touchAction: "pan-y" }}
           {...adultView8Swipe}
         >
@@ -3013,7 +3375,7 @@ export default function LandingPage() {
 
       {/* Slide 9 (adult): Testimonials view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-[#F8F9FA] lg:text-slate-900">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:bg-[#F8F9FA] lg:text-slate-900">
 	          {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
 	            {/* Top bar */}
@@ -3149,7 +3511,7 @@ export default function LandingPage() {
 
       {/* Slide 10 (adult): Global connections view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-[#273143] text-white">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white">
 	          {/* Mobile */}
 	          <div className="relative z-10 flex w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
 	            {/* Top bar */}
@@ -3213,7 +3575,10 @@ export default function LandingPage() {
 
       {/* Slide 11 (adult): Consultation form view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white">
+        <section
+          id="consultation-adult"
+          className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black text-white"
+        >
           <Image
             src="/assets/10-2.jpg"
             alt="Telesa English consultation"
@@ -3244,135 +3609,30 @@ export default function LandingPage() {
 	              ctaClassName="rounded-full border border-white/80 bg-black/20 px-4 py-2 text-xs font-medium text-white shadow-sm backdrop-blur-md"
 	              menuButtonClassName="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-full bg-black/20 text-white shadow-sm backdrop-blur-md"
 	              menuLineClassName="bg-white"
-	            />
+		            />
 
-            <div className="mx-auto mt-4 w-[80vw] max-w-full text-center">
-              <h2 className="text-[26px] font-extrabold leading-[1.05] tracking-tight text-white">
-                Form Đăng Ký Tư Vấn
-              </h2>
-              <p className="mt-1.5 text-[13px] font-medium leading-snug text-white/90">
-                Để lại thông tin của bạn, chúng tôi sẽ
-                <br />
-                liên hệ để tư vấn ngay!
-              </p>
-            </div>
+                <div className="flex w-full flex-1 flex-col items-center justify-center pb-16">
+                  <div className="mx-auto w-[80vw] max-w-full text-center">
+                    <h2 className="text-[26px] font-extrabold leading-[1.05] tracking-tight text-white">
+                      Form Đăng Ký Tư Vấn
+                    </h2>
+                    <p className="mt-2 text-[13px] font-medium leading-snug text-white/90">
+                      Mở form để nhập thông tin tư vấn
+                    </p>
+                  </div>
 
-            <form
-              className="mt-3 flex w-full flex-1 flex-col gap-2.5"
-              onSubmit={onSubmitConsultation}
-            >
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[14px] font-semibold text-white">
-                  Tên
-                </label>
-                <input
-                  value={kidConsultName}
-                  onChange={(e) => setKidConsultName(e.target.value)}
-                  placeholder="Nhập tên của bạn"
-                  className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
-                />
-              </div>
-
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[14px] font-semibold text-white">
-                  Email
-                </label>
-                <input
-                  value={kidConsultEmail}
-                  onChange={(e) => setKidConsultEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  inputMode="email"
-                  className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
-                />
-              </div>
-
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[14px] font-semibold text-white">
-                  Hình thức liên hệ
-                </label>
-                <div className="relative">
-                  <select
-                    value={kidConsultContactMethod}
-                    onChange={(e) =>
-                      setKidConsultContactMethod(e.target.value as any)
-                    }
-                    className="h-[40px] w-full appearance-none rounded-[14px] bg-white/70 px-4 pr-10 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md focus:bg-white/80"
+                  <button
+                    type="button"
+                    onClick={openConsultOverlay}
+                    className="mt-6 w-[80vw] max-w-full rounded-[14px] bg-[#D40887] px-4 py-3 text-center text-[15px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.22)] active:scale-[0.99]"
                   >
-                    <option value="zalo">Zalo</option>
-                    <option value="phone">Điện thoại</option>
-                    <option value="email">Email</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                    <span className="text-[13px] text-slate-500">⌄</span>
-                  </div>
+                    Mở form tư vấn
+                  </button>
                 </div>
-              </div>
 
-              {kidConsultContactMethod === "zalo" && (
-                <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                  <label className="block text-[14px] font-semibold text-white">
-                    Số Zalo
-                  </label>
-                  <div className="flex h-[40px] w-full items-center rounded-[14px] bg-white/70 px-3 shadow-[0_10px_24px_rgba(0,0,0,0.18)] backdrop-blur-md">
-                    <select
-                      value={kidConsultZaloCountry}
-                      onChange={(e) =>
-                        setKidConsultZaloCountry(e.target.value as any)
-                      }
-                      className="h-full w-16 bg-transparent text-[13px] text-slate-700 outline-none"
-                    >
-                      <option value="VN">VN</option>
-                    </select>
-                    <span className="mx-2 h-5 w-px bg-slate-300/70" />
-                    <input
-                      value={kidConsultZaloNumber}
-                      onChange={(e) => setKidConsultZaloNumber(e.target.value)}
-                      placeholder="+84 (555) 000-0000"
-                      inputMode="tel"
-                      className="h-full flex-1 bg-transparent text-left text-[14px] text-slate-700 outline-none placeholder:text-slate-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
-                <label className="block text-[14px] font-semibold text-white">
-                  Vấn đề cần tư vấn
-                </label>
-                <textarea
-                  value={kidConsultTopic}
-                  onChange={(e) => setKidConsultTopic(e.target.value)}
-                  placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
-                  className="h-[64px] w-full resize-none rounded-[14px] bg-white/70 px-4 py-2.5 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
-                />
-              </div>
-
-              <label className="mx-auto flex w-[80vw] max-w-full items-start gap-3 text-left text-[14px] text-white/90">
-                <input
-                  type="checkbox"
-                  checked={kidConsultAgree}
-                  onChange={(e) => setKidConsultAgree(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded-md border-2 border-white/80 bg-transparent accent-white"
-                />
-                <span className="leading-snug">
-                  Bạn đồng ý với tất cả điều khoản bảo mật của Telesa
-                </span>
-              </label>
-
-              <div className="mt-1 flex justify-center pb-1">
-                <button
-                  type="submit"
-                  disabled={!kidConsultAgree || isConsultSubmitting}
-                  className="mx-auto h-[44px] w-[80vw] max-w-full rounded-[14px] bg-[#D40887] text-center text-[16px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.20)] disabled:opacity-100 disabled:cursor-not-allowed disabled:brightness-95"
-                >
-                  {isConsultSubmitting ? "Đang gửi..." : "Gửi"}
-                </button>
-              </div>
-            </form>
-
-            <button
-              type="button"
-              onClick={scrollToTop}
+	            <button
+	              type="button"
+	              onClick={scrollToTop}
               className="absolute bottom-5 right-4 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-md"
               aria-label="Lên đầu trang"
             >
@@ -3504,7 +3764,7 @@ export default function LandingPage() {
 
       {/* Slide 12 (adult): Contact options view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center bg-white text-slate-900">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center bg-white text-slate-900">
           {/* Mobile */}
           <div className="relative z-10 flex h-full w-full max-w-md flex-col px-4 pb-6 pt-8 lg:hidden">
             {/* Top bar */}
@@ -3705,7 +3965,7 @@ export default function LandingPage() {
 
       {/* Slide 13 (adult desktop): TELESA view */}
       {selectedAge === "adult" && (
-        <section className="relative hidden h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:flex">
+        <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:flex">
           <Image
             src="/assets/11-top.jpg"
             alt="Telesa background"
@@ -3719,16 +3979,16 @@ export default function LandingPage() {
 
           <div
             className="absolute inset-x-0 bottom-0 top-[80px] z-10"
-            onPointerDown={startTeleSaDrag}
+            onPointerDown={startTeleSaDesktopDrag}
             style={{ touchAction: "none" }}
           >
-            {teleSaMaskBaseHeightPx > 0 && (
+            {teleSaDesktopMaskBaseHeightPx > 0 && (
               <div
                 className={`pointer-events-none absolute bottom-0 left-0 right-0 z-30 ${
-                  teleSaIsDragging ? "" : "transition-[height] duration-600 ease-out"
+                  teleSaDesktopIsDragging ? "" : "transition-[height] duration-600 ease-out"
                 }`}
                 style={{
-                  height: Math.max(0, teleSaMaskBaseHeightPx + teleSaOffsetPx / 2),
+                  height: Math.max(0, teleSaDesktopMaskBaseHeightPx + teleSaDesktopOffsetPx / 2),
                 }}
               >
                 <Image
@@ -3746,18 +4006,28 @@ export default function LandingPage() {
 
             <div
               className={`absolute left-0 right-0 ${
-                teleSaIsDragging ? "" : "transition-transform duration-600 ease-out"
+                teleSaDesktopIsDragging ? "" : "transition-transform duration-600 ease-out"
               }`}
               style={{
-                bottom: "30vh",
-                transform: `translateY(${teleSaOffsetPx}px)`,
+                bottom: "10vh",
+                transform: `translateY(${teleSaDesktopOffsetPx}px)`,
                 zIndex: 20,
               }}
             >
               <div className="flex w-full items-end justify-center pb-2">
                 <div
-                  ref={teleSaTextRef}
-                  className="w-[80vw] max-w-full select-none whitespace-nowrap text-center text-[clamp(72px,17vw,300px)] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)]"
+                  ref={teleSaDesktopTextRef}
+                  role="button"
+                  tabIndex={0}
+                  onPointerDown={startTeleSaDesktopDrag}
+                  onClick={toggleTeleSaDesktopReveal}
+                  onKeyDown={(e) => {
+                    if (e.key !== "Enter" && e.key !== " ") return;
+                    e.preventDefault();
+                    toggleTeleSaDesktopReveal();
+                  }}
+                  className="w-[80vw] max-w-full cursor-grab select-none whitespace-nowrap text-center text-[clamp(72px,17vw,300px)] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)] active:cursor-grabbing"
+                  style={{ touchAction: "none" }}
                 >
                   TELESA
                 </div>
@@ -3769,7 +4039,7 @@ export default function LandingPage() {
 
       {/* Slide 13 (adult): TELESA reveal view */}
       {selectedAge === "adult" && (
-        <section className="relative flex h-[100dvh] w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:hidden">
+        <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden bg-black lg:hidden">
           <Image
             src="/assets/11-top.jpg"
             alt="Telesa background"
@@ -3783,8 +4053,6 @@ export default function LandingPage() {
 
           <div
             className="absolute inset-0 z-10 lg:pointer-events-none"
-            onPointerDown={startTeleSaDrag}
-            style={{ touchAction: "pan-y" }}
           >
             {teleSaMaskBaseHeightPx > 0 && (
               <div
@@ -3823,13 +4091,15 @@ export default function LandingPage() {
                   ref={teleSaTextRef}
                   role="button"
                   tabIndex={0}
+                  onPointerDown={startTeleSaDrag}
                   onClick={toggleTeleSaReveal}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter" && e.key !== " ") return;
                     e.preventDefault();
                     toggleTeleSaReveal();
                   }}
-                  className="w-[90vw] max-w-full cursor-pointer select-none whitespace-nowrap text-center text-[72px] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)]"
+                  className="w-[90vw] max-w-full cursor-grab select-none whitespace-nowrap text-center text-[72px] font-extrabold leading-none tracking-[0.22em] text-white drop-shadow-[0_18px_40px_rgba(0,0,0,0.35)] active:cursor-grabbing"
+                  style={{ touchAction: "none" }}
                 >
                   TELESA
                 </div>

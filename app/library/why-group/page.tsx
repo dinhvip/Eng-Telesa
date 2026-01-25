@@ -48,6 +48,10 @@ function useStepDeck(options: { itemCount: number }) {
   const animTimerRef = useRef<number | null>(null);
   const phaseTimerRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const wheelAccumRef = useRef(0);
+  const wheelLockRef = useRef(false);
+  const wheelUnlockTimerRef = useRef<number | null>(null);
+  const wheelLastTimeRef = useRef<number>(0);
 
   const clearAnimTimer = () => {
     if (animTimerRef.current == null) return;
@@ -61,10 +65,17 @@ function useStepDeck(options: { itemCount: number }) {
     phaseTimerRef.current = null;
   };
 
+  const clearWheelUnlockTimer = () => {
+    if (wheelUnlockTimerRef.current == null) return;
+    window.clearTimeout(wheelUnlockTimerRef.current);
+    wheelUnlockTimerRef.current = null;
+  };
+
   useEffect(() => {
     return () => {
       clearAnimTimer();
       clearPhaseTimer();
+      clearWheelUnlockTimer();
     };
   }, []);
 
@@ -96,8 +107,26 @@ function useStepDeck(options: { itemCount: number }) {
     e.preventDefault();
     e.stopPropagation();
     if (isTransitioningRef.current) return;
-    if (e.deltaY > 12) startTransition("forward");
-    else if (e.deltaY < -12) startTransition("back");
+
+    const now = performance.now();
+    if (now - wheelLastTimeRef.current > 240) wheelAccumRef.current = 0;
+    wheelLastTimeRef.current = now;
+    wheelAccumRef.current += e.deltaY;
+
+    if (wheelLockRef.current) return;
+    if (Math.abs(wheelAccumRef.current) < 70) return;
+
+    const direction: StepDirection = wheelAccumRef.current > 0 ? "forward" : "back";
+    wheelAccumRef.current = 0;
+
+    wheelLockRef.current = true;
+    clearWheelUnlockTimer();
+    wheelUnlockTimerRef.current = window.setTimeout(() => {
+      wheelLockRef.current = false;
+      wheelUnlockTimerRef.current = null;
+    }, 520);
+
+    startTransition(direction);
   };
 
   const onTouchStart: React.TouchEventHandler<HTMLElement> = (e) => {
@@ -157,6 +186,7 @@ function splitBenefitLines(description: string) {
 export default function WhyGroupPage() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isPageReady, setIsPageReady] = useState(false);
 
   const steps = useMemo(
     () => [
@@ -192,6 +222,11 @@ export default function WhyGroupPage() {
     sessionStorage.removeItem("telesa:openMenuOnBack");
     sessionStorage.removeItem("telesa:openMenuOnBack:returnTo");
     setIsMenuOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setIsPageReady(true));
+    return () => window.cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
@@ -290,9 +325,17 @@ export default function WhyGroupPage() {
             style={{ touchAction: "none" }}
             {...gestureHandlers}
           >
-            <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
-              Chương trình học nhóm
-            </h1>
+            <div
+              className={[
+                "transition-[opacity,transform,filter] duration-700 ease-out will-change-transform will-change-opacity",
+                "motion-reduce:transition-none motion-reduce:transform-none motion-reduce:filter-none",
+                isPageReady ? "opacity-100 translate-y-0 blur-0" : "opacity-0 translate-y-2 blur-[2px]",
+              ].join(" ")}
+            >
+              <h1 className="text-[24px] font-semibold leading-tight tracking-tight">
+                Chương trình học nhóm
+              </h1>
+            </div>
 
             <div className="mt-10 flex flex-1 flex-col items-center justify-center">
               <div className={baseClass} style={motion}>
@@ -338,12 +381,26 @@ export default function WhyGroupPage() {
         />
         <div className="absolute inset-0 bg-[#3B002566]" />
 
-        <div className="relative z-10 mx-auto flex h-full w-full max-w-6xl flex-col px-[8vw] pb-16 pt-[110px]">
-          <h1 className="text-center text-[clamp(34px,2.6vw,48px)] font-semibold leading-[1.12] tracking-tight">
-            Chương trình học nhóm
-          </h1>
+        <div className="relative z-10 mx-auto flex h-full w-full max-w-[82.8rem] flex-col px-[8vw] pb-16 pt-[110px]">
+          <div
+            className={[
+              "transition-[opacity,transform,filter] duration-700 ease-out will-change-transform will-change-opacity",
+              "motion-reduce:transition-none motion-reduce:transform-none motion-reduce:filter-none",
+              isPageReady ? "opacity-100 translate-y-0 blur-0" : "opacity-0 translate-y-3 blur-[3px]",
+            ].join(" ")}
+          >
+            <h1 className="text-center text-[clamp(34px,2.6vw,48px)] font-semibold leading-[1.12] tracking-tight">
+              Chương trình học nhóm
+            </h1>
+          </div>
 
-          <div className="flex flex-1 items-center">
+          <div
+            className={[
+              "flex flex-1 items-center transition-[opacity,transform] duration-700 ease-out delay-75 will-change-transform will-change-opacity",
+              "motion-reduce:transition-none motion-reduce:transform-none",
+              isPageReady ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3",
+            ].join(" ")}
+          >
             <div className="grid w-full grid-cols-4 gap-x-[clamp(18px,2.8vw,56px)]">
               {BENEFITS.map((benefit, index) => {
                 const lines = splitBenefitLines(benefit.description);
@@ -353,12 +410,12 @@ export default function WhyGroupPage() {
                     <div className="flex h-14 w-14 items-center justify-center rounded-full border border-white/80 bg-white/40 text-[28px] font-semibold leading-none">
                       {index + 1}
                     </div>
-                    <h2 className="mt-5 text-[clamp(18px,1.35vw,22px)] font-semibold leading-snug tracking-tight">
+                    <h2 className="mt-5 min-h-[3.2em] text-[clamp(18px,1.35vw,22px)] font-medium not-italic leading-[128.125%] tracking-tight">
                       {benefit.title}
                     </h2>
 
                     {hasBullets ? (
-                      <ul className="mt-5 space-y-3 text-[clamp(14px,1vw,16px)] font-normal leading-relaxed text-white/90">
+                      <ul className="mt-5 w-full max-w-[22rem] space-y-3 text-left text-[clamp(14px,1vw,16px)] font-normal leading-relaxed text-white/90">
                         {lines.map((line) => (
                           <li key={line} className="flex items-start gap-3 text-left">
                             <span className="mt-[0.65em] h-1.5 w-1.5 shrink-0 rounded-full bg-white/80" />
@@ -367,7 +424,7 @@ export default function WhyGroupPage() {
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-5 whitespace-pre-line text-[clamp(14px,1vw,16px)] font-normal leading-relaxed text-white/90">
+                      <p className="mt-5 w-full max-w-[22rem] whitespace-pre-line text-[clamp(14px,1vw,16px)] font-normal leading-relaxed text-white/90">
                         {lines.join("\n")}
                       </p>
                     )}
