@@ -8,6 +8,8 @@ import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
 import ArrowUpIcon from "../components/ArrowUpIcon";
 import { useWheelStepSnap } from "../components/useWheelStepSnap";
+import { sendConsultationMail } from "../lib/sendConsultationMail";
+import Toast from "../components/Toast";
 
 export default function TestPageClient() {
   const router = useRouter();
@@ -39,6 +41,17 @@ export default function TestPageClient() {
   const consultSectionRef = useRef<HTMLElement | null>(null);
   const contactSectionRef = useRef<HTMLElement | null>(null);
 
+  const [infoName, setInfoName] = useState("");
+  const [infoPhone, setInfoPhone] = useState("");
+  const [infoEmail, setInfoEmail] = useState("");
+  const [infoCountry, setInfoCountry] = useState("");
+  const [infoJob, setInfoJob] = useState("");
+  const [consultToast, setConsultToast] = useState<{
+    open: boolean;
+    message: string;
+    variant: "success" | "error";
+  }>({ open: false, message: "", variant: "success" });
+
   const [consultContactMethod, setConsultContactMethod] = useState<
     "zalo" | "phone" | "email"
   >("zalo");
@@ -47,6 +60,7 @@ export default function TestPageClient() {
   const [consultTimeSlot, setConsultTimeSlot] = useState("");
   const [consultTopic, setConsultTopic] = useState("");
   const [consultAgree, setConsultAgree] = useState(false);
+  const [isConsultSubmitting, setIsConsultSubmitting] = useState(false);
 
   const onSubmitInfo: React.FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
@@ -54,6 +68,67 @@ export default function TestPageClient() {
       window.open(testFormUrl, "_blank", "noopener,noreferrer");
     }
     uploadSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const onSubmitConsultation: React.FormEventHandler<HTMLFormElement> = async (e) => {
+    e.preventDefault();
+    if (isConsultSubmitting) return;
+    if (!consultAgree) return;
+
+    const pageUrl = typeof window === "undefined" ? "" : window.location.href;
+    const zaloOrPhone = consultZaloNumber.trim();
+    const phone = infoPhone.trim() || zaloOrPhone;
+    const email = infoEmail.trim();
+
+    if (!infoName.trim()) {
+      setConsultToast({ open: true, variant: "error", message: "Vui lòng nhập họ tên." });
+      return;
+    }
+    if (!phone && !email) {
+      setConsultToast({ open: true, variant: "error", message: "Vui lòng nhập Email hoặc SĐT/Zalo." });
+      return;
+    }
+
+    setIsConsultSubmitting(true);
+    try {
+      await sendConsultationMail({
+        name: infoName,
+        phone,
+        email,
+        job: infoJob || `test-${variant}`,
+        contact_channel: consultContactMethod,
+        consult_topic: consultTopic || "Tư vấn sau kiểm tra",
+        notes: [
+          `source=test`,
+          `variant=${variant}`,
+          `country=${infoCountry}`,
+          `contact_method=${consultContactMethod}`,
+          `zalo_country=${consultZaloCountry}`,
+          `zalo_or_phone=${zaloOrPhone}`,
+          `time_slot=${consultTimeSlot}`,
+          `page_url=${pageUrl}`,
+        ].join("\n"),
+      });
+
+      setConsultToast({
+        open: true,
+        variant: "success",
+        message: "Gửi thông tin tư vấn thành công. Telesa sẽ liên hệ với bạn sớm nhất!",
+      });
+      setConsultAgree(false);
+      setConsultZaloNumber("");
+      setConsultTimeSlot("");
+      setConsultTopic("");
+    } catch (err) {
+      console.error("consultation submit error:", err);
+      setConsultToast({
+        open: true,
+        variant: "error",
+        message: "Gửi tư vấn thất bại. Vui lòng thử lại sau.",
+      });
+    } finally {
+      setIsConsultSubmitting(false);
+    }
   };
 
   const scrollToTop = () => {
@@ -90,6 +165,12 @@ export default function TestPageClient() {
 
   return (
     <>
+      <Toast
+        open={consultToast.open}
+        message={consultToast.message}
+        variant={consultToast.variant}
+        onClose={() => setConsultToast((prev) => ({ ...prev, open: false }))}
+      />
       <DesktopNavbar
         variant={variant}
         logoSrc={logoSrc}
@@ -179,6 +260,8 @@ export default function TestPageClient() {
                     placeholder="Nhập tên của bạn"
                     autoComplete="name"
                     required
+                    value={infoName}
+                    onChange={(e) => setInfoName(e.target.value)}
                     className="h-[42px] w-full rounded-[14px] bg-white/80 px-5 text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
                   />
                 </div>
@@ -194,6 +277,8 @@ export default function TestPageClient() {
                     inputMode="tel"
                     autoComplete="tel"
                     required
+                    value={infoPhone}
+                    onChange={(e) => setInfoPhone(e.target.value)}
                     className="h-[42px] w-full rounded-[14px] bg-white/80 px-5 text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
                   />
                 </div>
@@ -209,6 +294,8 @@ export default function TestPageClient() {
                     inputMode="email"
                     autoComplete="email"
                     required
+                    value={infoEmail}
+                    onChange={(e) => setInfoEmail(e.target.value)}
                     className="h-[42px] w-full rounded-[14px] bg-white/80 px-5 text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
                   />
                 </div>
@@ -221,7 +308,8 @@ export default function TestPageClient() {
                     <select
                       id="country-desktop"
                       name="country"
-                      defaultValue=""
+                      value={infoCountry}
+                      onChange={(e) => setInfoCountry(e.target.value)}
                       required
                       className="h-[42px] w-full appearance-none rounded-[14px] bg-white/80 px-5 pr-12 text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md focus:bg-white/90"
                     >
@@ -248,6 +336,8 @@ export default function TestPageClient() {
                     id="job-desktop"
                     name="job"
                     placeholder="Bạn đang làm nghề gì"
+                    value={infoJob}
+                    onChange={(e) => setInfoJob(e.target.value)}
                     className="h-[42px] w-full rounded-[14px] bg-white/80 px-5 text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/90"
                   />
                 </div>
@@ -324,6 +414,8 @@ export default function TestPageClient() {
                     placeholder="Nhập tên của bạn"
                     autoComplete="name"
                     required
+                    value={infoName}
+                    onChange={(e) => setInfoName(e.target.value)}
                     className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
                   />
                 </div>
@@ -342,6 +434,8 @@ export default function TestPageClient() {
                     inputMode="tel"
                     autoComplete="tel"
                     required
+                    value={infoPhone}
+                    onChange={(e) => setInfoPhone(e.target.value)}
                     className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
                   />
                 </div>
@@ -360,6 +454,8 @@ export default function TestPageClient() {
                     inputMode="email"
                     autoComplete="email"
                     required
+                    value={infoEmail}
+                    onChange={(e) => setInfoEmail(e.target.value)}
                     className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
                   />
                 </div>
@@ -375,7 +471,8 @@ export default function TestPageClient() {
                     <select
                       id="country"
                       name="country"
-                      defaultValue=""
+                      value={infoCountry}
+                      onChange={(e) => setInfoCountry(e.target.value)}
                       required
                       className="h-[40px] w-full appearance-none rounded-[14px] bg-white/70 px-4 pr-10 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md focus:bg-white/80"
                     >
@@ -406,6 +503,8 @@ export default function TestPageClient() {
                     name="job"
                     placeholder="Bạn đang làm nghề gì"
                     autoComplete="organization-title"
+                    value={infoJob}
+                    onChange={(e) => setInfoJob(e.target.value)}
                     className="h-[40px] w-full rounded-[14px] bg-white/70 px-4 text-left text-[14px] text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.18)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/80"
                   />
                 </div>
@@ -813,7 +912,7 @@ export default function TestPageClient() {
               </button>
             </div>
 
-            <form className="w-full max-w-[440px] space-y-5" onSubmit={(e) => e.preventDefault()}>
+            <form className="w-full max-w-[440px] space-y-5" onSubmit={onSubmitConsultation}>
               <div className="space-y-2">
                 <label className="block text-[14px] font-semibold text-white">Hình thức liên hệ</label>
                 <div className="relative">
@@ -903,7 +1002,7 @@ export default function TestPageClient() {
 
               <button
                 type="submit"
-                disabled={!consultAgree}
+                disabled={!consultAgree || isConsultSubmitting}
                 className={[
                   "flex h-[48px] w-full items-center justify-center rounded-full text-center text-[16px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.20)] disabled:opacity-100 disabled:cursor-not-allowed disabled:brightness-95",
                   primaryBgClass,
@@ -938,10 +1037,7 @@ export default function TestPageClient() {
             </p>
           </div>
 
-          <form
-            className="mt-3 flex w-full flex-1 flex-col gap-2.5"
-            onSubmit={(e) => e.preventDefault()}
-          >
+          <form className="mt-3 flex w-full flex-1 flex-col gap-2.5" onSubmit={onSubmitConsultation}>
             <div className="mx-auto w-[80vw] max-w-full space-y-1 text-left">
               <label className="block text-[13px] font-semibold text-white">
                 Hình thức liên hệ
@@ -1046,7 +1142,7 @@ export default function TestPageClient() {
             <div className="mt-1 flex justify-center pb-1">
               <button
                 type="submit"
-                disabled={!consultAgree}
+                disabled={!consultAgree || isConsultSubmitting}
                 className={[
                   "mx-auto h-[44px] w-[80vw] max-w-full rounded-[14px] text-center text-[16px] font-extrabold text-white shadow-[0_14px_28px_rgba(0,0,0,0.20)] disabled:opacity-100 disabled:cursor-not-allowed disabled:brightness-95",
                   primaryBgClass,

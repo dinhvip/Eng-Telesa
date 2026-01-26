@@ -18,6 +18,8 @@ import type { BackgroundVideoHandle } from "./components/BackgroundVideo";
 import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSet";
 import type { PreloadedBackgroundVideoSetHandle } from "./components/PreloadedBackgroundVideoSet";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
+import { sendConsultationMail } from "./lib/sendConsultationMail";
+import Toast from "./components/Toast";
 
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
@@ -252,6 +254,11 @@ export default function LandingPage() {
   const [kidConsultAgree, setKidConsultAgree] = useState(false);
   const [isConsultSubmitting, setIsConsultSubmitting] = useState(false);
   const [isConsultOverlayOpen, setIsConsultOverlayOpen] = useState(false);
+  const [consultToast, setConsultToast] = useState<{
+    open: boolean;
+    message: string;
+    variant: "success" | "error";
+  }>({ open: false, message: "", variant: "success" });
   const consultOverlayRestoreRef = useRef<{
     scrollTop: number;
     snapIndex: number;
@@ -1063,34 +1070,44 @@ export default function LandingPage() {
     if (isConsultSubmitting) return;
     if (!kidConsultAgree) return;
 
-    const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3200";
     const variant = selectedAge === "adult" ? "adult" : "kid";
     const pageUrl = typeof window === "undefined" ? "" : window.location.href;
+    const name = kidConsultName.trim();
+    const email = kidConsultEmail.trim();
+    const phoneOrZalo = kidConsultZaloNumber.trim();
+
+    if (!name) {
+      setConsultToast({ open: true, variant: "error", message: "Vui lòng nhập họ tên." });
+      return;
+    }
+    if (!email && !phoneOrZalo) {
+      setConsultToast({ open: true, variant: "error", message: "Vui lòng nhập Email hoặc SĐT/Zalo." });
+      return;
+    }
 
     setIsConsultSubmitting(true);
     try {
-      const response = await fetch(`${backendBaseUrl}/api/consultations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          source: "landing",
-          variant,
-          name: kidConsultName,
-          email: kidConsultEmail,
-          phone: kidConsultContactMethod === "phone" ? kidConsultZaloNumber : "",
-          contactMethod: kidConsultContactMethod,
-          zaloCountry: kidConsultZaloCountry,
-          zaloNumber: kidConsultZaloNumber,
-          topic: kidConsultTopic,
-          pageUrl,
-        }),
+      await sendConsultationMail({
+        name,
+        phone: phoneOrZalo,
+        email,
+        job: `landing-${variant}`,
+        contact_channel: kidConsultContactMethod,
+        consult_topic: kidConsultTopic || "Tư vấn khóa học",
+        notes: [
+          `source=landing`,
+          `variant=${variant}`,
+          `contact_method=${kidConsultContactMethod}`,
+          `zalo_country=${kidConsultZaloCountry}`,
+          `page_url=${pageUrl}`,
+        ].join("\n"),
       });
 
-      if (!response.ok) {
-        const message = await response.text().catch(() => "");
-        throw new Error(message || `HTTP ${response.status}`);
-      }
-
+      setConsultToast({
+        open: true,
+        variant: "success",
+        message: "Gửi thông tin tư vấn thành công. Telesa sẽ liên hệ với bạn sớm nhất!",
+      });
       setKidConsultAgree(false);
       setKidConsultName("");
       setKidConsultEmail("");
@@ -1099,6 +1116,11 @@ export default function LandingPage() {
       setIsConsultOverlayOpen(false);
     } catch (err) {
       console.error("consultation submit error:", err);
+      setConsultToast({
+        open: true,
+        variant: "error",
+        message: "Gửi tư vấn thất bại. Vui lòng thử lại sau.",
+      });
     } finally {
       setIsConsultSubmitting(false);
     }
@@ -1106,6 +1128,12 @@ export default function LandingPage() {
 
   return (
     <>
+      <Toast
+        open={consultToast.open}
+        message={consultToast.message}
+        variant={consultToast.variant}
+        onClose={() => setConsultToast((prev) => ({ ...prev, open: false }))}
+      />
 	      {shouldShowMenu && (
 	        <>
 	          <DesktopNavbar

@@ -18,6 +18,7 @@ import {
   type CourseProduct,
   type ProductCategory,
 } from "./catalog";
+import { fetchCourseCatalog, mapApiCourseToViewModel } from "./telesaApi";
 
 function PersonIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -179,20 +180,38 @@ export default function ProductPageClient() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [category, setCategory] = useState<ProductCategory>("course");
-  const [isPaid, setIsPaid] = useState(true);
-  const [isDiscount, setIsDiscount] = useState(true);
+  const [isPaid, setIsPaid] = useState(false);
+  const [isDiscount, setIsDiscount] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mobilePage, setMobilePage] = useState(1);
+  const [apiCourseProducts, setApiCourseProducts] = useState<CourseProduct[] | null>(null);
+  const [apiCourseError, setApiCourseError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const courses = await fetchCourseCatalog({ signal: controller.signal, next: { revalidate: 300 } });
+        if (controller.signal.aborted) return;
+        setApiCourseProducts(courses.map(mapApiCourseToViewModel));
+        setApiCourseError(null);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        console.error("product catalog fetch error:", err);
+        setApiCourseError(err instanceof Error ? err.message : "Unknown error");
+        setApiCourseProducts(null);
+      }
+    })();
+    return () => controller.abort();
+  }, []);
 
   const desktopItemsPerPage = 12;
   const mobileItemsPerPage = 3;
   const baseProducts = useMemo(() => {
-    return category === "book"
-      ? BOOK_PRODUCTS
-      : category === "audio"
-        ? AUDIO_PRODUCTS
-        : COURSE_PRODUCTS;
-  }, [category]);
+    if (category === "book") return BOOK_PRODUCTS;
+    if (category === "audio") return AUDIO_PRODUCTS;
+    return apiCourseProducts ?? COURSE_PRODUCTS;
+  }, [apiCourseProducts, category]);
 
   const filteredProducts = useMemo(() => {
     return baseProducts.filter((product) => {
