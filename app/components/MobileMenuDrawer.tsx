@@ -105,18 +105,20 @@ export default function MobileMenuDrawer({
         children:
           variant === "adult"
             ? [
-                { key: "library-what-is-tes", label: "T.E.S là gì?" },
-                { key: "library-1-1", label: "Học kèm 1-1" },
-                { key: "library-payment-method", label: "Phương thức thanh toán" },
-                { key: "library-why-group", label: "Chương trình học nhóm" },
-                { key: "library-roadmap", label: "Lộ trình học" },
-              ]
+              { key: "library-what-is-tes", label: "T.E.S là gì?" },
+              { key: "library-1-1", label: "Học kèm 1-1" },
+              { key: "library-payment-method", label: "Phương thức thanh toán" },
+              { key: "library-why-group", label: "Chương trình học nhóm" },
+              { key: "library-roadmap", label: "Lộ trình học" },
+            ]
             : [
-                { key: "library-why", label: "Vì sao chọn Telesa" },
-                { key: "library-program-for-kid", label: "Chương trình cho bé" },
-              ],
+              { key: "library-why", label: "Vì sao chọn Telesa" },
+              { key: "library-program-for-kid", label: "Chương trình cho bé" },
+            ],
       },
       { key: "career", label: "Tuyển dụng" },
+      { key: "admin", label: "Admin" },
+
     ],
     [variant],
   );
@@ -146,25 +148,22 @@ export default function MobileMenuDrawer({
 
   return (
     <div
-      className={`fixed inset-0 z-50 md:hidden transition-opacity duration-400 ${
-        isVisible ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
+      className={`fixed inset-0 z-50 md:hidden transition-opacity duration-400 ${isVisible ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
       role="dialog"
       aria-modal="true"
     >
       <button
         type="button"
-        className={`absolute inset-0 bg-black/20 transition-opacity duration-400 ${
-          isVisible ? "opacity-100" : "opacity-0"
-        }`}
+        className={`absolute inset-0 bg-black/20 transition-opacity duration-400 ${isVisible ? "opacity-100" : "opacity-0"
+          }`}
         aria-label="Close menu"
         onClick={onClose}
       />
 
       <div
-        className={`absolute inset-0 bg-white transition-[transform,opacity] duration-400 ease-out ${
-          isVisible ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0"
-        }`}
+        className={`absolute inset-0 bg-white transition-[transform,opacity] duration-400 ease-out ${isVisible ? "translate-x-0 opacity-100" : "-translate-x-3 opacity-0"
+          }`}
       >
         <div className="mx-auto flex h-full max-w-md flex-col">
           <header className="flex items-center justify-between px-5 pt-[calc(env(safe-area-inset-top)+12px)]">
@@ -207,13 +206,11 @@ export default function MobileMenuDrawer({
                         onNavigate?.(item.key);
                         onClose();
                       }}
-                      className={`block w-full text-left text-[18px] ${
-                        item.key === "home" ? "font-[700]" : "font-[400]"
-                      } leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
-                        isActive
+                      className={`block w-full text-left text-[18px] ${item.key === "home" ? "font-[700]" : "font-[400]"
+                        } leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${isActive
                           ? "text-[#D40887]"
                           : "text-slate-900 hover:text-[#D40887]"
-                      }`}
+                        }`}
                       aria-current={isActive ? "page" : undefined}
                     >
                       {item.label}
@@ -226,25 +223,22 @@ export default function MobileMenuDrawer({
                     <button
                       type="button"
                       onClick={() => setIsLibraryExpanded((prev) => !prev)}
-                      className={`flex w-full items-center justify-between text-left text-[18px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
-                        isActive
+                      className={`flex w-full items-center justify-between text-left text-[18px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${isActive
                           ? "text-[#D40887]"
                           : "text-slate-900 hover:text-[#D40887]"
-                      }`}
+                        }`}
                       aria-expanded={isLibraryExpanded}
                     >
                       <span>{item.label}</span>
                       <ChevronDownIcon
-                        className={`h-5 w-5 transition-transform ${
-                          isLibraryExpanded ? "rotate-0" : "-rotate-90"
-                        }`}
+                        className={`h-5 w-5 transition-transform ${isLibraryExpanded ? "rotate-0" : "-rotate-90"
+                          }`}
                       />
                     </button>
 
                     <div
-                      className={`space-y-1 overflow-hidden pl-4 transition-[max-height,opacity] duration-200 ease-out ${
-                        isLibraryExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
-                      }`}
+                      className={`space-y-1 overflow-hidden pl-4 transition-[max-height,opacity] duration-200 ease-out ${isLibraryExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                        }`}
                     >
                       {item.children.map((child) => {
                         const isChildActive = child.key === activeKey;
@@ -268,16 +262,15 @@ export default function MobileMenuDrawer({
                                     "telesa:openMenuOnBack:returnTo",
                                     `${window.location.pathname}${window.location.search}`,
                                   );
-                                } catch {}
+                                } catch { }
                               }
                               onNavigate?.(child.key);
                               onClose();
                             }}
-                            className={`block w-full rounded-xl px-3 py-2 text-left text-[15px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${
-                              isChildActive
+                            className={`block w-full rounded-xl px-3 py-2 text-left text-[15px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${isChildActive
                                 ? "bg-[#D40887]/10 text-[#D40887]"
                                 : "text-slate-700 hover:bg-slate-50 hover:text-[#D40887]"
-                            }`}
+                              }`}
                             aria-current={isChildActive ? "page" : undefined}
                           >
                             {child.label}
@@ -310,17 +303,15 @@ export default function MobileMenuDrawer({
                   </p>
                 </div>
                 <ChevronDownIcon
-                  className={`h-4 w-4 text-slate-500 transition-transform ${
-                    isAccountExpanded ? "rotate-0" : "-rotate-90"
-                  }`}
+                  className={`h-4 w-4 text-slate-500 transition-transform ${isAccountExpanded ? "rotate-0" : "-rotate-90"
+                    }`}
                 />
               </button>
 
               <div
                 id="mobile-menu-account"
-                className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
-                  isAccountExpanded ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
-                }`}
+                className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${isAccountExpanded ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                  }`}
               >
                 <button
                   type="button"
@@ -362,11 +353,10 @@ export default function MobileMenuDrawer({
                       />
                     </span>
                     <span
-                      className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${
-                        language === "vi"
+                      className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${language === "vi"
                           ? "bg-[var(--primary)] ring-[var(--primary)]"
                           : "bg-white ring-slate-400/70"
-                      }`}
+                        }`}
                       aria-hidden="true"
                     >
                       {language === "vi" && (
@@ -395,11 +385,10 @@ export default function MobileMenuDrawer({
                       />
                     </span>
                     <span
-                      className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${
-                        language === "en"
+                      className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${language === "en"
                           ? "bg-[var(--primary)] ring-[var(--primary)]"
                           : "bg-white ring-slate-400/70"
-                      }`}
+                        }`}
                       aria-hidden="true"
                     >
                       {language === "en" && (
