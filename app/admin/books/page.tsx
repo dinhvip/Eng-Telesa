@@ -177,7 +177,7 @@ export default function BooksPage() {
             Manage your book inventory and catalog.
           </p>
         </div>
-        <Button
+        {/* <Button
           onClick={handleCreate}
           icon={
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -186,7 +186,7 @@ export default function BooksPage() {
           }
         >
           Add Book
-        </Button>
+        </Button> */}
       </div>
 
       {/* Search */}
@@ -210,13 +210,13 @@ export default function BooksPage() {
       </div>
 
       {/* Table */}
-      <Table
+      {/* <Table
         columns={columns}
         data={filtered}
         emptyTitle="No books yet"
         emptyDescription="Start building your library by adding the first book."
         onAdd={handleCreate}
-      />
+      /> */}
 
       {/* Create / Edit modal */}
       <Modal

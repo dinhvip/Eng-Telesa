@@ -169,6 +169,6 @@ export const MOCK_POPUPS: Popup[] = [
 // ─── Mock Settings ────────────────────────────────────────────────────────────
 
 export const MOCK_SETTINGS: Settings = {
-  email: "info@telesa.vn",
-  hotline: "1900 6868",
+  email: "team1@telesaenglish.com",
+  hotline: "0932639259",
 };

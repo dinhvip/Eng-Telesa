@@ -178,7 +178,7 @@ export default function PopupPage() {
             Create and manage promotional popups, banners, and toasts.
           </p>
         </div>
-        <Button
+        {/* <Button
           onClick={handleCreate}
           icon={
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -187,7 +187,7 @@ export default function PopupPage() {
           }
         >
           Add Popup
-        </Button>
+        </Button> */}
       </div>
 
       {/* Search */}
@@ -211,13 +211,13 @@ export default function PopupPage() {
       </div>
 
       {/* Table */}
-      <Table
+      {/* <Table
         columns={columns}
         data={filtered}
         emptyTitle="No popups yet"
         emptyDescription="Create your first popup to engage visitors."
         onAdd={handleCreate}
-      />
+      /> */}
 
       {/* Create / Edit modal */}
       <Modal
