@@ -7,8 +7,9 @@ import Table from "../_components/Table";
 import Button from "../_components/Button";
 import Modal from "../_components/Modal";
 import StatusBadge from "../_components/StatusBadge";
+import ImageUpload from "../_components/ImageUpload";
 
-type CourseForm = Omit<Course, "id" | "createdAt">;
+type CourseForm = Omit<Course, "id" | "createdAt"> & { image?: string };
 
 const emptyForm: CourseForm = {
   title: "",
@@ -18,6 +19,7 @@ const emptyForm: CourseForm = {
   students: 0,
   price: 0,
   status: "Draft",
+  image: "",
 };
 
 function statusVariant(s: Course["status"]) {
@@ -59,7 +61,7 @@ export default function CoursesPage() {
   }
 
   // Open edit
-  function handleEdit(course: Course) {
+  function handleEdit(course: Course & { image?: string }) {
     setEditingId(course.id);
     setForm({
       title: course.title,
@@ -69,6 +71,7 @@ export default function CoursesPage() {
       students: course.students,
       price: course.price,
       status: course.status,
+      image: course.image || "", // Nạp dữ liệu hình ảnh cũ nếu có
     });
     setErrors({});
     setModalOpen(true);
@@ -98,7 +101,7 @@ export default function CoursesPage() {
         ...form,
         id: `c${Date.now()}`,
         createdAt: new Date().toISOString().split("T")[0],
-      };
+      } as Course; // Ép kiểu nếu Type Course chưa có trường image
       setCourses((prev) => [newCourse, ...prev]);
     }
     setModalOpen(false);
@@ -110,14 +113,26 @@ export default function CoursesPage() {
     setDeleteConfirm(null);
   }
 
-  const columns: TableColumn<Course>[] = [
+  const columns: TableColumn<Course & { image?: string }>[] = [
     {
       key: "title",
       label: "Course",
       render: (c) => (
-        <div>
-          <p className="font-medium text-gray-900">{c.title}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{c.slug}</p>
+        <div className="flex items-center gap-3">
+          {/* Cập nhật Table để hiển thị Thumbnail ảnh */}
+          {c.image ? (
+            <img src={c.image} alt={c.title} className="w-10 h-10 rounded-md object-cover bg-gray-100 border border-gray-200" />
+          ) : (
+            <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+          <div>
+            <p className="font-medium text-gray-900">{c.title}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{c.slug}</p>
+          </div>
         </div>
       ),
     },
@@ -220,7 +235,14 @@ export default function CoursesPage() {
         onClose={() => setModalOpen(false)}
         title={editingId ? "Edit Course" : "New Course"}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+
+          <ImageUpload
+            label="Course Image"
+            value={form.image}
+            onChange={(url) => setForm(f => ({ ...f, image: url }))}
+          />
+
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
@@ -230,7 +252,6 @@ export default function CoursesPage() {
                 setForm((f) => ({
                   ...f,
                   title: e.target.value,
-                  slug: e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
                 }));
               }}
               className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.title ? "border-red-300" : "border-gray-200"}`}

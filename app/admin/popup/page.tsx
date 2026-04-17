@@ -7,8 +7,9 @@ import Table from "../_components/Table";
 import Button from "../_components/Button";
 import Modal from "../_components/Modal";
 import StatusBadge from "../_components/StatusBadge";
+import ImageUpload from "../_components/ImageUpload";
 
-type PopupForm = Omit<Popup, "id">;
+type PopupForm = Omit<Popup, "id"> & { image?: string };
 
 const emptyForm: PopupForm = {
   title: "",
@@ -18,6 +19,7 @@ const emptyForm: PopupForm = {
   isActive: false,
   startDate: "",
   endDate: "",
+  image: "",
 };
 
 export default function PopupPage() {
@@ -46,7 +48,7 @@ export default function PopupPage() {
     setModalOpen(true);
   }
 
-  function handleEdit(popup: Popup) {
+  function handleEdit(popup: Popup & { image?: string }) {
     setEditingId(popup.id);
     setForm({
       title: popup.title,
@@ -56,6 +58,7 @@ export default function PopupPage() {
       isActive: popup.isActive,
       startDate: popup.startDate,
       endDate: popup.endDate,
+      image: popup.image || "",
     });
     setErrors({});
     setModalOpen(true);
@@ -103,14 +106,26 @@ export default function PopupPage() {
     setDeleteConfirm(null);
   }
 
-  const columns: TableColumn<Popup>[] = [
+  const columns: TableColumn<Popup & { image?: string }>[] = [
     {
       key: "title",
       label: "Popup",
       render: (p) => (
-        <div>
-          <p className="font-medium text-gray-900">{p.title}</p>
-          <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">{p.content}</p>
+        <div className="flex items-center gap-3">
+          {/* Cập nhật Table để hiển thị Thumbnail ảnh */}
+          {p.image ? (
+            <img src={p.image} alt={p.title} className="w-10 h-10 rounded-md object-cover bg-gray-100 border border-gray-200" />
+          ) : (
+            <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+          <div>
+            <p className="font-medium text-gray-900">{p.title}</p>
+            <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">{p.content}</p>
+          </div>
         </div>
       ),
     },
@@ -178,7 +193,7 @@ export default function PopupPage() {
             Create and manage promotional popups, banners, and toasts.
           </p>
         </div>
-        {/* <Button
+        <Button
           onClick={handleCreate}
           icon={
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -187,7 +202,7 @@ export default function PopupPage() {
           }
         >
           Add Popup
-        </Button> */}
+        </Button>
       </div>
 
       {/* Search */}
@@ -211,13 +226,13 @@ export default function PopupPage() {
       </div>
 
       {/* Table */}
-      {/* <Table
+      <Table
         columns={columns}
         data={filtered}
         emptyTitle="No popups yet"
         emptyDescription="Create your first popup to engage visitors."
         onAdd={handleCreate}
-      /> */}
+      />
 
       {/* Create / Edit modal */}
       <Modal
@@ -226,7 +241,12 @@ export default function PopupPage() {
         title={editingId ? "Edit Popup" : "New Popup"}
         maxWidth="max-w-xl"
       >
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
+          <ImageUpload
+            label="Course Image"
+            value={form.image}
+            onChange={(url) => setForm(f => ({ ...f, image: url }))}
+          />
           {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
