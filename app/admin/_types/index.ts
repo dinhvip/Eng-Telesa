@@ -8,8 +8,17 @@ export interface Course {
   duration: string;
   students: number;
   price: number;
+  salePrice: number;
   status: "Active" | "Draft" | "Archived";
   createdAt: string;
+  image: string;
+  category: string;
+  courseCategory: string;
+  teacher: string;
+  description: string;
+  introduction: string;
+  benefits: string;
+  purchaseNotes: string;
 }
 
 export interface Book {

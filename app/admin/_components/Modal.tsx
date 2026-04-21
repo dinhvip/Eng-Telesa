@@ -15,7 +15,7 @@ export default function Modal({
   onClose,
   title,
   children,
-  maxWidth = "max-w-lg",
+  maxWidth = "max-w-5xl",
 }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
