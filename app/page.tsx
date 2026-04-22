@@ -237,6 +237,29 @@ export default function LandingPage() {
   const preloadedVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
   const [selectedAge, setSelectedAge] = useState<"kid" | "adult" | null>(null);
   const [isAgeSwitchLocked, setIsAgeSwitchLocked] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
+  useEffect(() => {
+    const isLogged = document.cookie.includes("auth_token=");
+    setIsLoggedIn(isLogged);
+    if (isLogged) {
+      try {
+        const stored = localStorage.getItem("telesa_user_info");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          let ageMode: "kid" | "adult" = "adult";
+          if (parsed.birthday) {
+            const ageYear = new Date().getFullYear() - new Date(parsed.birthday).getFullYear();
+            ageMode = ageYear < 16 ? "kid" : "adult";
+          }
+          setSelectedAge(ageMode);
+          preloadVideo(ageMode === "kid" ? "/assets/2-kid.mp4" : "/assets/2-adult.mp4");
+        }
+      } catch (e) {}
+    }
+    setIsAuthChecking(false);
+  }, []);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSnapIndex, setActiveSnapIndex] = useState(0);
   const [kidSlideIndex, setKidSlideIndex] = useState(0);
@@ -994,7 +1017,7 @@ export default function LandingPage() {
     };
   }, [selectedAge]);
 
-  const shouldShowMenu = selectedAge != null && activeSnapIndex > 0;
+  const shouldShowMenu = selectedAge != null && (isLoggedIn || activeSnapIndex > 0);
 
   const activeMenuKey = "home";
 
@@ -1496,7 +1519,14 @@ export default function LandingPage() {
         ref={mainRef}
         className="relative telesa-vh-100 w-full overflow-y-scroll overscroll-y-none bg-black text-foreground"
       >
+        {isAuthChecking && (
+          <section className="relative flex telesa-vh-100 w-full snap-start items-center justify-center overflow-hidden bg-black">
+             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </section>
+        )}
+
         {/* Slide 1: Age selection */}
+        {!isAuthChecking && !isLoggedIn && (
         <section className="relative flex telesa-vh-100 w-full snap-start items-stretch justify-center overflow-hidden">
           <PreloadedBackgroundVideoSet
             ref={slide1VideoRef}
@@ -1552,8 +1582,8 @@ export default function LandingPage() {
                       disabled={isAgeSwitchLocked}
                       onClick={() => handleSelectAge("kid")}
                       className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${selectedAge === "kid"
-                          ? "border-white bg-white text-black shadow-lg scale-[1.02]"
-                          : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.02]"
+                        : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
                         }`}
                     >
                       Trẻ em {"<"} 16 tuổi
@@ -1563,8 +1593,8 @@ export default function LandingPage() {
                       disabled={isAgeSwitchLocked}
                       onClick={() => handleSelectAge("adult")}
                       className={`flex-1 rounded-full border px-3 py-2 text-center text-xs font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${selectedAge === "adult"
-                          ? "border-white bg-white text-black shadow-lg scale-[1.02]"
-                          : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.02]"
+                        : "border-white/80 bg-black/20 text-white hover:bg-white/10 hover:scale-[1.02] active:scale-95"
                         }`}
                     >
                       Người lớn {">="} 16 tuổi
@@ -1635,8 +1665,8 @@ export default function LandingPage() {
                       disabled={isAgeSwitchLocked}
                       onClick={() => handleSelectAge("kid")}
                       className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${selectedAge === "kid"
-                          ? "border-white bg-white text-black shadow-lg scale-[1.01]"
-                          : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.01]"
+                        : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
                         }`}
                     >
                       Trẻ em {"<"} 16 tuổi
@@ -1646,13 +1676,14 @@ export default function LandingPage() {
                       disabled={isAgeSwitchLocked}
                       onClick={() => handleSelectAge("adult")}
                       className={`flex-1 rounded-full border px-6 py-3 text-center text-sm font-medium shadow-sm backdrop-blur-sm transition-all duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-90 disabled:active:scale-100 ${selectedAge === "adult"
-                          ? "border-white bg-white text-black shadow-lg scale-[1.01]"
-                          : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
+                        ? "border-white bg-white text-black shadow-lg scale-[1.01]"
+                        : "border-white/80 bg-black/15 text-white hover:bg-white/10 hover:scale-[1.01] active:scale-[0.98]"
                         }`}
                     >
                       Người lớn {">="} 16 tuổi
                     </button>
                   </div>
+
                 </section>
 
                 <aside className="flex shrink-0 flex-col gap-7">
@@ -1680,9 +1711,11 @@ export default function LandingPage() {
                   </div>
                 </aside>
               </div>
+              <div></div>
             </div>
           </div>
         </section>
+        )}
 
         {/* Slide 2: Kid follow-up view */}
         {selectedAge === "kid" && (
@@ -1827,8 +1860,8 @@ export default function LandingPage() {
                       type="button"
                       onClick={() => changeKidSlide(index)}
                       className={`h-1 rounded-full transition-all ${index === kidSlideIndex
-                          ? "w-6 bg-amber-400"
-                          : "w-4 bg-slate-300"
+                        ? "w-6 bg-amber-400"
+                        : "w-4 bg-slate-300"
                         }`}
                     />
                   ))}
@@ -1863,8 +1896,8 @@ export default function LandingPage() {
                   >
                     <div
                       className={`relative mx-auto h-full w-full max-w-[560px] transform-gpu transition-all duration-300 ease-out ${kidTextVisible
-                          ? "opacity-100 translate-x-0 scale-100"
-                          : "opacity-0 -translate-x-2 scale-[0.99]"
+                        ? "opacity-100 translate-x-0 scale-100"
+                        : "opacity-0 -translate-x-2 scale-[0.99]"
                         }`}
                     >
                       <Image
@@ -2569,8 +2602,8 @@ export default function LandingPage() {
                       type="button"
                       onClick={() => changeKidSlide(index)}
                       className={`h-1 rounded-full transition-all ${index === kidSlideIndex
-                          ? "w-6 bg-amber-400"
-                          : "w-4 bg-slate-300"
+                        ? "w-6 bg-amber-400"
+                        : "w-4 bg-slate-300"
                         }`}
                     />
                   ))}
@@ -2605,8 +2638,8 @@ export default function LandingPage() {
                   >
                     <div
                       className={`relative mx-auto h-full w-full max-w-[560px] transform-gpu transition-all duration-300 ease-out ${kidTextVisible
-                          ? "opacity-100 translate-x-0 scale-100"
-                          : "opacity-0 -translate-x-2 scale-[0.99]"
+                        ? "opacity-100 translate-x-0 scale-100"
+                        : "opacity-0 -translate-x-2 scale-[0.99]"
                         }`}
                     >
                       <Image
@@ -3525,8 +3558,8 @@ export default function LandingPage() {
                           type="button"
                           onClick={() => changeAdultWhyMobileSlide(index)}
                           className={`h-1.5 rounded-full transition-all ${adultWhyMobileIndex === index
-                              ? "w-4 bg-[#C1077B]"
-                              : "w-3 bg-white/70"
+                            ? "w-4 bg-[#C1077B]"
+                            : "w-3 bg-white/70"
                             }`}
                         />
                       ))}
