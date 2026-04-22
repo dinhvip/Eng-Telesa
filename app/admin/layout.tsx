@@ -14,9 +14,9 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
-  const [credentials, setCredentials] = useState<LoginCredentials>({ 
-    email: "", 
-    password: "" 
+  const [credentials, setCredentials] = useState<LoginCredentials>({
+    email: "",
+    password: ""
   });
   const [error, setError] = useState<string>(""); // State hiển thị lỗi
 
@@ -27,50 +27,50 @@ export default function AdminLayout({
   }, []);
 
   // Xử lý login
-const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError("");
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
 
-  try {
-    const result = await authAPI.login(credentials);
+    try {
+      const result = await authAPI.login(credentials);
 
-    // ✅ Kiểm tra đúng cấu trúc: có message thành công VÀ có token
-    if (result.message === "Đăng nhập thành công" && result.data?.token) {
-      
-      // Lưu token vào cookie với options bảo mật
-      Cookies.set("auth_token", result.data.token, { 
-        expires: 7, 
-        secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS ở production
-        sameSite: "strict" // Chống CSRF
-      });
-      
-      setIsAuthenticated(true);
-      
-      // Optional: Lưu user info vào state/localStorage nếu cần
-      // const { token, ...userInfo } = result.data;
-      // localStorage.setItem("user", JSON.stringify(userInfo));
-      
-    } else {
-      // Hiển thị lỗi từ API hoặc default message
-      setError(result.message || "Đăng nhập thất bại");
+      // ✅ Kiểm tra đúng cấu trúc: có message thành công VÀ có token
+      if (result.message === "Đăng nhập thành công" && result.data?.token) {
+
+        // Lưu token vào cookie với options bảo mật
+        Cookies.set("auth_token", result.data.token, {
+          expires: 7,
+          secure: process.env.NODE_ENV === "production", // Chỉ gửi qua HTTPS ở production
+          sameSite: "strict" // Chống CSRF
+        });
+
+        setIsAuthenticated(true);
+
+        // Optional: Lưu user info vào state/localStorage nếu cần
+        // const { token, ...userInfo } = result.data;
+        // localStorage.setItem("user", JSON.stringify(userInfo));
+
+      } else {
+        // Hiển thị lỗi từ API hoặc default message
+        setError(result.message || "Đăng nhập thất bại");
+      }
+
+    } catch (err: any) {
+      console.error("Login error:", err);
+
+      // Xử lý lỗi axios: lấy message từ nhiều vị trí có thể
+      const message =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Lỗi kết nối server";
+
+      setError(message);
+    } finally {
+      setLoading(false);
     }
-    
-  } catch (err: any) {
-    console.error("Login error:", err);
-    
-    // Xử lý lỗi axios: lấy message từ nhiều vị trí có thể
-    const message = 
-      err.response?.data?.message || 
-      err.response?.data?.error ||
-      err.message || 
-      "Lỗi kết nối server";
-    
-    setError(message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // Loading state khi check auth
   if (isAuthenticated === null) {
@@ -90,7 +90,7 @@ const handleLogin = async (e: React.FormEvent) => {
             <h2 className="text-center text-3xl font-extrabold text-gray-900">Admin Login</h2>
             <p className="mt-2 text-center text-sm text-gray-600">Vui lòng đăng nhập để tiếp tục</p>
           </div>
-          
+
           <form className="mt-8 space-y-6" onSubmit={handleLogin}>
             <div className="space-y-4">
               <div>

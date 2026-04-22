@@ -21,6 +21,10 @@ import { useWheelStepSnap } from "./components/useWheelStepSnap";
 import { sendConsultationMail } from "./lib/sendConsultationMail";
 import Toast from "./components/Toast";
 
+// GSAP – loaded dynamically to avoid SSR issues
+type GsapModule = typeof import("gsap");
+type ScrollTriggerModule = typeof import("gsap/ScrollTrigger");
+
 type HorizontalSwipeHandlers<T extends HTMLElement> = Pick<
   React.HTMLAttributes<T>,
   | "onTouchStart"
@@ -679,13 +683,6 @@ export default function LandingPage() {
     slide1VideoRef.current?.play(age);
     preloadVideo(age === "kid" ? "/assets/2-kid.mp4" : "/assets/2-adult.mp4");
     slide2VideoRef.current?.play();
-
-    setTimeout(() => {
-      mainRef.current?.scrollTo({
-        top: mainRef.current.clientHeight,
-        behavior: "smooth",
-      });
-    }, 600);
   };
 
   useEffect(() => {
@@ -844,31 +841,158 @@ export default function LandingPage() {
     };
   }, []);
 
-  // Scroll-reveal animation: observe each section and add 'in-view' when visible
+  // ── GSAP scroll animations ────────────────────────────────────────────────
   useEffect(() => {
-    const main = mainRef.current;
-    if (typeof window === "undefined" || !main) return;
+    if (typeof window === "undefined") return;
+    const scroller = mainRef.current;
+    if (!scroller) return;
 
-    const sections = Array.from(main.querySelectorAll<HTMLElement>(":scope > section"));
+    let killed = false;
+    let cleanupFns: Array<() => void> = [];
 
-    // Mark the first section as always visible (no flash on load)
-    if (sections[0]) sections[0].classList.add("in-view");
+    Promise.all([
+      import("gsap").then((m) => m.gsap ?? (m as any).default),
+      import("gsap/ScrollTrigger").then((m) => m.ScrollTrigger ?? (m as any).default),
+    ]).then(([gsap, ScrollTrigger]) => {
+      if (killed) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("in-view");
-          }
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Kill any stale triggers from a previous run
+      ScrollTrigger.getAll().forEach((t: any) => t.kill());
+
+      const sections = Array.from(
+        scroller.querySelectorAll<HTMLElement>(":scope > section"),
+      );
+
+      // ── Hero (Slide 1): staggered entrance on load ──────────────────────
+      const hero = sections[0];
+      if (hero) {
+        const tl = gsap.timeline({ delay: 0.15 });
+        const heroH1 = hero.querySelectorAll("h1");
+        const heroP = hero.querySelectorAll("p");
+        const heroButtons = hero.querySelectorAll("button");
+        const heroImgs = hero.querySelectorAll('[class*="aspect-"]');
+
+        if (heroH1.length) {
+          tl.from(heroH1, { opacity: 0, y: 36, duration: 0.9, ease: "power3.out" });
+        }
+        if (heroP.length) {
+          tl.from(heroP, { opacity: 0, y: 22, duration: 0.7, stagger: 0.08, ease: "power3.out", clearProps: "all" }, "-=0.6");
+        }
+        if (heroButtons.length) {
+          tl.from(heroButtons, { opacity: 0, y: 18, scale: 0.95, duration: 0.6, stagger: 0.1, ease: "back.out(1.4)", clearProps: "all" }, "-=0.5");
+        }
+        if (heroImgs.length) {
+          tl.from(heroImgs, { opacity: 0, y: 40, scale: 0.94, duration: 0.85, stagger: 0.14, ease: "power3.out", clearProps: "all" }, "-=0.6");
+        }
+      }
+
+      // ── Remaining sections: fade + slide up on scroll ───────────────────
+      sections.slice(1).forEach((section) => {
+        gsap.from(section, {
+          opacity: 0,
+          y: 44,
+          duration: 0.72,
+          ease: "power3.out",
+          clearProps: "opacity,transform",
+          scrollTrigger: {
+            trigger: section,
+            scroller,
+            start: "top 88%",
+            once: true,
+          },
         });
-      },
-      { root: main, threshold: 0.15 },
-    );
+      });
 
-    sections.slice(1).forEach((s) => observer.observe(s));
+      // ── Stats cards: scale + bounce in ──────────────────────────────────
+      const statItems = scroller.querySelectorAll<HTMLElement>("[data-gsap-stat]");
+      statItems.forEach((item, i) => {
+        gsap.from(item, {
+          opacity: 0,
+          y: 55,
+          scale: 0.86,
+          duration: 0.78,
+          delay: i * 0.13,
+          ease: "back.out(1.5)",
+          clearProps: "all",
+          scrollTrigger: {
+            trigger: item.closest("section"),
+            scroller,
+            start: "top 78%",
+            once: true,
+          },
+        });
+      });
 
-    return () => observer.disconnect();
-  }, [selectedAge]); // re-run when age changes so new sections get observed
+      // ── Contact cards: slide up with scale ──────────────────────────────
+      const contactCards = scroller.querySelectorAll<HTMLElement>("[data-gsap-card]");
+      contactCards.forEach((card, i) => {
+        gsap.from(card, {
+          opacity: 0,
+          y: 64,
+          scale: 0.93,
+          duration: 0.72,
+          delay: i * 0.14,
+          ease: "power4.out",
+          clearProps: "all",
+          scrollTrigger: {
+            trigger: card.closest("section"),
+            scroller,
+            start: "top 76%",
+            once: true,
+          },
+        });
+      });
+
+      // ── Testimonial cards: slide from right ─────────────────────────────
+      const testimonials = scroller.querySelectorAll<HTMLElement>("[data-gsap-testimonial]");
+      testimonials.forEach((item, i) => {
+        gsap.from(item, {
+          opacity: 0,
+          x: 56,
+          scale: 0.96,
+          duration: 0.68,
+          delay: i * 0.11,
+          ease: "power3.out",
+          clearProps: "all",
+          scrollTrigger: {
+            trigger: item.closest("section"),
+            scroller,
+            start: "top 80%",
+            once: true,
+          },
+        });
+      });
+
+      // ── Section headings: clip + rise ───────────────────────────────────
+      const headings = scroller.querySelectorAll<HTMLElement>("[data-gsap-heading]");
+      headings.forEach((h) => {
+        gsap.from(h, {
+          opacity: 0,
+          y: 34,
+          duration: 0.78,
+          ease: "power3.out",
+          clearProps: "all",
+          scrollTrigger: {
+            trigger: h.closest("section"),
+            scroller,
+            start: "top 82%",
+            once: true,
+          },
+        });
+      });
+
+      cleanupFns.push(() => {
+        ScrollTrigger.getAll().forEach((t: any) => t.kill());
+      });
+    });
+
+    return () => {
+      killed = true;
+      cleanupFns.forEach((fn) => fn());
+    };
+  }, [selectedAge]);
 
   const shouldShowMenu = selectedAge != null && activeSnapIndex > 0;
 
@@ -1478,7 +1602,6 @@ export default function LandingPage() {
 
               {/* Desktop */}
               <div className="hidden w-full items-center justify-between gap-10 lg:flex">
-                s
                 <section className="w-[62%] rounded-[32px] bg-[linear-gradient(174deg,rgba(0,0,0,0.20)_6.38%,rgba(0,0,0,0)_95.47%)] px-12 py-12 text-white shadow-[0_2px_4px_rgba(0,0,0,0.10)]">
                   <div className="flex items-center gap-3">
                     <div className="relative h-[56px] w-[56px]">
@@ -1822,28 +1945,28 @@ export default function LandingPage() {
             <div className="relative z-10 hidden h-full w-full items-center justify-center px-[8vw] lg:flex">
               <div className="w-full">
                 <div className="grid w-full grid-cols-2 items-start gap-8 text-center 2xl:grid-cols-4 2xl:gap-12">
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiếng anh giao tiếp</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                       <CountUp to={1000} suffix="+" durationMs={1500} />
                     </p>
                     <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên đang học</p>
                   </div>
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Giáo viên chuyên môn</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                       <CountUp to={25} suffix="+" durationMs={1500} />
                     </p>
                     <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
                   </div>
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiến bộ rõ rệt</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                       <CountUp to={98} suffix="%" durationMs={1500} />
                     </p>
                     <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên cảm nhận thực tế</p>
                   </div>
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Ứng dụng công nghệ</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#FEA933]">
                       <CountUp to={90} suffix="%" durationMs={1500} />
@@ -1929,7 +2052,7 @@ export default function LandingPage() {
           <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#F8F9FA] text-slate-900 lg:flex">
             <div className="relative z-10 flex h-full w-full flex-col">
               <div className="w-full px-[8vw] pt-[12vh] text-center">
-                <h2 className="text-[44px] font-extrabold tracking-tight text-slate-700">
+                <h2 data-gsap-heading className="text-[44px] font-extrabold tracking-tight text-slate-700">
                   Cảm Nhận Học Viên
                 </h2>
                 <p className="mt-3 text-lg text-[#667085]">
@@ -1952,6 +2075,7 @@ export default function LandingPage() {
                   {kidTestimonials.map((t, index) => (
                     <article
                       key={`${t.name}-${index}`}
+                      data-gsap-testimonial
                       className="grid h-[55vh] max-h-[55vh] w-[23vw] grid-rows-[1fr_auto] rounded-[32px] border border-slate-100 bg-white p-[clamp(28px,3.2vh,40px)] shadow-sm snap-center"
                     >
                       <p className="self-center text-[clamp(16px,2vh,22px)] leading-relaxed text-slate-700">
@@ -1985,7 +2109,7 @@ export default function LandingPage() {
           <section className="relative hidden telesa-vh-100 w-full snap-start items-stretch justify-center bg-[#273143] text-white lg:flex">
             <div className="relative z-10 flex h-full w-full flex-col">
               <div className="w-full px-[8vw] pt-[10vh] text-center">
-                <h2 className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
+                <h2 data-gsap-heading className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
                   Kết nối học viên trên toàn thế giới cùng Telesa English!
                 </h2>
                 <p className="mx-auto mt-5 max-w-[820px] text-[20px] leading-relaxed text-slate-100">
@@ -2159,6 +2283,7 @@ export default function LandingPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Mở Zalo"
+                    data-gsap-card
                     className="rounded-[40px] bg-[#E6F7FE] p-10 transition-transform hover:-translate-y-0.5"
                   >
                     <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
@@ -2183,6 +2308,7 @@ export default function LandingPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Mở Messenger"
+                    data-gsap-card
                     className="rounded-[40px] bg-[#FFF5FB] p-10 transition-transform hover:-translate-y-0.5"
                   >
                     <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
@@ -2202,7 +2328,7 @@ export default function LandingPage() {
                     </p>
                   </a>
 
-                  <div className="rounded-[40px] bg-[#F4FCE8] p-10">
+                  <div data-gsap-card className="rounded-[40px] bg-[#F4FCE8] p-10">
                     <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                       <Image
                         src="/assets/svg/whatsapp.svg"
@@ -3176,28 +3302,28 @@ export default function LandingPage() {
             <div className="relative z-10 hidden h-full w-full items-center justify-center px-[8vw] lg:flex">
               <div className="w-full">
                 <div className="grid w-full grid-cols-2 items-start gap-8 text-center 2xl:grid-cols-4 2xl:gap-12">
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiếng anh giao tiếp</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                       <CountUp to={1000} suffix="+" durationMs={1500} />
                     </p>
                     <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên đang học</p>
                   </div>
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Giáo viên chuyên môn</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                       <CountUp to={25} suffix="+" durationMs={1500} />
                     </p>
                     <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Giáo viên có từ 5 năm kinh nghiệm</p>
                   </div>
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Tiến bộ rõ rệt</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                       <CountUp to={98} suffix="%" durationMs={1500} />
                     </p>
                     <p className="mt-6 text-[clamp(13px,1.2vw,18px)] text-[#667085]">Học viên cảm nhận thực tế</p>
                   </div>
-                  <div>
+                  <div data-gsap-stat>
                     <p className="text-[clamp(16px,1.7vw,24px)] font-semibold text-slate-700">Ứng dụng công nghệ</p>
                     <p className="mt-6 text-[clamp(56px,6vw,96px)] font-extrabold leading-none text-[#C1077B]">
                       <CountUp to={90} suffix="%" durationMs={1500} />
@@ -3565,7 +3691,7 @@ export default function LandingPage() {
             {/* Desktop */}
             <div className="relative z-10 hidden h-full w-full flex-col lg:flex">
               <div className="w-full px-[8vw] pt-[12vh] text-center">
-                <h2 className="text-[44px] font-extrabold tracking-tight text-slate-700">
+                <h2 data-gsap-heading className="text-[44px] font-extrabold tracking-tight text-slate-700">
                   Cảm Nhận Học Viên
                 </h2>
                 <p className="mt-3 text-lg text-[#667085]">
@@ -3588,6 +3714,7 @@ export default function LandingPage() {
                   {kidTestimonials.map((t, index) => (
                     <article
                       key={`adult-${t.name}-${index}`}
+                      data-gsap-testimonial
                       className="grid h-[55vh] max-h-[55vh] w-[23vw] grid-rows-[1fr_auto] rounded-[32px] border border-slate-100 bg-white p-[clamp(28px,3.2vh,40px)] shadow-sm snap-center"
                     >
                       <p className="self-center text-[clamp(16px,2vh,22px)] leading-relaxed text-slate-700">
@@ -3662,7 +3789,7 @@ export default function LandingPage() {
             {/* Desktop */}
             <div className="relative z-10 hidden h-full w-full flex-col lg:flex">
               <div className="w-full px-[8vw] pt-[10vh] text-center">
-                <h2 className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
+                <h2 data-gsap-heading className="text-[45px] font-extrabold leading-[1.05] tracking-tight">
                   Kết nối học viên trên toàn thế giới cùng Telesa English!
                 </h2>
                 <p className="mx-auto mt-5 max-w-[820px] text-[20px] leading-relaxed text-slate-100">
@@ -3988,7 +4115,7 @@ export default function LandingPage() {
             {/* Desktop */}
             <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4.8vh,45px)] lg:flex">
               <div className="w-full max-w-[1100px] text-center">
-                <h2 className="text-[48px] font-extrabold tracking-tight text-slate-700">
+                <h2 data-gsap-heading className="text-[48px] font-extrabold tracking-tight text-slate-700">
                   Hoặc Liên Hệ Ngay Để Nhận Tư Vấn
                 </h2>
                 <p className="mx-auto mt-4 max-w-[760px] text-[20px] font-medium text-slate-500">
@@ -4003,6 +4130,7 @@ export default function LandingPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Mở Zalo"
+                    data-gsap-card
                     className="rounded-[40px] bg-[#E6F7FE] p-10 transition-transform hover:-translate-y-0.5"
                   >
                     <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
@@ -4027,6 +4155,7 @@ export default function LandingPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Mở Messenger"
+                    data-gsap-card
                     className="rounded-[40px] bg-[#FFF5FB] p-10 transition-transform hover:-translate-y-0.5"
                   >
                     <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
@@ -4046,7 +4175,7 @@ export default function LandingPage() {
                     </p>
                   </a>
 
-                  <div className="rounded-[40px] bg-[#F4FCE8] p-10">
+                  <div data-gsap-card className="rounded-[40px] bg-[#F4FCE8] p-10">
                     <div className="flex h-14 w-14 items-center justify-center bg-transparent shadow-none">
                       <Image
                         src="/assets/svg/whatsapp.svg"

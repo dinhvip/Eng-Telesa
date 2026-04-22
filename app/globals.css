@@ -49,43 +49,54 @@ html {
 }
 
 @keyframes telesa-wiggle {
+
   0%,
   70%,
   100% {
     transform: rotate(0deg);
   }
+
   72% {
     transform: rotate(-10deg);
   }
+
   74% {
     transform: rotate(10deg);
   }
+
   76% {
     transform: rotate(-7deg);
   }
+
   78% {
     transform: rotate(7deg);
   }
+
   80% {
     transform: rotate(0deg);
   }
 }
 
 @keyframes telesa-nudge {
+
   0%,
   70%,
   100% {
     transform: translateY(0);
   }
+
   74% {
     transform: translateY(-4px);
   }
+
   78% {
     transform: translateY(0);
   }
+
   82% {
     transform: translateY(-2px);
   }
+
   86% {
     transform: translateY(0);
   }
@@ -101,8 +112,13 @@ html {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
@@ -110,6 +126,7 @@ html {
     opacity: 0;
     transform: translateY(12px) scale(0.97);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -121,6 +138,7 @@ html {
     opacity: 0;
     transform: translateX(-100%);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -138,42 +156,14 @@ html {
   }
 }
 
-/* Mỗi section bắt đầu ẩn + dịch xuống nhẹ */
-main > section {
-  transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+main>section {
+  will-change: opacity, transform;
 }
 
-main > section:not(.in-view) {
-  opacity: 0;
-  transform: translateY(28px);
-}
-
-main > section.in-view {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Stagger các phần tử con khi section vào view */
-main > section.in-view > * {
-  animation: sectionChildReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-main > section.in-view > *:nth-child(1) { animation-delay: 0.05s; }
-main > section.in-view > *:nth-child(2) { animation-delay: 0.12s; }
-main > section.in-view > *:nth-child(3) { animation-delay: 0.19s; }
-main > section.in-view > *:nth-child(4) { animation-delay: 0.26s; }
-main > section.in-view > *:nth-child(5) { animation-delay: 0.33s; }
-main > section.in-view > *:nth-child(n+6) { animation-delay: 0.38s; }
-
-@keyframes sectionChildReveal {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+/* Khi JS chưa load kịp (SSR / no-JS fallback): hiện hết bình thường */
+@media (prefers-reduced-motion: reduce) {
+  main>section {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
