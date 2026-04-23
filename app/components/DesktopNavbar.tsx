@@ -82,6 +82,7 @@ export default function DesktopNavbar(props: {
     email?: string;
     photo?: string | null;
   } | null>(null);
+  const [roleId, setRoleId] = useState<number | null>(null);
 
   useEffect(() => {
     setIsLoggedIn(document.cookie.includes("auth_token="));
@@ -94,6 +95,13 @@ export default function DesktopNavbar(props: {
           email: parsed.email,
           photo: parsed.photo,
         });
+        if (parsed.role_id) {
+          setRoleId(Number(parsed.role_id));
+        }
+      }
+      const directRoleId = localStorage.getItem("role_id");
+      if (directRoleId) {
+        setRoleId(Number(directRoleId));
       }
     } catch (e) { }
   }, []);
@@ -354,14 +362,16 @@ export default function DesktopNavbar(props: {
                 <span className="xl:hidden">Góc học</span>
                 <span className="hidden xl:inline">Góc học tập</span>
               </button>
-              <button
-                onClick={() => router.push("/admin")}
-                type="button"
-                className="cursor-pointer rounded-[32px] border border-white/90 bg-white/0 px-2.5 py-2 text-[clamp(9px,0.75vw,12px)] font-semibold text-white shadow-sm transition-colors hover:bg-white/10 xl:px-3.5 xl:py-2 xl:text-[clamp(12px,0.9vw,14px)]"
-              >
-                <span className="xl:hidden">Admin</span>
-                <span className="hidden xl:inline">Admin</span>
-              </button>
+              {roleId === 1 && (
+                <button
+                  onClick={() => router.push("/admin")}
+                  type="button"
+                  className="cursor-pointer rounded-[32px] border border-white/90 bg-white/0 px-2.5 py-2 text-[clamp(9px,0.75vw,12px)] font-semibold text-white shadow-sm transition-colors hover:bg-white/10 xl:px-3.5 xl:py-2 xl:text-[clamp(12px,0.9vw,14px)]"
+                >
+                  <span className="xl:hidden">Admin</span>
+                  <span className="hidden xl:inline">Admin</span>
+                </button>
+              )}
 
               {/* đăng ký/đăng nhập */}
               {!isLoggedIn ? (

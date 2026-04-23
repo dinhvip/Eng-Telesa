@@ -100,34 +100,41 @@ export default function MobileMenuDrawer({
     email?: string;
     photo?: string | null;
   } | null>(null);
+  const [roleId, setRoleId] = useState<number | null>(null);
   const items = useMemo<MenuItem[]>(
-    () => [
-      { key: "home", label: "Trang chủ" },
-      { key: "product", label: "Sản phẩm" },
-      { key: "teacher", label: "Học kèm với giáo viên" },
-      { key: "about", label: "Về Telesa" },
-      {
-        key: "library",
-        label: "Thư viện",
-        children:
-          variant === "adult"
-            ? [
-              { key: "library-what-is-tes", label: "T.E.S là gì?" },
-              { key: "library-1-1", label: "Học kèm 1-1" },
-              { key: "library-payment-method", label: "Phương thức thanh toán" },
-              { key: "library-why-group", label: "Chương trình học nhóm" },
-              { key: "library-roadmap", label: "Lộ trình học" },
-            ]
-            : [
-              { key: "library-why", label: "Vì sao chọn Telesa" },
-              { key: "library-program-for-kid", label: "Chương trình cho bé" },
-            ],
-      },
-      { key: "career", label: "Tuyển dụng" },
-      { key: "admin", label: "Admin" },
+    () => {
+      const baseItems: MenuItem[] = [
+        { key: "home", label: "Trang chủ" },
+        { key: "product", label: "Sản phẩm" },
+        { key: "teacher", label: "Học kèm với giáo viên" },
+        { key: "about", label: "Về Telesa" },
+        {
+          key: "library",
+          label: "Thư viện",
+          children:
+            variant === "adult"
+              ? [
+                { key: "library-what-is-tes", label: "T.E.S là gì?" },
+                { key: "library-1-1", label: "Học kèm 1-1" },
+                { key: "library-payment-method", label: "Phương thức thanh toán" },
+                { key: "library-why-group", label: "Chương trình học nhóm" },
+                { key: "library-roadmap", label: "Lộ trình học" },
+              ]
+              : [
+                { key: "library-why", label: "Vì sao chọn Telesa" },
+                { key: "library-program-for-kid", label: "Chương trình cho bé" },
+              ],
+        },
+        { key: "career", label: "Tuyển dụng" },
+      ];
 
-    ],
-    [variant],
+      if (roleId === 1) {
+        baseItems.push({ key: "admin", label: "Admin" });
+      }
+
+      return baseItems;
+    },
+    [variant, roleId]
   );
   useEffect(() => {
     setIsLoggedIn(document.cookie.includes("auth_token="));
@@ -140,6 +147,13 @@ export default function MobileMenuDrawer({
           email: parsed.email,
           photo: parsed.photo,
         });
+        if (parsed.role_id) {
+          setRoleId(Number(parsed.role_id));
+        }
+      }
+      const directRoleId = localStorage.getItem("role_id");
+      if (directRoleId) {
+        setRoleId(Number(directRoleId));
       }
     } catch (e) { }
   }, []);

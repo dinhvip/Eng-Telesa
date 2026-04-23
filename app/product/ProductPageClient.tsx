@@ -208,7 +208,7 @@ export default function ProductPageClient() {
             originalPrice: String(item.price ?? 0), // Giá gốc
 
             // Các field còn lại giữ nguyên hoặc gán mặc định
-            banner: item.banner || "/assets/svg/logo.png",
+            banner: item.banner || "/assets/avatar/defaultListCourse.svg",
             rating: String(item.avg_star || 0),
             duration: "Đang cập nhật",
             include: ["Đang cập nhật"],
@@ -1134,7 +1134,7 @@ export default function ProductPageClient() {
                           if (e.key === "Enter" || e.key === " ")
                             router.push(`/product/${course.id}?variant=${variant}`);
                         }}
-                        className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
+                        className="cursor-pointer flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
                       >
                         <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
                           <Image
