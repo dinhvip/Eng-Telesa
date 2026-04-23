@@ -8,6 +8,9 @@ const nextConfig = {
       },
     ];
   },
+  images: {
+    domains: ['dev-admin.telesaenglish.com'],
+  },
 };
 
 module.exports = nextConfig;

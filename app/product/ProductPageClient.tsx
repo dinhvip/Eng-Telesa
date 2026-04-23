@@ -3,22 +3,18 @@
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import BackgroundVideo from "../components/BackgroundVideo";
 import DesktopNavbar from "../components/DesktopNavbar";
 import FooterContactView from "../components/FooterContactView";
 import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
-import BackgroundVideo from "../components/BackgroundVideo";
 import {
-  AUDIO_PRODUCTS,
-  BOOK_PRODUCTS,
   CATEGORIES,
-  COURSE_PRODUCTS,
-  type AudioProduct,
-  type BookProduct,
+  ListCourseProduct,
   type CourseProduct,
-  type ProductCategory,
+  type ProductCategory
 } from "./catalog";
-import { fetchCourseCatalog, mapApiCourseToViewModel } from "./telesaApi";
+import { fetchCourseCatalog } from "../../lib/api/productPage";
 
 function PersonIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -184,33 +180,61 @@ export default function ProductPageClient() {
   const [isDiscount, setIsDiscount] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [mobilePage, setMobilePage] = useState(1);
-  const [apiCourseProducts, setApiCourseProducts] = useState<CourseProduct[] | null>(null);
-  const [apiCourseError, setApiCourseError] = useState<string | null>(null);
+  const [apiCourseProducts, setApiCourseProducts] = useState<ListCourseProduct[] | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    (async () => {
-      try {
-        const courses = await fetchCourseCatalog({ signal: controller.signal, next: { revalidate: 300 } });
-        if (controller.signal.aborted) return;
-        setApiCourseProducts(courses.map(mapApiCourseToViewModel));
-        setApiCourseError(null);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        console.error("product catalog fetch error:", err);
-        setApiCourseError(err instanceof Error ? err.message : "Unknown error");
+    let isMounted = true;
+
+    fetchCourseCatalog({ signal: controller.signal })
+      .then((rawCourses) => {
+        if (!isMounted) return;
+
+        // GÁN TRỰC TIẾP: Ánh xạ dữ liệu API sang cấu trúc Component hiển thị
+        const mappedCourses = (rawCourses || []).map((item: any) => {
+          // Backend trả về 'name', UI cần 'title'
+          // Backend trả về giá là số, hàm format tiền của bạn cần chuỗi -> ép kiểu string
+
+          const finalPrice = item.price_after_discount > 0 ? item.price_after_discount : item.price;
+
+          return {
+            ...item,
+            title: item.name,             // Đổi tên field
+            subtitle: "",                 // Field này chưa có trong API
+            students: "Đang cập nhật",      // Chưa có trong API
+
+            // Ép về String để hàm parseVnd() hoạt động đúng
+            price: String(finalPrice),
+            originalPrice: String(item.price ?? 0), // Giá gốc
+
+            // Các field còn lại giữ nguyên hoặc gán mặc định
+            banner: item.banner || "/assets/svg/logo.png",
+            rating: String(item.avg_star || 0),
+            duration: "Đang cập nhật",
+            include: ["Đang cập nhật"],
+            bought: item.bought
+          };
+        });
+
+        setApiCourseProducts(mappedCourses);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
         setApiCourseProducts(null);
-      }
-    })();
-    return () => controller.abort();
+      });
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
   }, []);
 
   const desktopItemsPerPage = 12;
   const mobileItemsPerPage = 3;
   const baseProducts = useMemo(() => {
-    if (category === "book") return BOOK_PRODUCTS;
-    if (category === "audio") return AUDIO_PRODUCTS;
-    return apiCourseProducts ?? COURSE_PRODUCTS;
+    if (category === "book") return [];
+    if (category === "audio") return [];
+    return apiCourseProducts ?? [];
   }, [apiCourseProducts, category]);
 
   const filteredProducts = useMemo(() => {
@@ -348,7 +372,7 @@ export default function ProductPageClient() {
                 "telesa:openMenuOnBack:returnTo",
                 `${window.location.pathname}${window.location.search}`,
               );
-            } catch {}
+            } catch { }
           }
           if (key === "home") router.push("/");
           if (key === "products") router.push(`/product?variant=${variant}`);
@@ -581,7 +605,7 @@ export default function ProductPageClient() {
               >
                 {pagedMobileProducts.map((product) => {
                   if (category === "book") {
-                    const book = product as BookProduct;
+                    const book = product as any;
                     const bookImageSrc = variant === "adult" ? "/assets/book-adult.jpg" : book.image;
                     return (
                       <article
@@ -670,7 +694,7 @@ export default function ProductPageClient() {
                   }
 
                   if (category === "audio") {
-                    const audio = product as AudioProduct;
+                    const audio = product as any;
                     return (
                       <article
                         key={audio.id}
@@ -762,7 +786,7 @@ export default function ProductPageClient() {
                     );
                   }
 
-                  const course = product as CourseProduct;
+                  const course = product as ListCourseProduct;
                   return (
                     <article
                       key={course.id}
@@ -777,7 +801,7 @@ export default function ProductPageClient() {
                     >
                       <div className="relative aspect-[40/27] w-full shrink-0 overflow-hidden bg-slate-100">
                         <Image
-                          src={course.image}
+                          src={course.banner}
                           alt=""
                           fill
                           sizes="(max-width: 768px) 86vw, 420px"
@@ -1098,210 +1122,210 @@ export default function ProductPageClient() {
             <div className="mx-auto w-full max-w-[1700px] px-[3vw] pb-16 pt-8">
               <div className="grid grid-cols-3 gap-7 2xl:grid-cols-4">
                 {pagedProducts.map((product) => {
-                    if (category === "course") {
-                      const course = product as CourseProduct;
-                      return (
-                        <article
-                          key={`desktop-${course.id}`}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => router.push(`/product/${course.id}?variant=${variant}`)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ")
-                              router.push(`/product/${course.id}?variant=${variant}`);
-                          }}
-                          className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
-                        >
-                          <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                            <Image
-                              src={course.image}
-                              alt=""
-                              fill
-                              sizes="(min-width: 1024px) 22vw, 420px"
-                              className="object-cover"
-                            />
-                          </div>
-
-                          <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                            <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
-                              {course.title}
-                            </h3>
-                            <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                              {course.subtitle}
-                            </p>
-
-                            <div className="mt-4 space-y-2 text-[13px] text-slate-700">
-                              <div className="flex items-center gap-3">
-                                <PersonIcon className="h-4 w-4 text-slate-500" />
-                                <span>{course.students}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <StarIcon className="h-4 w-4 text-slate-500" />
-                                <span>{course.rating}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <CoinIcon className="h-4 w-4 text-slate-500" />
-                                <div className="flex items-baseline gap-3">
-                                  <span className="font-semibold text-red-500">{course.price}</span>
-                                  <span className="text-slate-400 line-through">
-                                    {course.originalPrice}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <ClockIcon className="h-4 w-4 text-slate-500" />
-                                <span>{course.duration}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
-                                <span>{course.include}</span>
-                              </div>
-                            </div>
-
-                            <div className="mt-auto pt-4">
-                              <div className="flex flex-wrap items-center justify-start gap-3">
-                                <button
-                                  type="button"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
-                                >
-                                  <Image src="/assets/svg/heart.svg" alt="" width={16} height={16} unoptimized />
-                                  Thích
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
-                                >
-                                  <Image src="/assets/svg/cart.svg" alt="" width={16} height={16} unoptimized />
-                                  Thêm vào giỏ
-                                </button>
-                              </div>
-
-                              <div className="mt-3 flex flex-wrap items-center justify-start gap-3">
-                                <button
-                                  type="button"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={[
-                                    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
-                                    primaryBgClass,
-                                  ].join(" ")}
-                                >
-                                  <Image src="/assets/svg/month.svg" alt="" width={16} height={16} unoptimized />
-                                  Đăng ký theo tháng
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={[
-                                    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
-                                    primaryBgClass,
-                                  ].join(" ")}
-                                >
-                                  <Image src="/assets/svg/buy-all.svg" alt="" width={16} height={16} unoptimized />
-                                  Mua trọn khóa
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    }
-
-                    if (category === "book") {
-                      const book = product as BookProduct;
-                      const bookImageSrc = variant === "adult" ? "/assets/book-adult.jpg" : book.image;
-                      return (
-                        <article
-                          key={`desktop-${book.id}`}
-                          className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200"
-                        >
-                          <div className="relative aspect-[4/3] w-full overflow-hidden bg-white">
-                            <Image src={bookImageSrc} alt="" fill className="object-contain" />
-                          </div>
-                          <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                            <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
-                              {book.title}
-                            </h3>
-                            <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                              {book.subtitle}
-                            </p>
-                            <div className="mt-4 space-y-2 text-[13px] text-slate-700">
-                              <div className="flex items-center gap-3">
-                                <PersonIcon className="h-4 w-4 text-slate-500" />
-                                <span>{book.author}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <DocumentIcon className="h-4 w-4 text-slate-500" />
-                                <span>{book.format}</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <CoinIcon className="h-4 w-4 text-slate-500" />
-                                <div className="flex items-baseline gap-3">
-                                  <span className="font-semibold text-red-500">{book.price}</span>
-                                  <span className="text-slate-400 line-through">
-                                    {book.originalPrice}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <GlobeIcon className="h-4 w-4 text-slate-500" />
-                                <span>{book.language}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    }
-
-                    const audio = product as AudioProduct;
+                  if (category === "course") {
+                    const course = product as CourseProduct;
                     return (
                       <article
-                        key={`desktop-${audio.id}`}
-                        className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200"
+                        key={`desktop-${course.id}`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push(`/product/${course.id}?variant=${variant}`)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ")
+                            router.push(`/product/${course.id}?variant=${variant}`);
+                        }}
+                        className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
                       >
-                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-white">
-                          <Image src={audio.image} alt="" fill className="object-contain" />
+                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                          <Image
+                            src={course.banner}
+                            alt=""
+                            fill
+                            sizes="(min-width: 1024px) 22vw, 420px"
+                            className="object-cover"
+                          />
                         </div>
+
                         <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
                           <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
-                            {audio.title}
+                            {course.title}
                           </h3>
                           <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                            {audio.subtitle}
+                            {course.subtitle}
                           </p>
+
                           <div className="mt-4 space-y-2 text-[13px] text-slate-700">
                             <div className="flex items-center gap-3">
                               <PersonIcon className="h-4 w-4 text-slate-500" />
-                              <span>{audio.author}</span>
+                              <span>{course.students}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <StarIcon className="h-4 w-4 text-slate-500" />
-                              <span className="font-semibold text-red-500">{audio.rating}</span>
-                              <span className="text-slate-700">({audio.reviewCount})</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <DocumentIcon className="h-4 w-4 text-slate-500" />
-                              <span>{audio.format}</span>
+                              <span>{course.rating}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <CoinIcon className="h-4 w-4 text-slate-500" />
                               <div className="flex items-baseline gap-3">
-                                <span className="font-semibold text-red-500">{audio.price}</span>
+                                <span className="font-semibold text-red-500">{course.price}</span>
                                 <span className="text-slate-400 line-through">
-                                  {audio.originalPrice}
+                                  {course.originalPrice}
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center gap-3">
-                              <GlobeIcon className="h-4 w-4 text-slate-500" />
-                              <span>{audio.language}</span>
+                              <ClockIcon className="h-4 w-4 text-slate-500" />
+                              <span>{course.duration}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
+                              <span>{course.include}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-auto pt-4">
+                            <div className="flex flex-wrap items-center justify-start gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
+                              >
+                                <Image src="/assets/svg/heart.svg" alt="" width={16} height={16} unoptimized />
+                                Thích
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
+                              >
+                                <Image src="/assets/svg/cart.svg" alt="" width={16} height={16} unoptimized />
+                                Thêm vào giỏ
+                              </button>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap items-center justify-start gap-3">
+                              <button
+                                type="button"
+                                onClick={(e) => e.stopPropagation()}
+                                className={[
+                                  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
+                                  primaryBgClass,
+                                ].join(" ")}
+                              >
+                                <Image src="/assets/svg/month.svg" alt="" width={16} height={16} unoptimized />
+                                Đăng ký theo tháng
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => e.stopPropagation()}
+                                className={[
+                                  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
+                                  primaryBgClass,
+                                ].join(" ")}
+                              >
+                                <Image src="/assets/svg/buy-all.svg" alt="" width={16} height={16} unoptimized />
+                                Mua trọn khóa
+                              </button>
                             </div>
                           </div>
                         </div>
                       </article>
                     );
-                  })}
+                  }
+
+                  if (category === "book") {
+                    const book = product as any;
+                    const bookImageSrc = variant === "adult" ? "/assets/book-adult.jpg" : book.image;
+                    return (
+                      <article
+                        key={`desktop-${book.id}`}
+                        className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200"
+                      >
+                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-white">
+                          <Image src={bookImageSrc} alt="" fill className="object-contain" />
+                        </div>
+                        <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
+                          <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
+                            {book.title}
+                          </h3>
+                          <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
+                            {book.subtitle}
+                          </p>
+                          <div className="mt-4 space-y-2 text-[13px] text-slate-700">
+                            <div className="flex items-center gap-3">
+                              <PersonIcon className="h-4 w-4 text-slate-500" />
+                              <span>{book.author}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <DocumentIcon className="h-4 w-4 text-slate-500" />
+                              <span>{book.format}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <CoinIcon className="h-4 w-4 text-slate-500" />
+                              <div className="flex items-baseline gap-3">
+                                <span className="font-semibold text-red-500">{book.price}</span>
+                                <span className="text-slate-400 line-through">
+                                  {book.originalPrice}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <GlobeIcon className="h-4 w-4 text-slate-500" />
+                              <span>{book.language}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  }
+
+                  const audio = product as any;
+                  return (
+                    <article
+                      key={`desktop-${audio.id}`}
+                      className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200"
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-white">
+                        <Image src={audio.image} alt="" fill className="object-contain" />
+                      </div>
+                      <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
+                        <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
+                          {audio.title}
+                        </h3>
+                        <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
+                          {audio.subtitle}
+                        </p>
+                        <div className="mt-4 space-y-2 text-[13px] text-slate-700">
+                          <div className="flex items-center gap-3">
+                            <PersonIcon className="h-4 w-4 text-slate-500" />
+                            <span>{audio.author}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <StarIcon className="h-4 w-4 text-slate-500" />
+                            <span className="font-semibold text-red-500">{audio.rating}</span>
+                            <span className="text-slate-700">({audio.reviewCount})</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <DocumentIcon className="h-4 w-4 text-slate-500" />
+                            <span>{audio.format}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <CoinIcon className="h-4 w-4 text-slate-500" />
+                            <div className="flex items-baseline gap-3">
+                              <span className="font-semibold text-red-500">{audio.price}</span>
+                              <span className="text-slate-400 line-through">
+                                {audio.originalPrice}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <GlobeIcon className="h-4 w-4 text-slate-500" />
+                            <span>{audio.language}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
 
               <div className="mt-10 flex flex-col items-center justify-center gap-3">

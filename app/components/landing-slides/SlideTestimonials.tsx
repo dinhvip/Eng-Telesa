@@ -84,7 +84,7 @@ export default function SlideTestimonials({
         </div>
 
         {/* Testimonial cards (Hardcoded to match original mobile layout) */}
-        <div className="mt-5 flex flex-1 flex-col gap-4">
+        <div className="mt-5 flex flex-1 flex-col gap-4 justify-center">
           {testimonialsData.slice(0, 2).map((t, idx) => (
             <div key={idx} className="rounded-[26px] bg-white px-4 py-4 text-slate-700 shadow-md">
               <p className="text-[13px] leading-relaxed text-slate-700">
@@ -105,13 +105,6 @@ export default function SlideTestimonials({
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Floating actions */}
-        <div className="pointer-events-none absolute bottom-6 right-6">
-          <div className="pointer-events-auto">
-            <MobileFloatingActions variant={variant} tone="slate" onScrollToTop={onScrollToTop} />
-          </div>
         </div>
       </div>
 

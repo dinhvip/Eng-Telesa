@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import MobileHeader from "../MobileHeader";
 import MobileFloatingActions from "../MobileFloatingActions";
@@ -77,6 +77,15 @@ export default function Slide3Carousel({
       setTextVisible(true);
     }, 220); // matching delay from original design
   };
+
+  useEffect(() => {
+    const autoPlayInterval = setInterval(() => {
+      const nextIndex = (slideIndex + 1) % slides.length;
+      changeSlide(nextIndex);
+    }, 3000);
+    return () => clearInterval(autoPlayInterval);
+  }, [slideIndex, slides.length]);
+
 
   const swipeHandlers = useHorizontalSwipe<HTMLDivElement>({
     onSwipeLeft: () => changeSlide(slideIndex + 1),

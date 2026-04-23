@@ -1,5 +1,5 @@
 "use client";
-
+//Table.tsx
 import React from "react";
 import type { TableColumn } from "../_types";
 import EmptyState from "./EmptyState";

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import MobileHeader from "../MobileHeader";
@@ -84,6 +84,14 @@ export default function SlideLibraryTeaser({
     }, 150);
   };
 
+  useEffect(() => {
+    const autoPlayInterval = setInterval(() => {
+      const nextIndex = (slideIndex + 1) % slides.length;
+      changeSlide(nextIndex);
+    }, 3000);
+    return () => clearInterval(autoPlayInterval);
+  }, [slideIndex, slides.length]);
+
   const swipeHandlers = useHorizontalSwipe<HTMLElement>({
     onSwipeLeft: () => changeSlide(slideIndex + 1),
     onSwipeRight: () => changeSlide(slideIndex - 1),
@@ -154,8 +162,8 @@ export default function SlideLibraryTeaser({
                   type="button"
                   onClick={() => changeSlide(index)}
                   className={`h-1.5 rounded-full transition-all ${index === slideIndex
-                      ? `w-12 ${isKid ? "bg-[#FEA933]" : "bg-[#C1077B]"}`
-                      : "w-12 bg-white/70"
+                    ? `w-12 ${isKid ? "bg-[#FEA933]" : "bg-[#C1077B]"}`
+                    : "w-12 bg-white/70"
                     }`}
                 />
               ))}
@@ -222,8 +230,8 @@ export default function SlideLibraryTeaser({
                       type="button"
                       onClick={() => changeSlide(index)}
                       className={`h-1.5 rounded-full transition-all ${index === slideIndex
-                          ? `w-4 ${isKid ? "bg-amber-400" : "bg-[#C1077B]"}`
-                          : "w-3 bg-white/70"
+                        ? `w-4 ${isKid ? "bg-amber-400" : "bg-[#C1077B]"}`
+                        : "w-3 bg-white/70"
                         }`}
                     />
                   ))}

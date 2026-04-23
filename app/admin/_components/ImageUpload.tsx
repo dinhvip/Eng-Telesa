@@ -1,91 +1,85 @@
 "use client";
-
-import React, { useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface ImageUploadProps {
-    label?: string;
-    value?: string;
-    onChange: (imageUrl: string, file?: File) => void;
-    className?: string;
+    label: string;
+    value?: string; // URL từ DB hoặc Base64
+    onChange: (url: string) => void;
 }
 
-export default function ImageUpload({
-    label,
-    value,
-    onChange,
-    className = "",
-}: ImageUploadProps) {
+export default function ImageUpload({ label, value, onChange }: ImageUploadProps) {
+    const [previewUrl, setPreviewUrl] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        setPreviewUrl(value || "");
+    }, [value]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-
-        // Tạo URL tạm thời để preview
-        const imageUrl = URL.createObjectURL(file);
-
-        // Trả về cả URL (để hiển thị) và File thật (để form có thể gửi lên API nếu cần)
-        onChange(imageUrl, file);
-    };
-
-    const handleRemove = () => {
-        onChange(""); // Xóa ảnh
-        if (fileInputRef.current) {
-            fileInputRef.current.value = ""; // Reset input type file
+        if (file) {
+            // Tạo URL tạm thời để hiển thị ngay lập tức
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+            // Gửi về form (ở đây gửi url tạm, logic xử lý File thật đã làm ở page.tsx)
+            onChange(url);
         }
     };
 
     return (
-        <div className={className}>
-            {label && (
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {label}
-                </label>
-            )}
-            <div className="flex items-center gap-4">
-                {value ? (
-                    <div className="relative w-20 h-20 group">
-                        <img
-                            src={value}
-                            alt="Preview"
-                            className="w-20 h-20 object-cover rounded-lg border border-gray-200 bg-white"
-                        />
-                        <button
-                            type="button"
-                            onClick={handleRemove}
-                            className="absolute -top-2 -right-2 bg-red-100 text-red-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Remove image"
-                        >
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
-                ) : (
-                    <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 bg-gray-50 flex items-center justify-center text-gray-400">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                )}
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+            <div className="mt-1 flex items-center gap-4">
+                {/* Khung hiển thị ảnh */}
+                <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded-lg border border-gray-300 bg-gray-100 cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
+                    {previewUrl ? (
+                        <img src={previewUrl} alt="Preview" className="h-full w-full object-cover transition-opacity group-hover:opacity-80" />
+                    ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center text-gray-500 text-xs">
+                            <span className="text-2xl">+</span>
+                            <span className="mt-1">Chọn ảnh</span>
+                        </div>
+                    )}
+                    {/* Overlay khi hover */}
+                    {!previewUrl && (
+                        <div className="absolute inset-0 bg-black/10 hidden group-hover:block"></div>
+                    )}
+                </div>
 
-                {/* Nút bấm giả lập hành vi click vào thẻ input file bị ẩn */}
-                <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="cursor-pointer inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#9e005a]"
-                >
-                    {value ? "Change Image" : "Upload Image"}
-                </button>
+                {/* Khu vực nút bấm */}
+                <div className="flex flex-col justify-center">
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mb-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                    >
+                        Upload file
+                    </button>
+                    <p className="text-xs text-gray-500">JPG, PNG, WEBP</p>
+                </div>
 
-                {/* Input file bị ẩn */}
+                {/* Input ẩn */}
                 <input
-                    ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    ref={fileInputRef}
                     className="hidden"
+                    accept="image/*"
                     onChange={handleFileChange}
                 />
+
+                {/* Nút xóa nếu có ảnh */}
+                {previewUrl && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setPreviewUrl("");
+                            onChange("");
+                        }}
+                        className="ml-auto text-red-500 text-xs underline"
+                    >
+                        Xóa
+                    </button>
+                )}
             </div>
         </div>
     );

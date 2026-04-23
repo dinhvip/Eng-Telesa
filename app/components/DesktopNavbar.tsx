@@ -163,9 +163,9 @@ export default function DesktopNavbar(props: {
     };
   }, []);
 
-  const accountName = userInfo?.name || props.accountName || "No Name";
-  const accountEmail = userInfo?.email || props.accountEmail || "No Email";
-  const finalAccountAvatarSrc = userInfo?.photo || props.accountAvatarSrc;
+  const accountName = userInfo?.name || "No Name";
+  const accountEmail = userInfo?.email || "No Email";
+  const finalAccountAvatarSrc = userInfo?.photo;
   const accountInitials = accountName
     .split(" ")
     .filter(Boolean)
@@ -214,7 +214,7 @@ export default function DesktopNavbar(props: {
                           }
                           props.onNavigate(item.key);
                         }}
-                        className={`inline-flex items-center gap-1 transition-colors ${isActive ? "" : "text-white/90 hover:text-white"
+                        className={`inline-flex items-center gap-1 transition-colors ${isActive ? "" : "text-white/90 hover:text-pink-500"
                           } cursor-pointer`}
                         style={isActive ? { color: activeColor } : undefined}
                         aria-haspopup={isLibrary ? "menu" : undefined}
@@ -382,22 +382,9 @@ export default function DesktopNavbar(props: {
                     className="flex items-center gap-2 rounded-full py-1 pl-2 pr-1 text-white/90 hover:text-white"
                     onClick={() => setIsAccountOpen((prev) => !prev)}
                   >
-                    {finalAccountAvatarSrc ? (
-                      <div className="relative h-10 w-10 overflow-hidden rounded-full ring-2 ring-white/70">
-                        <Image
-                          src={finalAccountAvatarSrc}
-                          alt=""
-                          fill
-                          sizes="40px"
-                          className="object-cover"
-                          priority={false}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 text-[14px] font-semibold text-slate-900 ring-2 ring-white/70">
-                        {accountInitials || "AN"}
-                      </div>
-                    )}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 text-[14px] font-semibold text-slate-900 ring-2 ring-white/70">
+                      {accountInitials || "NAME"}
+                    </div>
                     <ChevronDownIcon className="h-4 w-4 text-white/80" />
                   </button>
 
@@ -417,22 +404,9 @@ export default function DesktopNavbar(props: {
                         className="overflow-hidden rounded-[28px] bg-white shadow-[0_22px_60px_rgba(0,0,0,0.22)] ring-1 ring-black/5"
                       >
                         <div className="flex items-center gap-3 px-4 pb-3 pt-4">
-                          {finalAccountAvatarSrc ? (
-                            <div className="relative h-[48px] w-[48px] overflow-hidden rounded-full">
-                              <Image
-                                src={finalAccountAvatarSrc}
-                                alt=""
-                                fill
-                                sizes="48px"
-                                className="object-cover"
-                                priority={false}
-                              />
-                            </div>
-                          ) : (
-                            <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 text-[16px] font-semibold text-slate-900">
-                              {accountInitials || "AN"}
-                            </div>
-                          )}
+                          <div className="flex h-[48px] w-[48px] items-center justify-center rounded-full bg-gradient-to-br from-amber-200 to-amber-500 text-[16px] font-semibold text-slate-900">
+                            {accountInitials || "NAME"}
+                          </div>
                           <div className="min-w-0">
                             <p className="truncate text-[14px] font-normal leading-tight text-slate-800">
                               {accountName}

@@ -1,125 +1,115 @@
 "use client";
-
-import React, { useState, useMemo } from "react";
-import type { Course, TableColumn } from "../_types";
-import { MOCK_COURSES } from "../_data/mock";
-import Table from "../_components/Table";
-import Button from "../_components/Button";
-import Modal from "../_components/Modal";
-import StatusBadge from "../_components/StatusBadge";
+import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { Table, Button, Input, Modal, Popconfirm, Tag, Space, Typography } from "antd";
+import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
+import Toast from "../_components/Toast";
+import { fetchCourseCatalog, createCourse, editCourse, deleteCourse } from "../../../lib/api/productPage";
 import ImageUpload from "../_components/ImageUpload";
+import VideoUpload from "../_components/VideoUpload";
+import DocumentUpload from "../_components/DocumentUpload";
 
-type CourseForm = Omit<Course, "id" | "createdAt">;
-// Thêm vào đầu file, sau các imports
-function mapToFrontendToBackend(data: Partial<CourseForm>) {
-  const {
-    title,
-    category,
-    courseCategory,
-    teacher,
-    image,
-    price,
-    salePrice,
-    description,
-    introduction,
-    benefits,
-    purchaseNotes,
-    ...rest
-  } = data;
+const { Text } = Typography;
 
-  return {
-    ...rest,
-    name: title?.trim(),
-    category_person: category,
-    category: courseCategory,
-    teacher_id: teacher,
-    banner: image, // File hoặc URL string
-    price: Number(price) || 0,
-    discount: Number(salePrice) || 0,
-    description: description?.trim(),
-    introducing: introduction?.trim(),
-    will_receive: benefits?.trim(),
-    note_buy: purchaseNotes?.trim(),
-  };
-}
-
-// Map Backend → Frontend (khi load data từ API)
-function mapBackendToFrontend(data: any): CourseForm {
-  return {
-    title: data.name || "",
-    slug: data.slug || "",
-    level: data.level || "Beginner",
-    duration: data.duration || "",
-    students: Number(data.students) || 0,
-    price: Number(data.price) || 0,
-    salePrice: Number(data.discount) || 0,
-    status: data.status || "Draft",
-    image: data.banner || "",
-    category: data.category_person || "",
-    courseCategory: data.category || "",
-    teacher: data.teacher_id || "",
-    description: data.description || "",
-    introduction: data.introducing || "",
-    benefits: data.will_receive || "",
-    purchaseNotes: data.note_buy || "",
-  };
-}
-
-const emptyForm: CourseForm = {
-  title: "",
-  slug: "",
-  level: "Beginner",
-  duration: "",
-  students: 0,
-  price: 0,
-  salePrice: 0,
-  status: "Draft",
-  image: "",
-  category: "",
-  courseCategory: "",
-  teacher: "",
-  description: "",
-  introduction: "",
-  benefits: "",
-  purchaseNotes: "",
+// 🟢 ĐỔI TÊN STATE GIỐNG HẲT BACKEND API ĐỂ KHÔNG CẦN MAP
+type CourseForm = {
+  name?: string;
+  category_id?: number;
+  category_person?: number;
+  teacher_id?: string;
+  price?: number;
+  discount?: number;
+  description?: string;
+  introducing?: string;
+  will_receive?: string;
+  note_buy?: string;
+  banner?: string | File;
+  video?: string | File;
+  document?: string | File;
 };
 
-// Mock data for dropdowns
-const CATEGORIES = ["Người lớn", "Trẻ em", "Nguời lớn & trẻ em", "Khoá học 90 ngày", "Collocations C2 Level", "Vocabulary B1", "The Oxford 3000 từ", "Người mất gốc & Trẻ em"];
-const COURSE_CATEGORIES = ["Khóa Học Online"];
-const TEACHERS = ["Nguyễn Thị Lan", "Trần Văn Minh", "Lê Thị Hương", "Phạm Đức Anh", "Hoàng Thị Mai"];
+// Dữ liệu mặc định khi tạo mới
+const emptyForm: CourseForm = {
+  name: "",
+  category_id: 1,
+  category_person: 1,
+  teacher_id: "",
+  price: undefined,
+  discount: undefined,
+  description: "",
+  introducing: "",
+  will_receive: "",
+  note_buy: "",
+  banner: "",
+  video: "",
+  document: "",
+};
 
-function statusVariant(s: Course["status"]) {
-  if (s === "Active") return "success" as const;
-  if (s === "Draft") return "warning" as const;
-  return "neutral" as const;
-}
+// 📦 MẢNG TÙY CHỌN DROPDOWN
+const PERSON_OPTIONS = [
+  { label: "Người lớn", value: 1 },
+  { label: "Trẻ em", value: 2 },
+  { label: "Nguời lớn & trẻ em", value: 3 },
+  { label: "Khoá học 90 ngày", value: 4 },
+  { label: "Collocations C2 Level", value: 5 },
+  { label: "Vocabulary B1", value: 6 },
+  { label: "The Oxford 3000 từ", value: 7 },
+  { label: "Người mất gốc & Trẻ em", value: 8 },
+];
+const CATEGORY_OPTIONS = [
+  { label: "Khóa Học Online", value: 1 },
+];
+const TEACHER_OPTIONS = [
+  { label: "Nguyễn Thị Lan", id: "512" },
+  { label: "Trần Văn Minh", id: "513" },
+  { label: "Lê Thị Hương", id: "514" },
+];
 
 function formatVND(n: number) {
+  if (!n) return "0 ₫";
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n);
 }
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>(MOCK_COURSES);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [errors, setErrors] = useState<Partial<Record<keyof CourseForm, string>>>({});
-  const [search, setSearch] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [targetDeleteId, setTargetDeleteId] = useState<string | null>(null);
 
-  // Filter
-  const filtered = useMemo(
-    () =>
-      courses.filter(
-        (c) =>
-          c.title.toLowerCase().includes(search.toLowerCase()) ||
-          c.level.toLowerCase().includes(search.toLowerCase())
-      ),
-    [courses, search]
+  // 👉 QUẢN LÝ TOAST THÔNG BÁO
+  const [toastConfig, setToastConfig] = useState<{ show: boolean, msg: string, type: 'success' | 'error' }>({ show: false, msg: '', type: 'success' });
+  const showToast = (msg: string, type: 'success' | 'error') => setToastConfig({ show: true, msg, type });
+
+  // 🚀 GỌI API DANH SÁCH KHI LOAD
+  useEffect(() => {
+    fetchCourses();
+  }, []);
+
+  async function fetchCourses() {
+    setLoading(true);
+    try {
+      const data = await fetchCourseCatalog();
+      setCourses(data || []);
+    } catch (err) {
+      showToast("Không thể tải danh sách khóa học", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Lọc tìm kiếm
+  const filteredData = useMemo(
+    () => courses.filter((c) => c.name?.toLowerCase().includes(searchQuery.toLowerCase())),
+    [courses, searchQuery]
   );
 
-  // Open create
+  // --- ACTIONS ---
   function handleCreate() {
     setEditingId(null);
     setForm(emptyForm);
@@ -127,396 +117,374 @@ export default function CoursesPage() {
     setModalOpen(true);
   }
 
-  // Open edit
-  function handleEdit(course: Course) {
+  function handleEdit(course: any) {
     setEditingId(course.id);
     setForm({
-      title: course.title,
-      slug: course.slug,
-      level: course.level,
-      duration: course.duration,
-      students: course.students,
+      name: course.name,
+      category_id: course.category_id,
+      category_person: course.category_person,
+      teacher_id: course.teacher_id,
       price: course.price,
-      salePrice: course.salePrice,
-      status: course.status,
-      image: course.image || "",
-      category: course.category,
-      courseCategory: course.courseCategory,
-      teacher: course.teacher,
+      discount: course.discount,
       description: course.description,
-      introduction: course.introduction,
-      benefits: course.benefits,
-      purchaseNotes: course.purchaseNotes,
+      introducing: course.introducing,
+      will_receive: course.will_receive,
+      note_buy: course.note_buy,
+      banner: course.banner,
+      video: course.video,
+      document: course.document,
     });
-    setErrors({});
     setModalOpen(true);
   }
 
-  // Validate
   function validate(): boolean {
-    const e: typeof errors = {};
-    if (!form.title.trim()) e.title = "Title is required";
-    if (!form.slug.trim()) e.slug = "Slug is required";
-    if (!form.duration.trim()) e.duration = "Duration is required";
-    if (form.price <= 0) e.price = "Price must be greater than 0";
+    const e: Partial<typeof errors> = {};
+    if (!form.name?.trim()) e.name = "Tên khóa học là bắt buộc";
+    if ((form.price ?? 0) <= 0) e.price = "Giá phải lớn hơn 0";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  // Save
- async function handleSave() {
-  console.log(process.env.NEXT_PUBLIC_TELESA_API_BASE_URL);
-  
-  try {
-    const formData = new FormData();
-    
-    // 1. Thêm các trường Text khớp hoàn toàn với ảnh Form Data
-    formData.append("_token", "4GxVS6tLyVgYsK2E3Y7SiGO7Wxhw2HgUMRKuv2F0"); // Token từ ảnh của bạn
-    formData.append("name", form.title.trim());
-    formData.append("category_person", form.category || "1"); 
-    formData.append("category", form.courseCategory || "1");
-    formData.append("teacher_id", form.teacher || "512");
-    formData.append("price", String(form.price));
-    formData.append("discount", String(form.salePrice));
-    formData.append("description", form.description);
-    formData.append("introducing", form.introduction);
-    formData.append("will_receive", form.benefits);
-    formData.append("note_buy", form.purchaseNotes);
+  async function handleSave() {
+    if (!validate()) return;
+    try {
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(form)) {
+        if (value === undefined || value === "" || value === null) continue;
+        if (["banner", "video", "document"].includes(key)) {
+          if (typeof value === "string" && value.startsWith("blob:")) {
+            const res = await fetch(value);
+            const blob = await res.blob();
+            const ext = key === "banner" ? "jpg" : key === "video" ? "mp4" : "pdf";
+            formData.append(key, blob, `${key}.${ext}`);
+          } else if (value instanceof File) {
+            formData.append(key, value);
+          }
+        } else {
+          formData.append(key, String(value));
+        }
+      }
 
-    // 2. Xử lý File (Banner, Video, Document)
-    if (form.image && form.image.startsWith("blob:")) {
-      const res = await fetch(form.image);
-      const blob = await res.blob();
-      formData.append("banner", blob, "banner.jpg");
+      // Placeholder rỗng nếu cần thiết
+      if (!formData.has("banner")) formData.append("banner", new Blob([]), "");
+      if (!formData.has("video")) formData.append("video", new Blob([]), "");
+      if (!formData.has("document")) formData.append("document", new Blob([]), "");
+
+      if (editingId) {
+        await editCourse(editingId, formData);
+      } else {
+        await createCourse(formData);
+      }
+
+      showToast(editingId ? "Cập nhật thành công!" : "Tạo mới thành công!", "success");
+      setModalOpen(false);
+      window.location.reload();
+    } catch (err) {
+      showToast("Lỗi: " + (err as Error).message, "error");
     }
-    
-    // Thêm các trường file trống như trong ảnh để tránh lỗi validation của backend
-    formData.append("banner", new Blob([]), ""); 
-    formData.append("video", new Blob([]), ""); 
-    formData.append("document", new Blob([]), "");
-
-    // 3. Gửi qua Proxy Route
-    const url = editingId ? `/api/courses?id=${editingId}` : "/api/courses";
-    const method = editingId ? "PUT" : "POST";
-
-    const res = await fetch(process.env.NEXT_PUBLIC_TELESA_API_BASE_URL + url, {
-      method,
-      body: formData, // Browser sẽ tự set Content-Type: multipart/form-data
-    });
-
-    const result = await res.json();
-    if (!res.ok) throw new Error(result.message || "Lưu thất bại");
-
-    alert("Thành công!");
-    setModalOpen(false);
-    // Cập nhật state list...
-  } catch (err) {
-    alert("Lỗi: " + (err as Error).message);
-  }
-}
-
-  // Delete
-  function handleDelete(id: string) {
-    setCourses((prev) => prev.filter((c) => c.id !== id));
-    setDeleteConfirm(null);
   }
 
-  const columns: TableColumn<Course & { image?: string }>[] = [
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCourse(id);
+      setCourses((prev) => prev.filter(c => c.id !== id));
+      showToast("Xóa khóa học thành công!", "success");
+    } catch (err: any) {
+      showToast("Lỗi xóa khóa học: " + err.message, "error");
+    }
+  };
+
+  // Định nghĩa CỘT TABLE ANTD
+  const columns = [
     {
-      key: "title",
-      label: "Course",
-      render: (c) => (
-        <div className="flex items-center gap-3">
-          {/* Cập nhật Table để hiển thị Thumbnail ảnh */}
-          {c.image ? (
-            <img src={c.image} alt={c.title} className="w-10 h-10 rounded-md object-cover bg-gray-100 border border-gray-200" />
+      title: "Thumbnail",
+      dataIndex: "banner",
+      width: 100,
+      render: (text: string) => (
+        <div className="w-12 h-12 relative overflow-hidden rounded-md border border-gray-200 shadow-sm">
+          {text ? (
+            <img src={text} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
+            <div className="bg-gray-100 w-full h-full flex items-center justify-center text-gray-400 text-xs">No Img</div>
           )}
-          <div>
-            <p className="font-medium text-gray-900">{c.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{c.slug}</p>
-          </div>
         </div>
       ),
     },
     {
-      key: "level",
-      label: "Level",
-      render: (c) => (
-        <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
-          {c.level}
-        </span>
+      title: "Tên Khóa Học",
+      dataIndex: "name",
+      sorter: (a: any, b: any) => a.name.localeCompare(b.name),
+      render: (text: string, record: any) => (
+        <div className="font-medium text-slate-900">{text}</div>
       ),
     },
-    { key: "duration", label: "Duration" },
     {
-      key: "students",
-      label: "Students",
-      render: (c) => <span className="font-medium tabular-nums">{c.students.toLocaleString()}</span>,
+      title: "Thể Loại", dataIndex: "category_id", width: 150, render: (val: number) => {
+        const opt = CATEGORY_OPTIONS.find(o => o.value === val);
+        return <Tag color="blue">{opt ? opt.label : 'Unset'}</Tag>;
+      }
     },
     {
-      key: "price",
-      label: "Price",
-      render: (c) => <span className="tabular-nums">{formatVND(c.price)}</span>,
+      title: "Đối Tượng", dataIndex: "category_person", width: 150, render: (val: number) => {
+        const opt = PERSON_OPTIONS.find(o => o.value === val);
+        return <Tag color="green">{opt ? opt.label : 'Unset'}</Tag>;
+      }
     },
     {
-      key: "status",
-      label: "Status",
-      render: (c) => <StatusBadge label={c.status} variant={statusVariant(c.status)} />,
+      title: "Giáo Viên",
+      dataIndex: "teacher_id",
+      render: (val: string) => <Text>{TEACHER_OPTIONS.find(t => t.id === val)?.label || val || '-'}</Text>
+    },
+    {
+      title: "Giá Gốc",
+      dataIndex: "price",
+      sorter: (a: any, b: any) => a.price - b.price,
+      render: (val: number) => <span className="text-red-600 font-semibold">{formatVND(val)}</span>
+    },
+    {
+      title: "Chiết Khấu",
+      dataIndex: "discount",
+      render: (val: number) => <Tag color="orange">{val}%</Tag>
     },
     {
       key: "actions",
-      label: "",
+      label: "", // Hoặc 'Hành động' nếu dùng custom table
       width: "120px",
-      render: (c) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(c)}>
-            Edit
+      render: (record: any) => (
+        <Space size="middle">
+          <Button type="primary" onClick={() => handleEdit(record)}>
+            Sửa
           </Button>
-          <Button variant="ghost" size="sm" className="!text-red-500 hover:!bg-red-50" onClick={() => setDeleteConfirm(c.id)}>
-            Delete
+
+          {/* Nút này giờ chỉ gọi hàm mở Modal và gán ID */}
+          <Button
+            danger
+            onClick={() => {
+              setTargetDeleteId(record.id);
+              setIsDeleteModalOpen(true);
+            }}
+          >
+            Xóa
           </Button>
-        </div>
+        </Space>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="md:flex md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Courses</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage your course catalog and curriculum.
-          </p>
+          <h2 className="text-2xl font-bold text-slate-900">Quản lý Khóa học</h2>
+          <p className="text-sm text-slate-500 mt-1">Quản lý danh mục, giá và nội dung khóa học.</p>
         </div>
         <Button
+          type="primary"
+          icon={<PlusOutlined />}
           onClick={handleCreate}
-          icon={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          }
+          className="bg-[#D40887] hover:bg-[#b00671] border-none text-white px-4 h-10"
         >
-          Add Course
+          Tạo mới
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-        </svg>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search courses..."
-          className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 transition-shadow"
+      {/* Toolbar tìm kiếm */}
+      <div className="flex gap-4">
+        <div className="relative flex-1 max-w-md">
+          <SearchOutlined className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Input
+            placeholder="Tìm theo tên khóa học..."
+            prefix={<SearchOutlined className="mr-2 text-gray-400" />}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            size="large"
+            className="rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* TABLE COMPONENT */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <Table
+          columns={columns as any}
+          dataSource={filteredData}
+          rowKey="id"
+          loading={loading}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+            showTotal: (total, range) => `Hiển thị ${range[0]}-${range[1]} trên tổng số ${total} sản phẩm`,
+          }}
+          scroll={{ x: 1000 }} // Enable horizontal scroll nếu có nhiều cột
         />
       </div>
 
-      {/* Table */}
-      <Table
-        columns={columns}
-        data={filtered}
-        emptyTitle="No courses yet"
-        emptyDescription="Get started by adding your first course."
-        onAdd={handleCreate}
-      />
+      {modalOpen && (
+        <Modal width={1000}
+          open={modalOpen}
+          onCancel={() => setModalOpen(false)}
+          onOk={handleSave}
+          okText={editingId ? "Cập nhật" : "Tạo mới"}
+          cancelText="Hủy bỏ"
+          title={editingId ? "Chỉnh sửa khóa học" : "Tạo khóa học mới"}
+        >
+          <div className="space-y-6 pr-1 max-h-[75vh] overflow-y-auto mt-4">
 
-      {/* Create / Edit modal */}
+            {/* 🎨 LƯỚI UPLOAD ĐỒNG BỘ KÍCH THƯỚC */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
+              <div className="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-all duration-200">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-100">📷 Banner Hình ảnh</h3>
+                <div className="w-full h-36 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative group">
+                  <ImageUpload label="" value={typeof form.banner === 'string' ? form.banner : ''} onChange={(val) => setForm(f => ({ ...f, banner: val }))} />
+                </div>
+              </div>
+              <div className="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-all duration-200">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-100">🎥 Video Giới thiệu</h3>
+                <div className="w-full h-36 bg-slate-900/40 rounded-lg border-2 border-dashed border-slate-400 flex items-center justify-center overflow-hidden relative group">
+                  <VideoUpload label="" value={typeof form.video === 'string' ? form.video : ''} onChange={(val) => setForm(f => ({ ...f, video: val }))} />
+                </div>
+              </div>
+              <div className="flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition-all duration-200">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-2 border-b border-slate-100">📄 Tài liệu tham khảo</h3>
+                <div className="w-full h-36 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative group">
+                  <DocumentUpload label="" value={typeof form.document === 'string' ? form.document : ''} onChange={(val) => setForm(f => ({ ...f, document: val }))} />
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-slate-200" />
+
+            {/* TEXT FIELDS */}
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tên khóa học *</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#D40887]/20 outline-none ${errors.name ? 'border-red-500' : 'border'}`}
+                />
+                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục*</label>
+                  <select
+                    value={form.category_person}
+                    onChange={(e) => setForm(f => ({ ...f, category_person: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 border rounded-lg outline-none"
+                  >
+                    {PERSON_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục khóa học*</label>
+                  <select
+                    value={form.category_id}
+                    onChange={(e) => setForm(f => ({ ...f, category_id: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 border rounded-lg outline-none"
+                  >
+                    {CATEGORY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Giáo viên phụ trách</label>
+                  <select
+                    value={form.teacher_id}
+                    onChange={(e) => setForm(f => ({ ...f, teacher_id: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg outline-none"
+                  >
+                    <option value="">-- Chọn GV --</option>
+                    {TEACHER_OPTIONS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giá gốc (VND) *</label>
+                    <input
+                      type="number"
+                      value={form.price ?? ""}
+                      onChange={(e) => setForm(f => ({ ...f, price: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                      className={`w-full px-3 py-2 border rounded-lg outline-none ${errors.price ? 'border-red-500' : 'border'}`}
+                    />
+                    {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Giảm giá (%)</label>
+                    <input
+                      type="number"
+                      value={form.discount ?? ""}
+                      onChange={(e) => setForm(f => ({ ...f, discount: e.target.value === "" ? undefined : Number(e.target.value) }))}
+                      className="w-full px-3 py-2 border rounded-lg outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả ngắn</label>
+                <textarea rows={2} value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+              </div>
+
+              {/* <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chương trình học (Introducing)</label>
+                <textarea rows={3} value={form.introducing} onChange={(e) => setForm(f => ({ ...f, introducing: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Học viên đạt được (Will Receive)</label>
+                <textarea rows={3} value={form.will_receive} onChange={(e) => setForm(f => ({ ...f, will_receive: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lưu ý khi mua (Note Buy)</label>
+                <textarea rows={3} value={form.note_buy} onChange={(e) => setForm(f => ({ ...f, note_buy: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+              </div> */}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* TOAST */}
+      {toastConfig.show && (
+        <Toast message={toastConfig.msg} type={toastConfig.type} onClose={() => setToastConfig(p => ({ ...p, show: false }))} />
+      )}
+      {/* 🟢 MODAL XÁC NHẬN XÓA */}
       <Modal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={editingId ? "Chỉnh sửa khóa học" : "Tạo khóa học mới"}
+        title="Xác nhận xóa khóa học"
+        open={isDeleteModalOpen}
+        onCancel={() => {
+          setIsDeleteModalOpen(false);
+          setTargetDeleteId(null);
+        }}
+        footer={[
+          <Button key="back" onClick={() => setIsDeleteModalOpen(false)}>
+            Hủy bỏ
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            danger
+            onClick={() => {
+              if (targetDeleteId) {
+                handleDelete(targetDeleteId); // Gọi hàm xử lý xóa
+                setIsDeleteModalOpen(false);
+              }
+            }}
+          >
+            Xác nhận xóa
+          </Button>,
+        ]}
       >
-        <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-
-          {/* Banner Image */}
-          <ImageUpload
-            label="Banner"
-            value={form.image}
-            onChange={(url) => setForm(f => ({ ...f, image: url }))}
-          />
-
-          {/* Tên khóa học */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tên khóa học</label>
-            <input
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.title ? "border-red-300" : "border-gray-200"}`}
-              placeholder="Nhập tên khóa học"
-            />
-            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
-          </div>
-
-          {/* Danh mục + Danh mục khóa học */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
-              <select
-                value={form.category}
-                onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 bg-white"
-              >
-                <option value="">-- Chọn danh mục --</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục khóa học</label>
-              <select
-                value={form.courseCategory}
-                onChange={(e) => setForm((f) => ({ ...f, courseCategory: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 bg-white"
-              >
-                <option value="">-- Chọn danh mục khóa học --</option>
-                {COURSE_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Giáo viên phụ trách + Level */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giáo viên phụ trách</label>
-              <select
-                value={form.teacher}
-                onChange={(e) => setForm((f) => ({ ...f, teacher: e.target.value }))}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 bg-white"
-              >
-                <option value="">-- Chọn giáo viên --</option>
-                {TEACHERS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-               <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giá (VND)</label>
-              <input
-                type="number"
-                value={form.price}
-                onChange={(e) => setForm((f) => ({ ...f, price: Number(e.target.value) }))}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.price ? "border-red-300" : "border-gray-200"}`}
-                placeholder="0"
-              />
-              {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Giá khuyến mãi (VND)</label>
-              <input
-                type="number"
-                value={form.salePrice}
-                onChange={(e) => setForm((f) => ({ ...f, salePrice: Number(e.target.value) }))}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40"
-                placeholder="0"
-              />
-            </div>
-          </div>
-            </div>
-          </div>
-
-          {/* Giá + Giá khuyến mãi */}
-         
-
-          {/* Mô tả khóa học */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả khóa học</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 resize-none"
-              placeholder="Nhập mô tả ngắn về khóa học"
-            />
-          </div>
-
-          {/* Giới thiệu khóa học */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Giới thiệu khóa học</label>
-            <textarea
-              value={form.introduction}
-              onChange={(e) => setForm((f) => ({ ...f, introduction: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 resize-none"
-              placeholder="Nhập giới thiệu chi tiết về khóa học"
-            />
-          </div>
-
-          {/* Tham gia khóa học bạn sẽ thu được */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tham gia khóa học bạn sẽ thu được</label>
-            <textarea
-              value={form.benefits}
-              onChange={(e) => setForm((f) => ({ ...f, benefits: e.target.value }))}
-              rows={4}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 resize-none"
-              placeholder="Nhập những gì học viên sẽ đạt được sau khóa học"
-            />
-          </div>
-
-          {/* Lưu ý khi mua khóa học */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Lưu ý khi mua khóa học</label>
-            <textarea
-              value={form.purchaseNotes}
-              onChange={(e) => setForm((f) => ({ ...f, purchaseNotes: e.target.value }))}
-              rows={3}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 resize-none"
-              placeholder="Nhập các lưu ý quan trọng khi đăng ký khóa học"
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={handleSave}>
-              {editingId ? "Lưu thay đổi" : "Tạo khóa học"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Delete confirmation */}
-      <Modal
-        open={deleteConfirm !== null}
-        onClose={() => setDeleteConfirm(null)}
-        title="Delete Course"
-      >
-        <p className="text-sm text-gray-600 mb-5">
-          Are you sure you want to delete this course? This action cannot be undone.
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
-            Delete
-          </Button>
+        <div className="space-y-4">
+          <p>Bạn có chắc chắn muốn xóa khóa học này không?</p>
         </div>
       </Modal>
     </div>
+
   );
 }

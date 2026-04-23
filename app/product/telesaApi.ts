@@ -27,9 +27,10 @@ export type ApiCourse = {
   total_time: string | null;
   total_rate: number | null;
   updated_at: string | null;
+  includes: string | null;
 };
 
-import type { CourseProduct } from "./catalog";
+import type { ListCourseProduct } from "./catalog";
 
 const DEFAULT_API_BASE_URL = "https://dev-admin.telesaenglish.com";
 const DEFAULT_COURSE_CATEGORY_SLUG = "khoa-giao-tiep-90-ngay";
@@ -72,7 +73,7 @@ export function mapApiCourseToViewModel(course: ApiCourse): CourseProductViewMod
 
   return {
     id: String(course.id),
-    image: course.banner || "/assets/course-1.jpg",
+    banner: course.banner || "/assets/course-1.jpg",
     title: course.name,
     subtitle: descriptionText ? `${descriptionText.slice(0, 92)}${descriptionText.length > 92 ? "…" : ""}` : "",
     students: "—",
@@ -84,29 +85,4 @@ export function mapApiCourseToViewModel(course: ApiCourse): CourseProductViewMod
   };
 }
 
-export type CourseProductViewModel = CourseProduct;
-
-export async function fetchCourseCatalog(
-  init?: (RequestInit & { next?: { revalidate?: number } }) | undefined,
-) {
-  const baseUrl = getTelesaApiBaseUrl();
-  const url = new URL("/api/v2/course", baseUrl);
-  url.searchParams.set("type", "");
-  url.searchParams.set("slug", DEFAULT_COURSE_CATEGORY_SLUG);
-
-  const response = await fetch(url.toString(), {
-    headers: { Accept: "application/json" },
-    ...init,
-  });
-
-  if (!response.ok) {
-    const message = await response.text().catch(() => "");
-    throw new Error(message || `HTTP ${response.status}`);
-  }
-
-  const payload = (await response.json()) as TelesaCourseCategoryResponse;
-  const lists = payload?.data?.courses?.lists;
-  if (!Array.isArray(lists)) return [];
-  // Only treat items that actually have a numeric price as products.
-  return lists.filter((item) => typeof item?.price === "number");
-}
+export type CourseProductViewModel = ListCourseProduct;

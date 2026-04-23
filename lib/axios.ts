@@ -1,7 +1,9 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: "/api", 
+  baseURL: typeof window === "undefined" 
+    ? (process.env.NEXT_PUBLIC_TELESA_API_BASE_URL || "https://dev-admin.telesaenglish.com") + "/api"
+    : "/api",
   headers: {
     "Content-Type": "application/json",
   },

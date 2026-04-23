@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { Open_Sans } from "next/font/google";
 import { useEffect, useMemo, useState } from "react";
+import ModalLogin from "./ModalLogin";
 
 type MenuVariant = "kid" | "adult";
 
@@ -92,7 +93,13 @@ export default function MobileMenuDrawer({
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-
+  const [isModalLoginOpen, setIsModalLoginOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState<{
+    name?: string;
+    email?: string;
+    photo?: string | null;
+  } | null>(null);
   const items = useMemo<MenuItem[]>(
     () => [
       { key: "home", label: "Trang chủ" },
@@ -122,7 +129,20 @@ export default function MobileMenuDrawer({
     ],
     [variant],
   );
-
+  useEffect(() => {
+    setIsLoggedIn(document.cookie.includes("auth_token="));
+    try {
+      const stored = localStorage.getItem("telesa_user_info");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setUserInfo({
+          name: parsed.username || (parsed.last_name ? `${parsed.last_name} ${parsed.first_name}` : parsed.first_name),
+          email: parsed.email,
+          photo: parsed.photo,
+        });
+      }
+    } catch (e) { }
+  }, []);
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -145,6 +165,15 @@ export default function MobileMenuDrawer({
   }, [open]);
 
   if (!isMounted) return null;
+
+  const accountName = userInfo?.name || "No Name";
+  const accountEmail = userInfo?.email || "No Email";
+  const accountInitials = accountName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
   return (
     <div
@@ -224,8 +253,8 @@ export default function MobileMenuDrawer({
                       type="button"
                       onClick={() => setIsLibraryExpanded((prev) => !prev)}
                       className={`flex w-full items-center justify-between text-left text-[18px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${isActive
-                          ? "text-[#D40887]"
-                          : "text-slate-900 hover:text-[#D40887]"
+                        ? "text-[#D40887]"
+                        : "text-slate-900 hover:text-[#D40887]"
                         }`}
                       aria-expanded={isLibraryExpanded}
                     >
@@ -268,8 +297,8 @@ export default function MobileMenuDrawer({
                               onClose();
                             }}
                             className={`block w-full rounded-xl px-3 py-2 text-left text-[15px] font-[400] leading-snug tracking-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D40887]/40 ${isChildActive
-                                ? "bg-[#D40887]/10 text-[#D40887]"
-                                : "text-slate-700 hover:bg-slate-50 hover:text-[#D40887]"
+                              ? "bg-[#D40887]/10 text-[#D40887]"
+                              : "text-slate-700 hover:bg-slate-50 hover:text-[#D40887]"
                               }`}
                             aria-current={isChildActive ? "page" : undefined}
                           >
@@ -283,7 +312,7 @@ export default function MobileMenuDrawer({
               })}
             </nav>
 
-            <div className="mt-6 border-t border-slate-200 pt-4">
+            {isLoggedIn && <div className="mt-6 border-t border-slate-200 pt-4">
               <button
                 type="button"
                 className="flex w-full items-center gap-3 text-left"
@@ -292,14 +321,14 @@ export default function MobileMenuDrawer({
                 onClick={() => setIsAccountExpanded((prev) => !prev)}
               >
                 <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-[12px] font-[400] text-slate-700">
-                  AN
+                  {accountInitials || "NAME"}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[14px] font-medium text-slate-700">
-                    An Nguyễn
+                    {accountName}
                   </p>
                   <p className="truncate text-[12px] text-slate-500">
-                    annguyen@gmail.com
+                    {accountEmail}
                   </p>
                 </div>
                 <ChevronDownIcon
@@ -354,8 +383,8 @@ export default function MobileMenuDrawer({
                     </span>
                     <span
                       className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${language === "vi"
-                          ? "bg-[var(--primary)] ring-[var(--primary)]"
-                          : "bg-white ring-slate-400/70"
+                        ? "bg-[var(--primary)] ring-[var(--primary)]"
+                        : "bg-white ring-slate-400/70"
                         }`}
                       aria-hidden="true"
                     >
@@ -386,8 +415,8 @@ export default function MobileMenuDrawer({
                     </span>
                     <span
                       className={`flex h-6 w-6 items-center justify-center rounded-full ring-2 ${language === "en"
-                          ? "bg-[var(--primary)] ring-[var(--primary)]"
-                          : "bg-white ring-slate-400/70"
+                        ? "bg-[var(--primary)] ring-[var(--primary)]"
+                        : "bg-white ring-slate-400/70"
                         }`}
                       aria-hidden="true"
                     >
@@ -398,7 +427,7 @@ export default function MobileMenuDrawer({
                   </label>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
 
           <footer className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-md bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+14px)] pt-4">
@@ -408,23 +437,42 @@ export default function MobileMenuDrawer({
             >
               Góc học tập
             </button>
-            <button
-              type="button"
-              className={`${openSans.className} mt-3 flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-6 py-3 text-center text-[14px] font-[700] text-red-500 active:bg-red-50`}
-            >
-              <Image
-                src="/assets/svg/logout.svg"
-                alt=""
-                width={24}
-                height={24}
-                className="h-4 w-4"
-                unoptimized
-              />
-              Đăng xuất
-            </button>
+
+            {!isLoggedIn ? (
+              <button
+                type="button"
+                onClick={() => setIsModalLoginOpen(true)}
+                className={`${openSans.className} mt-3 flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-6 py-3 text-center text-[14px] font-[700] text-red-500 active:bg-red-50`}
+              >
+                <span className="xl:hidden">Đăng ký/Đăng nhập</span>
+                <span className="hidden xl:inline">Đăng ký/Đăng nhập</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  document.cookie = "auth_token=; path=/; max-age=0";
+                  localStorage.removeItem("telesa_user_info");
+                  setIsLoggedIn(false);
+                  window.location.reload();
+                }}
+                type="button"
+                className={`${openSans.className} mt-3 flex w-full items-center justify-center gap-3 rounded-[16px] border-2 border-red-500 px-6 py-3 text-center text-[14px] font-[700] text-red-500 active:bg-red-50`}
+              >
+                <Image
+                  src="/assets/svg/logout.svg"
+                  alt=""
+                  width={24}
+                  height={24}
+                  className="h-4 w-4"
+                  unoptimized
+                />
+                Đăng xuất
+              </button>
+            )}
           </footer>
         </div>
       </div>
+      <ModalLogin open={isModalLoginOpen} onClose={() => setIsModalLoginOpen(false)} />
     </div>
   );
 }
