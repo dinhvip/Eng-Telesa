@@ -4,22 +4,16 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import type { BackgroundVideoHandle } from "./components/BackgroundVideo";
 import DesktopFloatingActions from "./components/DesktopFloatingActions";
 import DesktopNavbar from "./components/DesktopNavbar";
-import { KidWorldMap } from "./components/KidWorldMap";
 import FooterContactView from "./components/FooterContactView";
-import MobileHeader from "./components/MobileHeader";
-import MobileFloatingActions from "./components/MobileFloatingActions";
 import MobileMenuDrawer from "./components/MobileMenuDrawer";
-import CountUp from "./components/CountUp";
-import ArrowUpIcon from "./components/ArrowUpIcon";
-import BackgroundVideo from "./components/BackgroundVideo";
-import type { BackgroundVideoHandle } from "./components/BackgroundVideo";
-import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSet";
 import type { PreloadedBackgroundVideoSetHandle } from "./components/PreloadedBackgroundVideoSet";
+import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSet";
+import Toast from "./components/Toast";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
 import { sendConsultationMail } from "./lib/sendConsultationMail";
-import Toast from "./components/Toast";
 
 // GSAP – loaded dynamically to avoid SSR issues
 type GsapModule = typeof import("gsap");
@@ -27,13 +21,13 @@ type ScrollTriggerModule = typeof import("gsap/ScrollTrigger");
 
 import Slide2FollowUp from "./components/landing-slides/Slide2FollowUp";
 import Slide3Carousel from "./components/landing-slides/Slide3Carousel";
-import SlideStats from "./components/landing-slides/SlideStats";
-import SlideLibraryTeaser from "./components/landing-slides/SlideLibraryTeaser";
-import SlideTestimonials from "./components/landing-slides/SlideTestimonials";
-import SlideMap from "./components/landing-slides/SlideMap";
 import SlideConsultation from "./components/landing-slides/SlideConsultation";
 import SlideContact from "./components/landing-slides/SlideContact";
+import SlideLibraryTeaser from "./components/landing-slides/SlideLibraryTeaser";
+import SlideMap from "./components/landing-slides/SlideMap";
+import SlideStats from "./components/landing-slides/SlideStats";
 import SlideTelesaReveal from "./components/landing-slides/SlideTelesaReveal";
+import SlideTestimonials from "./components/landing-slides/SlideTestimonials";
 
 export default function LandingPage() {
   const router = useRouter();

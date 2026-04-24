@@ -4,6 +4,9 @@ import Image from "next/image";
 import type { SVGProps } from "react";
 import MobileFloatingActions from "./MobileFloatingActions";
 import MobileHeader from "./MobileHeader";
+// Import hook và hàm lấy dữ liệu mới
+import { useState, useEffect } from "react";
+import { fetchAllSettings } from "../../lib/api/AllsettingsAPI";
 
 type FooterVariant = "kid" | "adult";
 
@@ -100,9 +103,42 @@ export default function FooterContactView({
   desktopSnap = false,
   snapStart = true,
 }: FooterContactViewProps) {
+
+  // 1. State lưu trữ dữ liệu từ API
+  const [siteData, setSiteData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 2. Lấy dữ liệu khi mount
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const fetchData = async () => {
+      try {
+        // Gọi hàm getAllSettings
+        const result = await fetchAllSettings();
+
+        if (isSubscribed && result) {
+          setSiteData(result);
+        }
+      } catch (error) {
+        console.error("Lỗi tải footer:", error);
+      } finally {
+        if (isSubscribed) setIsLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => { isSubscribed = false; };
+  }, []);
+
+  // Trích xuất thông tin liên hệ từ cấu trúc dữ liệu mới: data.general.email
+  const contactEmail = isLoading ? "Đang tải..." : (siteData?.general?.email || "");
+  const contactPhone = isLoading ? "" : (siteData?.general?.phone || "");
+
   const brandAlt = variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo";
   const desktopFullHeightClass = desktopFullHeight ? "lg:h-[100dvh]" : "lg:h-auto";
   const desktopSnapClass = desktopSnap ? "lg:snap-start" : "lg:snap-none";
+
   return (
     <section
       className={[
@@ -137,17 +173,22 @@ export default function FooterContactView({
           <section>
             <h2 className="text-[22px] font-extrabold text-slate-700">Thông tin liên hệ</h2>
             <div className="mt-3 space-y-3 text-[16px] font-medium text-slate-500">
+              {/* Email động từ siteData.general.email */}
               <div className="flex items-center gap-3">
                 <EmailIcon className="h-5 w-5" />
-                <span>team1@telesaenglish.com</span>
+                <span>{contactEmail}</span>
               </div>
+
+              {/* Số tổng đài (giữ cứng như cũ nếu không có trong API) */}
               <div className="flex items-center gap-3">
                 <BuildingIcon className="h-5 w-5" />
                 <span>0318591266</span>
               </div>
+
+              {/* Phone động từ siteData.general.phone */}
               <div className="flex items-center gap-3">
                 <PhoneIcon className="h-5 w-5" />
-                <span>0932639259</span>
+                <span>{contactPhone}</span>
               </div>
             </div>
           </section>
@@ -155,65 +196,17 @@ export default function FooterContactView({
           <section>
             <h2 className="text-[22px] font-extrabold text-slate-700">Mạng xã hội</h2>
             <div className="mt-3 flex items-center gap-3">
-              <a
-                href="https://www.facebook.com/TelesaEnglish"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Facebook"
-                className="flex h-9 w-9 items-center justify-center"
-              >
-                <Image
-                  src="/assets/svg/facebook.svg"
-                  alt="Facebook"
-                  width={36}
-                  height={36}
-                  className="h-9 w-9"
-                />
+              <a href="https://www.facebook.com/TelesaEnglish" target="_blank" rel="noreferrer" aria-label="Facebook" className="flex h-9 w-9 items-center justify-center">
+                <Image src="/assets/svg/facebook.svg" alt="Facebook" width={36} height={36} className="h-9 w-9" />
               </a>
-              <a
-                href="https://www.tiktok.com/@telesaenglishofficial"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="TikTok"
-                className="flex h-9 w-9 items-center justify-center"
-              >
-                <Image
-                  src="/assets/svg/tiktok.svg"
-                  alt="TikTok"
-                  width={36}
-                  height={36}
-                  className="h-9 w-9"
-                />
+              <a href="https://www.tiktok.com/@telesaenglishofficial" target="_blank" rel="noreferrer" aria-label="TikTok" className="flex h-9 w-9 items-center justify-center">
+                <Image src="/assets/svg/tiktok.svg" alt="TikTok" width={36} height={36} className="h-9 w-9" />
               </a>
-              <a
-                href="https://www.instagram.com/hoctienganhcungtelesa/"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Instagram"
-                className="flex h-9 w-9 items-center justify-center"
-              >
-                <Image
-                  src="/assets/svg/instagram.svg"
-                  alt="Instagram"
-                  width={36}
-                  height={36}
-                  className="h-9 w-9"
-                />
+              <a href="https://www.instagram.com/hoctienganhcungtelesa/" target="_blank" rel="noreferrer" aria-label="Instagram" className="flex h-9 w-9 items-center justify-center">
+                <Image src="/assets/svg/instagram.svg" alt="Instagram" width={36} height={36} className="h-9 w-9" />
               </a>
-              <a
-                href="https://www.youtube.com/@Telesaenglish"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="YouTube"
-                className="flex h-9 w-9 items-center justify-center"
-              >
-                <Image
-                  src="/assets/svg/youtube.svg"
-                  alt="YouTube"
-                  width={36}
-                  height={36}
-                  className="h-9 w-9"
-                />
+              <a href="https://www.youtube.com/@Telesaenglish" target="_blank" rel="noreferrer" aria-label="YouTube" className="flex h-9 w-9 items-center justify-center">
+                <Image src="/assets/svg/youtube.svg" alt="YouTube" width={36} height={36} className="h-9 w-9" />
               </a>
             </div>
           </section>
@@ -221,33 +214,11 @@ export default function FooterContactView({
           <section>
             <h2 className="text-[22px] font-extrabold text-slate-700">Tải ngay</h2>
             <div className="mt-3 flex items-center gap-0">
-              <a
-                href="https://apps.apple.com/vn/app/telesa-english/id6479183587"
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-1 items-center justify-start"
-              >
-                <Image
-                  src="/assets/svg/apple-button.svg"
-                  alt="Download on the App Store"
-                  width={190}
-                  height={56}
-                  className="h-12 w-full object-contain object-left"
-                />
+              <a href="https://apps.apple.com/vn/app/telesa-english/id6479183587" target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-start">
+                <Image src="/assets/svg/apple-button.svg" alt="Download on the App Store" width={190} height={56} className="h-12 w-full object-contain object-left" />
               </a>
-              <a
-                href="https://play.google.com/store/apps/details?id=com.telesa_english"
-                target="_blank"
-                rel="noreferrer"
-                className="flex flex-1 items-center justify-start"
-              >
-                <Image
-                  src="/assets/svg/google-play-button.svg"
-                  alt="Get it on Google Play"
-                  width={190}
-                  height={56}
-                  className="h-12 w-full object-contain object-left"
-                />
+              <a href="https://play.google.com/store/apps/details?id=com.telesa_english" target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-start">
+                <Image src="/assets/svg/google-play-button.svg" alt="Get it on Google Play" width={190} height={56} className="h-12 w-full object-contain object-left" />
               </a>
             </div>
           </section>
@@ -274,46 +245,17 @@ export default function FooterContactView({
         <div className="grid grid-cols-12 gap-10 xl:gap-16">
           <div className="col-span-4">
             <div className="relative h-[110px] w-[110px]">
-              <Image
-                src={logoSrc}
-                alt={brandAlt}
-                width={110}
-                height={110}
-                className="h-full w-full object-contain"
-                priority
-              />
+              <Image src={logoSrc} alt={brandAlt} width={110} height={110} className="h-full w-full object-contain" priority />
             </div>
 
             <div className="mt-10">
               <h3 className="text-[20px] font-extrabold text-slate-700">Tải ngay</h3>
               <div className="mt-4 flex items-center gap-4">
-                <a
-                  href="https://apps.apple.com/vn/app/telesa-english/id6479183587"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex"
-                >
-                  <Image
-                    src="/assets/svg/apple-button.svg"
-                    alt="Download on the App Store"
-                    width={180}
-                    height={56}
-                    className="h-12 w-auto object-contain"
-                  />
+                <a href="https://apps.apple.com/vn/app/telesa-english/id6479183587" target="_blank" rel="noreferrer" className="inline-flex">
+                  <Image src="/assets/svg/apple-button.svg" alt="Download on the App Store" width={180} height={56} className="h-12 w-auto object-contain" />
                 </a>
-                <a
-                  href="https://play.google.com/store/apps/details?id=com.telesa_english"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex"
-                >
-                  <Image
-                    src="/assets/svg/google-play-button.svg"
-                    alt="Get it on Google Play"
-                    width={180}
-                    height={56}
-                    className="h-12 w-auto object-contain"
-                  />
+                <a href="https://play.google.com/store/apps/details?id=com.telesa_english" target="_blank" rel="noreferrer" className="inline-flex">
+                  <Image src="/assets/svg/google-play-button.svg" alt="Get it on Google Play" width={180} height={56} className="h-12 w-auto object-contain" />
                 </a>
               </div>
             </div>
@@ -324,11 +266,7 @@ export default function FooterContactView({
               <ul className="space-y-5 text-[18px] font-semibold text-slate-700">
                 {NAV_ITEMS.map((item) => (
                   <li key={item.key}>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate?.(item.key)}
-                      className="transition-colors hover:text-slate-900"
-                    >
+                    <button type="button" onClick={() => onNavigate?.(item.key)} className="transition-colors hover:text-slate-900">
                       {item.label}
                     </button>
                   </li>
@@ -340,57 +278,38 @@ export default function FooterContactView({
           <div className="col-span-4">
             <h3 className="text-[20px] font-extrabold text-slate-700">Thông tin liên hệ</h3>
             <div className="mt-4 space-y-4 text-[16px] font-medium text-slate-500">
+              {/* Email động (Desktop) */}
               <div className="flex items-center gap-3">
                 <EmailIcon className="h-5 w-5" />
-                <span>team1@telesaenglish.com</span>
+                <span>{contactEmail}</span>
               </div>
+
+              {/* Giữ cứng số này hoặc thêm field từ API nếu cần */}
               <div className="flex items-center gap-3">
                 <BuildingIcon className="h-5 w-5" />
                 <span>0318591266</span>
               </div>
+
+              {/* Phone động (Desktop) */}
               <div className="flex items-center gap-3">
                 <PhoneIcon className="h-5 w-5" />
-                <span>0932639259</span>
+                <span>{contactPhone}</span>
               </div>
             </div>
 
             <div className="mt-12">
               <h3 className="text-[20px] font-extrabold text-slate-700">Mạng xã hội</h3>
               <div className="mt-4 flex items-center gap-4">
-                <a
-                  href="https://www.facebook.com/TelesaEnglish"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Facebook"
-                  className="inline-flex h-10 w-10 items-center justify-center"
-                >
+                <a href="https://www.facebook.com/TelesaEnglish" target="_blank" rel="noreferrer" aria-label="Facebook" className="inline-flex h-10 w-10 items-center justify-center">
                   <Image src="/assets/svg/facebook.svg" alt="Facebook" width={40} height={40} className="h-10 w-10" />
                 </a>
-                <a
-                  href="https://www.tiktok.com/@telesaenglishofficial"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="TikTok"
-                  className="inline-flex h-10 w-10 items-center justify-center"
-                >
+                <a href="https://www.tiktok.com/@telesaenglishofficial" target="_blank" rel="noreferrer" aria-label="TikTok" className="inline-flex h-10 w-10 items-center justify-center">
                   <Image src="/assets/svg/tiktok.svg" alt="TikTok" width={40} height={40} className="h-10 w-10" />
                 </a>
-                <a
-                  href="https://www.instagram.com/hoctienganhcungtelesa/"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Instagram"
-                  className="inline-flex h-10 w-10 items-center justify-center"
-                >
+                <a href="https://www.instagram.com/hoctienganhcungtelesa/" target="_blank" rel="noreferrer" aria-label="Instagram" className="inline-flex h-10 w-10 items-center justify-center">
                   <Image src="/assets/svg/instagram.svg" alt="Instagram" width={40} height={40} className="h-10 w-10" />
                 </a>
-                <a
-                  href="https://www.youtube.com/@Telesaenglish"
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="YouTube"
-                  className="inline-flex h-10 w-10 items-center justify-center"
-                >
+                <a href="https://www.youtube.com/@Telesaenglish" target="_blank" rel="noreferrer" aria-label="YouTube" className="inline-flex h-10 w-10 items-center justify-center">
                   <Image src="/assets/svg/youtube.svg" alt="YouTube" width={40} height={40} className="h-10 w-10" />
                 </a>
               </div>
