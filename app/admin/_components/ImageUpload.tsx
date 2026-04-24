@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { Button } from "antd";
 
 interface ImageUploadProps {
     label: string;
@@ -27,7 +28,7 @@ export default function ImageUpload({ label, value, onChange }: ImageUploadProps
     };
 
     return (
-        <div>
+        <div >
             <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
             <div className="mt-1 flex items-center gap-4">
                 {/* Khung hiển thị ảnh */}
@@ -46,17 +47,6 @@ export default function ImageUpload({ label, value, onChange }: ImageUploadProps
                     )}
                 </div>
 
-                {/* Khu vực nút bấm */}
-                <div className="flex flex-col justify-center">
-                    <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mb-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-                    >
-                        Upload file
-                    </button>
-                    <p className="text-xs text-gray-500">JPG, PNG, WEBP</p>
-                </div>
 
                 {/* Input ẩn */}
                 <input
@@ -69,16 +59,14 @@ export default function ImageUpload({ label, value, onChange }: ImageUploadProps
 
                 {/* Nút xóa nếu có ảnh */}
                 {previewUrl && (
-                    <button
-                        type="button"
+                    <Button
                         onClick={() => {
                             setPreviewUrl("");
                             onChange("");
                         }}
-                        className="ml-auto text-red-500 text-xs underline"
                     >
                         Xóa
-                    </button>
+                    </Button>
                 )}
             </div>
         </div>

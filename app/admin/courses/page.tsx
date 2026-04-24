@@ -1,13 +1,14 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Table, Button, Input, Modal, Popconfirm, Tag, Space, Typography } from "antd";
-import { SearchOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
-import Toast from "../_components/Toast";
-import { fetchCourseCatalog, createCourse, editCourse, deleteCourse } from "../../../lib/api/productPage";
-import ImageUpload from "../_components/ImageUpload";
-import VideoUpload from "../_components/VideoUpload";
+import { CloseOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Divider, Input, Modal, Select, Space, Table, Tag, Typography } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { createCourse, deleteCourse, editCourse, fetchCourseCatalog } from "../../../lib/api/productPage";
+import apiClient from "../../../lib/axios";
 import DocumentUpload from "../_components/DocumentUpload";
+import ImageUpload from "../_components/ImageUpload";
+import Toast from "../_components/Toast";
+import VideoUpload from "../_components/VideoUpload";
+import useListCategories, { useListCourseCategories } from "./UseListcategories";
 
 const { Text } = Typography;
 
@@ -46,19 +47,6 @@ const emptyForm: CourseForm = {
 };
 
 // 📦 MẢNG TÙY CHỌN DROPDOWN
-const PERSON_OPTIONS = [
-  { label: "Người lớn", value: 1 },
-  { label: "Trẻ em", value: 2 },
-  { label: "Nguời lớn & trẻ em", value: 3 },
-  { label: "Khoá học 90 ngày", value: 4 },
-  { label: "Collocations C2 Level", value: 5 },
-  { label: "Vocabulary B1", value: 6 },
-  { label: "The Oxford 3000 từ", value: 7 },
-  { label: "Người mất gốc & Trẻ em", value: 8 },
-];
-const CATEGORY_OPTIONS = [
-  { label: "Khóa Học Online", value: 1 },
-];
 const TEACHER_OPTIONS = [
   { label: "Nguyễn Thị Lan", id: "512" },
   { label: "Trần Văn Minh", id: "513" },
@@ -71,8 +59,108 @@ function formatVND(n: number) {
 }
 
 export default function CoursesPage() {
+  const { categories, loadingCategories, fetchCategories } = useListCategories();
+  const { courseCategories, fetchCourseCategories } = useListCourseCategories();
   const [courses, setCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Thêm danh mục mới (category_person)
+  const [isAddCategoryModalOpen, setIsAddCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategorySlug, setNewCategorySlug] = useState("");
+  const [newCategoryStatus, setNewCategoryStatus] = useState<number>(1);
+  const [addingCategory, setAddingCategory] = useState(false);
+
+  // Thêm danh mục khóa học mới (category_id)
+  const [isAddCourseCatModalOpen, setIsAddCourseCatModalOpen] = useState(false);
+  const [newCourseCatName, setNewCourseCatName] = useState("");
+  const [newCourseCatSlug, setNewCourseCatSlug] = useState("");
+  const [newCourseCatStatus, setNewCourseCatStatus] = useState<number>(1);
+  const [addingCourseCat, setAddingCourseCat] = useState(false);
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      showToast("Tên danh mục không được để trống", "error");
+      return;
+    }
+    setAddingCategory(true);
+    try {
+      const urlencoded = new URLSearchParams();
+      urlencoded.append("name", newCategoryName);
+      urlencoded.append("slug", newCategorySlug);
+      urlencoded.append("status", String(newCategoryStatus));
+
+      await apiClient.post('/categories', urlencoded, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        }
+      });
+      showToast("Thêm danh mục thành công!", "success");
+      setIsAddCategoryModalOpen(false);
+      setNewCategoryName("");
+      setNewCategorySlug("");
+      setNewCategoryStatus(1);
+      fetchCategories();
+    } catch (err: any) {
+      showToast(err.message || "Lỗi khi thêm danh mục", "error");
+    } finally {
+      setAddingCategory(false);
+    }
+  };
+
+  const handleAddCourseCategory = async () => {
+    if (!newCourseCatName.trim()) {
+      showToast("Tên danh mục không được để trống", "error");
+      return;
+    }
+    setAddingCourseCat(true);
+    try {
+      const urlencoded = new URLSearchParams();
+      urlencoded.append("name", newCourseCatName);
+      urlencoded.append("slug", newCourseCatSlug);
+      urlencoded.append("status", String(newCourseCatStatus));
+
+      await apiClient.post('/course/categories', urlencoded, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" }
+      });
+      showToast("Thêm danh mục khóa học thành công!", "success");
+      setIsAddCourseCatModalOpen(false);
+      setNewCourseCatName("");
+      setNewCourseCatSlug("");
+      setNewCourseCatStatus(1);
+      fetchCourseCategories();
+    } catch (err: any) {
+      showToast(err.message || "Lỗi khi thêm danh mục khóa học", "error");
+    } finally {
+      setAddingCourseCat(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    try {
+      await apiClient.delete(`/categories/${id}`);
+      showToast("Xóa danh mục thành công!", "success");
+      fetchCategories();
+      if (form.category_person === id) {
+        setForm(prev => ({ ...prev, category_person: undefined }));
+      }
+    } catch (err: any) {
+      showToast(err.message || "Lỗi khi xóa danh mục", "error");
+    }
+  };
+
+  const handleDeleteCourseCategory = async (id: number) => {
+    try {
+      await apiClient.delete(`/course/categories/${id}`);
+      showToast("Xóa danh mục khóa học thành công!", "success");
+      fetchCourseCategories();
+      if (form.category_id === id) {
+        setForm(prev => ({ ...prev, category_id: undefined }));
+      }
+    } catch (err: any) {
+      showToast(err.message || "Lỗi khi xóa danh mục khóa học", "error");
+    }
+  };
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -218,23 +306,23 @@ export default function CoursesPage() {
         <div className="font-medium text-slate-900">{text}</div>
       ),
     },
-    {
-      title: "Thể Loại", dataIndex: "category_id", width: 150, render: (val: number) => {
-        const opt = CATEGORY_OPTIONS.find(o => o.value === val);
-        return <Tag color="blue">{opt ? opt.label : 'Unset'}</Tag>;
-      }
-    },
-    {
-      title: "Đối Tượng", dataIndex: "category_person", width: 150, render: (val: number) => {
-        const opt = PERSON_OPTIONS.find(o => o.value === val);
-        return <Tag color="green">{opt ? opt.label : 'Unset'}</Tag>;
-      }
-    },
-    {
-      title: "Giáo Viên",
-      dataIndex: "teacher_id",
-      render: (val: string) => <Text>{TEACHER_OPTIONS.find(t => t.id === val)?.label || val || '-'}</Text>
-    },
+    // {
+    //   title: "Thể Loại", dataIndex: "category_id", width: 150, render: (val: number) => {
+    //     const opt = courseCategories.find(o => o.id === val);
+    //     return <Tag color="blue">{opt ? opt.name : 'Unset'}</Tag>;
+    //   }
+    // },
+    // {
+    //   title: "Đối Tượng", dataIndex: "category_person", width: 150, render: (val: number) => {
+    //     const opt = categories.find(o => o.id === val);
+    //     return <Tag color="green">{opt ? opt.name : 'Unset'}</Tag>;
+    //   }
+    // },
+    // {
+    //   title: "Giáo Viên",
+    //   dataIndex: "teacher_id",
+    //   render: (val: string) => <Text>{TEACHER_OPTIONS.find(t => t.id === val)?.label || val || '-'}</Text>
+    // },
     {
       title: "Giá Gốc",
       dataIndex: "price",
@@ -272,7 +360,7 @@ export default function CoursesPage() {
   ];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6  mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="md:flex md:items-center md:justify-between">
         <div>
@@ -283,7 +371,6 @@ export default function CoursesPage() {
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleCreate}
-          className="bg-[#D40887] hover:bg-[#b00671] border-none text-white px-4 h-10"
         >
           Tạo mới
         </Button>
@@ -359,10 +446,12 @@ export default function CoursesPage() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tên khóa học *</label>
-                <input
+                <Input
                   value={form.name}
                   onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#D40887]/20 outline-none ${errors.name ? 'border-red-500' : 'border'}`}
+                  size="large"
+                  status={errors.name ? 'error' : ''}
+                  placeholder="Nhập tên khóa học"
                 />
                 {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
               </div>
@@ -370,56 +459,121 @@ export default function CoursesPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục*</label>
-                  <select
+                  <Select
                     value={form.category_person}
-                    onChange={(e) => setForm(f => ({ ...f, category_person: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg outline-none"
-                  >
-                    {PERSON_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
+                    onChange={(val) => setForm(f => ({ ...f, category_person: val }))}
+                    className="w-full h-[42px]"
+                    popupRender={(menu) => (
+                      <>
+                        {menu}
+                        <Divider style={{ margin: '8px 0' }} />
+                        <Space style={{ padding: '0 8px 4px' }}>
+                          <Button type="text" icon={<PlusOutlined />} onClick={() => setIsAddCategoryModalOpen(true)}>
+                            Thêm danh mục mới
+                          </Button>
+                        </Space>
+                      </>
+                    )}
+                    options={categories.map(opt => ({
+                      label: (
+                        <div className="flex items-center justify-between group">
+                          <span>{opt.name}</span>
+                          <CloseOutlined
+                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              Modal.confirm({
+                                title: "Xác nhận xóa",
+                                content: `Bạn có chắc chắn muốn xóa danh mục "${opt.name}" này không?`,
+                                okText: "Xóa",
+                                okType: "danger",
+                                cancelText: "Hủy",
+                                onOk: () => handleDeleteCategory(opt.id),
+                              });
+                            }}
+                          />
+                        </div>
+                      ),
+                      value: opt.id,
+                    }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục khóa học*</label>
-                  <select
+                  <Select
                     value={form.category_id}
-                    onChange={(e) => setForm(f => ({ ...f, category_id: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 border rounded-lg outline-none"
-                  >
-                    {CATEGORY_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
+                    onChange={(val) => setForm(f => ({ ...f, category_id: val }))}
+                    className="w-full h-[42px]"
+                    popupRender={(menu) => (
+                      <>
+                        {menu}
+                        <Divider style={{ margin: '8px 0' }} />
+                        <Space style={{ padding: '0 8px 4px' }}>
+                          <Button type="text" icon={<PlusOutlined />} onClick={() => setIsAddCourseCatModalOpen(true)}>
+                            Thêm danh mục khóa học mới
+                          </Button>
+                        </Space>
+                      </>
+                    )}
+                    options={courseCategories.map(opt => ({
+                      label: (
+                        <div className="flex items-center justify-between group">
+                          <span>{opt.name}</span>
+                          <CloseOutlined
+                            className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              Modal.confirm({
+                                title: "Xác nhận xóa",
+                                content: `Bạn có chắc chắn muốn xóa danh mục "${opt.name}" này không?`,
+                                okText: "Xóa",
+                                okType: "danger",
+                                cancelText: "Hủy",
+                                onOk: () => handleDeleteCourseCategory(opt.id),
+                              });
+                            }}
+                          />
+                        </div>
+                      ),
+                      value: opt.id,
+                    }))}
+                  />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Giáo viên phụ trách</label>
-                  <select
+                  <Select
                     value={form.teacher_id}
-                    onChange={(e) => setForm(f => ({ ...f, teacher_id: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg outline-none"
-                  >
-                    <option value="">-- Chọn GV --</option>
-                    {TEACHER_OPTIONS.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                  </select>
+                    onChange={(val) => setForm(f => ({ ...f, teacher_id: val }))}
+                    className="w-full h-[42px]"
+                    options={[
+                      ...TEACHER_OPTIONS.map(t => ({ label: t.label, value: t.id }))
+                    ]}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giá gốc (VND) *</label>
-                    <input
+                    <Input
                       type="number"
                       value={form.price ?? ""}
                       onChange={(e) => setForm(f => ({ ...f, price: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                      className={`w-full px-3 py-2 border rounded-lg outline-none ${errors.price ? 'border-red-500' : 'border'}`}
+                      size="large"
+                      status={errors.price ? 'error' : ''}
+                      placeholder="Giá gốc"
                     />
                     {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Giảm giá (%)</label>
-                    <input
+                    <Input
                       type="number"
                       value={form.discount ?? ""}
                       onChange={(e) => setForm(f => ({ ...f, discount: e.target.value === "" ? undefined : Number(e.target.value) }))}
-                      className="w-full px-3 py-2 border rounded-lg outline-none"
+                      size="large"
+                      placeholder="Giảm giá"
                     />
                   </div>
                 </div>
@@ -427,22 +581,27 @@ export default function CoursesPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả ngắn</label>
-                <textarea rows={2} value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+                <Input.TextArea
+                  rows={2}
+                  value={form.description}
+                  onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+                  placeholder="Mô tả ngắn"
+                />
               </div>
 
               {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Chương trình học (Introducing)</label>
-                <textarea rows={3} value={form.introducing} onChange={(e) => setForm(f => ({ ...f, introducing: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+                <Input.TextArea rows={3} value={form.introducing} onChange={(e) => setForm(f => ({ ...f, introducing: e.target.value }))} placeholder="Chương trình học" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Học viên đạt được (Will Receive)</label>
-                <textarea rows={3} value={form.will_receive} onChange={(e) => setForm(f => ({ ...f, will_receive: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+                <Input.TextArea rows={3} value={form.will_receive} onChange={(e) => setForm(f => ({ ...f, will_receive: e.target.value }))} placeholder="Học viên đạt được" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Lưu ý khi mua (Note Buy)</label>
-                <textarea rows={3} value={form.note_buy} onChange={(e) => setForm(f => ({ ...f, note_buy: e.target.value }))} className="w-full px-3 py-2 border rounded-lg outline-none resize-none" />
+                <Input.TextArea rows={3} value={form.note_buy} onChange={(e) => setForm(f => ({ ...f, note_buy: e.target.value }))} placeholder="Lưu ý khi mua" />
               </div> */}
             </div>
           </div>
@@ -482,6 +641,98 @@ export default function CoursesPage() {
       >
         <div className="space-y-4">
           <p>Bạn có chắc chắn muốn xóa khóa học này không?</p>
+        </div>
+      </Modal>
+
+      {/* 🟢 MODAL THÊM DANH MỤC */}
+      <Modal
+        title="Thêm danh mục mới"
+        open={isAddCategoryModalOpen}
+        onCancel={() => setIsAddCategoryModalOpen(false)}
+        onOk={handleAddCategory}
+        okText="Thêm mới"
+        cancelText="Hủy bỏ"
+        confirmLoading={addingCategory}
+      >
+        <div className="space-y-4 pt-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tên danh mục *</label>
+            <Input
+              value={newCategoryName}
+              onChange={(e) => {
+                setNewCategoryName(e.target.value);
+              }}
+              placeholder="Nhập tên danh mục"
+              size="large"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+            <Input
+              value={newCategorySlug}
+              onChange={(e) => setNewCategorySlug(e.target.value)}
+              placeholder="Nhập slug danh mục"
+              size="large"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+            <Select
+              value={newCategoryStatus}
+              onChange={(val) => setNewCategoryStatus(val)}
+              className="w-full h-[40px]"
+              options={[
+                { label: "Hoạt động (1)", value: 1 },
+                { label: "Ngừng hoạt động (0)", value: 0 },
+              ]}
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* 🟢 MODAL THÊM DANH MỤC KHÓA HỌC */}
+      <Modal
+        title="Thêm danh mục khóa học mới"
+        open={isAddCourseCatModalOpen}
+        onCancel={() => setIsAddCourseCatModalOpen(false)}
+        onOk={handleAddCourseCategory}
+        okText="Thêm mới"
+        cancelText="Hủy bỏ"
+        confirmLoading={addingCourseCat}
+      >
+        <div className="space-y-4 pt-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tên danh mục khóa học *</label>
+            <Input
+              value={newCourseCatName}
+              onChange={(e) => {
+                setNewCourseCatName(e.target.value);
+              }}
+              placeholder="Nhập tên danh mục khóa học"
+              size="large"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+            <Input
+              value={newCourseCatSlug}
+              onChange={(e) => setNewCourseCatSlug(e.target.value)}
+              placeholder="Nhập slug danh mục khóa học"
+              size="large"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+            <Select
+              value={newCourseCatStatus}
+              onChange={(val) => setNewCourseCatStatus(val)}
+              className="w-full h-[40px]"
+              options={[
+                { label: "Hoạt động (1)", value: 1 },
+                { label: "Ngừng hoạt động (0)", value: 0 },
+              ]}
+            />
+          </div>
         </div>
       </Modal>
     </div>

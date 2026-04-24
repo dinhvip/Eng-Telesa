@@ -33,7 +33,7 @@ export default function VideoUpload({ label, value, onChange }: VideoUploadProps
     };
 
     return (
-        <div>
+        <div className="w-full">
             <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
 
             {/* Khung xem trước */}

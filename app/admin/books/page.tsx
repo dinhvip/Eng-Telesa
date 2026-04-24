@@ -225,13 +225,13 @@ export default function BooksPage() {
       </div>
 
       {/* Table */}
-      <Table
+      {/* <Table
         columns={columns}
         data={filtered}
         emptyTitle="No books yet"
         emptyDescription="Start building your library by adding the first book."
         onAdd={handleCreate}
-      />
+      /> */}
 
       {/* Create / Edit modal */}
       <Modal

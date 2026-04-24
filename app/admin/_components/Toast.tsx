@@ -49,7 +49,7 @@ export default function Toast({ message, type = "success", duration = 3000, onCl
     };
 
     return (
-        <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${bgColors[type]} transition-all duration-300 transform translate-y-0`}>
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${bgColors[type]} transition-all duration-300 transform translate-y-0`}>
             {icons[type]}
             <p className="text-sm font-medium">{message}</p>
             {onClose && (

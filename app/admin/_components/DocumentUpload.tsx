@@ -47,7 +47,7 @@ export default function DocumentUpload({ label, value, onChange }: DocumentUploa
                     <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md"
+                        className="cursor-pointer px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-md"
                     >
                         Tải lên
                     </button>
