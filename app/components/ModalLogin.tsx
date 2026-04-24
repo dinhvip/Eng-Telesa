@@ -60,19 +60,14 @@ export default function ModalLogin({ open, onClose }: ModalLoginProps) {
       const responseData: any = res;
 
       if (responseData.error) {
-        setErrorMsg(responseData.error || "Đăng nhập thất bại");
+        setErrorMsg(responseData.error.message);
       } else if (responseData.data?.token) {
-        // Success: save token
-        document.cookie = `auth_token=${responseData.data.token}; path=/; max-age=604800`; // 7 days
+        document.cookie = `auth_token=${responseData.data.token}; path=/; max-age=604800`;
         localStorage.setItem("telesa_user_info", JSON.stringify(responseData.data));
-
-        // Save scroll intent
-        sessionStorage.setItem("telesa:scrollToSection2", "1");
-
         onClose();
-        window.location.reload(); // Refresh the page to load authenticated state
+        window.location.reload();
       } else {
-        setErrorMsg(responseData.message || "Đăng nhập thất bại");
+        setErrorMsg("Đăng nhập thất bại");
       }
     } catch (err: any) {
       console.error("Login error: ", err);
