@@ -28,9 +28,8 @@ export type CourseProduct = {
   originalPrice?: any; // Có thể tính toán: price / (1 - discount/100)
 
   // Metadata
-  students?: any; // Bạn có thể dùng total_rate để giả lập hoặc nếu API có thêm field
+  total_sold: any; // total_sold
   rating: any; // total_rate
-  duration: string; // total_time (ví dụ: "105:30")
 
   // Thông tin bổ sung
   total_video: number;
@@ -55,11 +54,11 @@ export type ListCourseProduct = {
   banner: string;
   title: string;
   subtitle: string;
-  students: string;
+  total_sold: string;
   rating: string;
   price: string;
   originalPrice: string;
-  duration: string;
+  total_time: string;
   include: string;
 };
 

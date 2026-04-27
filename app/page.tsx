@@ -13,7 +13,7 @@ import type { PreloadedBackgroundVideoSetHandle } from "./components/PreloadedBa
 import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSet";
 import Toast from "./components/Toast";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
-import { sendConsultationMail } from "./lib/sendConsultationMail";
+import { sendConsultationMail } from "../lib/api/sendConsultationMail";
 
 // GSAP – loaded dynamically to avoid SSR issues
 type GsapModule = typeof import("gsap");
@@ -692,15 +692,12 @@ export default function LandingPage() {
         name,
         phone: phoneOrZalo,
         email,
-        job: `landing-${variant}`,
-        contact_channel: kidConsultContactMethod,
-        consult_topic: kidConsultTopic || "Tư vấn khóa học",
-        notes: [
-          `source=landing`,
-          `variant=${variant}`,
-          `contact_method=${kidConsultContactMethod}`,
-          `zalo_country=${kidConsultZaloCountry}`,
-          `page_url=${pageUrl}`,
+        contact_method: kidConsultContactMethod,
+        consultation_content: [
+          `Vấn đề tư vấn: ${kidConsultTopic || "Tư vấn khóa học"}`,
+          `Nguồn: landing-${variant}`,
+          `Zalo Country: ${kidConsultZaloCountry}`,
+          `URL: ${pageUrl}`,
         ].join("\n"),
       });
 

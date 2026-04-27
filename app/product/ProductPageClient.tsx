@@ -825,7 +825,7 @@ export default function ProductPageClient() {
                         <div className="mt-3.5 space-y-2 text-[14px] text-slate-700">
                           <div className="flex items-center gap-3">
                             <PersonIcon className="h-4 w-4 text-slate-500" />
-                            <span>{course.students}</span>
+                            <span>{course.total_time}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <StarIcon className="h-4 w-4 text-slate-500" />
@@ -840,7 +840,7 @@ export default function ProductPageClient() {
                           </div>
                           <div className="flex items-center gap-3">
                             <ClockIcon className="h-4 w-4 text-slate-500" />
-                            <span>{course.duration}</span>
+                            <span>{course.total_time}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
@@ -1157,7 +1157,7 @@ export default function ProductPageClient() {
                           <div className="mt-4 space-y-2 text-[13px] text-slate-700">
                             <div className="flex items-center gap-3">
                               <PersonIcon className="h-4 w-4 text-slate-500" />
-                              <span>{course.students}</span>
+                              <span>{course.total_sold}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <StarIcon className="h-4 w-4 text-slate-500" />
@@ -1174,7 +1174,7 @@ export default function ProductPageClient() {
                             </div>
                             <div className="flex items-center gap-3">
                               <ClockIcon className="h-4 w-4 text-slate-500" />
-                              <span>{course.duration}</span>
+                              <span>{course.total_time}</span>
                             </div>
                             <div className="flex items-center gap-3">
                               <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
