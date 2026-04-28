@@ -4,21 +4,27 @@ import React, { useState, useEffect, useRef } from "react";
 import type { Banner } from "../_types";
 import Button from "../_components/Button";
 import Modal from "../_components/Modal";
-import { fetchSiteSettings, updateSiteSettingsRaw } from "../../../lib/api/setting";
+import { fetchBannersList, createBanner, updateBanner, deleteBanner } from "../../../lib/api/setting";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SlideForm = {
-  text: string;
+  title: string;
+  description: string;
   link: string;
   image: string;       // URL hiện tại (từ server)
   image_file?: File;   // File mới (nếu người dùng chọn)
+  position: number;
+  is_active: boolean;
 };
 
 const emptyForm: SlideForm = {
-  text: "",
+  title: "",
+  description: "",
   link: "",
   image: "",
   image_file: undefined,
+  position: 0,
+  is_active: true,
 };
 
 const SECTIONS = [
@@ -113,11 +119,11 @@ function SlideCard({
   onDelete: () => void;
 }) {
   return (
-    <div className="relative group flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow w-44 shrink-0">
+    <div className={`relative group flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow w-44 shrink-0 ${!slide.is_active ? 'opacity-60 grayscale-[0.5]' : ''}`}>
       {/* Image */}
       <div className="h-24 bg-gray-100 flex items-center justify-center overflow-hidden">
         {slide.image ? (
-          <img src={slide.image} alt={slide.text} className="w-full h-full object-cover" />
+          <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
         ) : (
           <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -127,13 +133,25 @@ function SlideCard({
 
       {/* Content */}
       <div className="px-3 py-2 flex-1">
-        <p className="text-xs font-medium text-gray-800 line-clamp-2 min-h-[2rem]">
-          {slide.text || <span className="text-gray-400 italic">Chưa có nội dung</span>}
+        <div className="flex items-center justify-between gap-1 mb-1">
+          <p className="text-xs font-bold text-gray-900 truncate flex-1">
+            {slide.title || <span className="text-gray-400 font-normal italic">No title</span>}
+          </p>
+          <span className="text-[10px] bg-gray-100 text-gray-500 px-1 rounded">#{slide.position}</span>
+        </div>
+        <p className="text-[10px] text-gray-500 line-clamp-2 min-h-[1.5rem]">
+          {slide.description || <span className="text-gray-400 italic">No description</span>}
         </p>
         {slide.link && (
           <p className="text-[10px] text-blue-500 truncate mt-1">{slide.link}</p>
         )}
       </div>
+
+      {!slide.is_active && (
+        <div className="absolute top-2 left-2 bg-gray-800/80 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+          Inactive
+        </div>
+      )}
 
       {/* Actions overlay */}
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -159,7 +177,7 @@ function AddSlideButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center justify-center w-44 h-[136px] shrink-0 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-[#9e005a] hover:text-[#9e005a] hover:bg-[#9e005a]/5 transition-all group"
+      className="flex flex-col items-center justify-center w-44 h-[156px] shrink-0 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-[#9e005a] hover:text-[#9e005a] hover:bg-[#9e005a]/5 transition-all group"
     >
       <div className="w-10 h-10 rounded-full border-2 border-dashed border-current flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -178,13 +196,13 @@ export default function PopupPage() {
   const [saving, setSaving] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [activeSection, setActiveSection] = useState<string>("");
   const [form, setForm] = useState<SlideForm>(emptyForm);
   const [formPreview, setFormPreview] = useState<string>("");
   const [errors, setErrors] = useState<Partial<Record<keyof SlideForm, string>>>({});
 
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const showToast = (message: string, type: "success" | "error") => {
@@ -196,10 +214,10 @@ export default function PopupPage() {
   async function fetchBanners() {
     setLoading(true);
     try {
-      const data = await fetchSiteSettings();
-      // API trả về: { data: { banner_slides: [...] } }
-      const rawSlides: Banner[] = data?.banner_slides ?? [];
-      setBanners(rawSlides.map((b, i) => ({ ...b, index: i })));
+      const res = await fetchBannersList();
+      // fetchBannersList đã trả về res.data (là mảng banners) do axios interceptor và xử lý ở api layer
+      const rawSlides: Banner[] = Array.isArray(res) ? res : (res?.data ?? []);
+      setBanners(rawSlides);
     } catch {
       showToast("Không thể tải dữ liệu banner.", "error");
       setBanners([]);
@@ -210,37 +228,9 @@ export default function PopupPage() {
 
   useEffect(() => { fetchBanners(); }, []);
 
-  // ── Submit toàn bộ banners lên server ─────────────────────────────────────
-  async function submitBanners(updatedList: (Banner & { _file?: File })[]) {
-    setSaving(true);
-    try {
-      const formData = new FormData();
-      formData.append("_method", "PUT");
-
-      updatedList.forEach((b, i) => {
-        formData.append(`banner_slides[${i}][text]`, b.text);
-        formData.append(`banner_slides[${i}][section]`, b.section);
-        formData.append(`banner_slides[${i}][link]`, b.link ?? "");
-        if (b._file) {
-          formData.append(`banner_slides[${i}][image]`, b._file, b._file.name);
-        } else if (b.image) {
-          formData.append(`banner_slides[${i}][image]`, b.image);
-        }
-      });
-
-      await updateSiteSettingsRaw(formData);
-      showToast("Đã lưu banner thành công!", "success");
-      await fetchBanners();
-    } catch {
-      showToast("Lưu thất bại. Vui lòng thử lại.", "error");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   // ── Open modal to add slide for a section ─────────────────────────────────
   function handleAddSlide(sectionKey: string) {
-    setEditingIndex(null);
+    setEditingId(null);
     setActiveSection(sectionKey);
     setForm(emptyForm);
     setFormPreview("");
@@ -250,9 +240,16 @@ export default function PopupPage() {
 
   // ── Open modal to edit existing slide ─────────────────────────────────────
   function handleEdit(banner: Banner) {
-    setEditingIndex(banner.index);
+    setEditingId(banner.id);
     setActiveSection(banner.section);
-    setForm({ text: banner.text, link: banner.link, image: banner.image });
+    setForm({
+      title: banner.title,
+      description: banner.description,
+      link: banner.link,
+      image: banner.image,
+      position: banner.position,
+      is_active: banner.is_active,
+    });
     setFormPreview(banner.image);
     setErrors({});
     setModalOpen(true);
@@ -260,44 +257,58 @@ export default function PopupPage() {
 
   function validate(): boolean {
     const e: Partial<Record<keyof SlideForm, string>> = {};
-    if (!form.text.trim()) e.text = "Nội dung không được để trống";
+    if (!form.title.trim()) e.title = "Tiêu đề không được để trống";
+    // Có thể thêm validate cho image nếu cần khi tạo mới
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
   async function handleSave() {
     if (!validate()) return;
+    setSaving(true);
 
-    let updatedList: (Banner & { _file?: File })[];
+    try {
+      const formData = new FormData();
+      formData.append("title", form.title);
+      formData.append("description", form.description);
+      formData.append("section", activeSection);
+      formData.append("link", form.link);
+      formData.append("position", String(form.position));
+      formData.append("is_active", form.is_active ? "1" : "0");
 
-    if (editingIndex !== null) {
-      updatedList = banners.map((b) =>
-        b.index === editingIndex
-          ? { ...b, text: form.text, link: form.link, image: form.image, _file: form.image_file }
-          : b
-      );
-    } else {
-      const newSlide: Banner & { _file?: File } = {
-        index: banners.length,
-        text: form.text,
-        section: activeSection,
-        link: form.link,
-        image: form.image,
-        _file: form.image_file,
-      };
-      updatedList = [...banners, newSlide];
+      if (form.image_file) {
+        formData.append("image", form.image_file);
+      }
+
+      if (editingId !== null) {
+        await updateBanner(editingId, formData);
+        showToast("Đã cập nhật slide thành công!", "success");
+      } else {
+        await createBanner(formData);
+        showToast("Đã thêm slide mới thành công!", "success");
+      }
+
+      setModalOpen(false);
+      await fetchBanners();
+    } catch {
+      showToast("Lưu thất bại. Vui lòng thử lại.", "error");
+    } finally {
+      setSaving(false);
     }
-
-    setModalOpen(false);
-    await submitBanners(updatedList);
   }
 
-  async function handleDelete(index: number) {
-    const updatedList = banners
-      .filter((b) => b.index !== index)
-      .map((b, i) => ({ ...b, index: i }));
-    setDeleteConfirm(null);
-    await submitBanners(updatedList);
+  async function handleDelete(id: number) {
+    setSaving(true);
+    try {
+      await deleteBanner(id);
+      showToast("Đã xóa slide thành công!", "success");
+      setDeleteConfirmId(null);
+      await fetchBanners();
+    } catch {
+      showToast("Xóa thất bại. Vui lòng thử lại.", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -348,10 +359,10 @@ export default function PopupPage() {
                 <div className="flex items-start gap-3 overflow-x-auto pb-2">
                   {slides.map((slide) => (
                     <SlideCard
-                      key={slide.index}
+                      key={slide.id}
                       slide={slide}
                       onEdit={() => handleEdit(slide)}
-                      onDelete={() => setDeleteConfirm(slide.index)}
+                      onDelete={() => setDeleteConfirmId(slide.id)}
                     />
                   ))}
 
@@ -368,7 +379,7 @@ export default function PopupPage() {
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingIndex !== null ? "Chỉnh sửa Slide" : `Thêm Slide — ${SECTIONS.find((s) => s.key === activeSection)?.label ?? activeSection}`}
+        title={editingId !== null ? "Chỉnh sửa Slide" : `Thêm Slide — ${SECTIONS.find((s) => s.key === activeSection)?.label ?? activeSection}`}
         maxWidth="max-w-xl"
       >
         <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
@@ -386,31 +397,70 @@ export default function PopupPage() {
             }}
           />
 
-          {/* Text */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nội dung <span className="text-red-400">*</span>
-            </label>
-            <input
-              value={form.text}
-              onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${
-                errors.text ? "border-red-300" : "border-gray-200"
-              }`}
-              placeholder="Nội dung hiển thị trên slide"
-            />
-            {errors.text && <p className="text-xs text-red-500 mt-1">{errors.text}</p>}
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Title */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tiêu đề <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${
+                  errors.title ? "border-red-300" : "border-gray-200"
+                }`}
+                placeholder="Tiêu đề banner"
+              />
+              {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+            </div>
 
-          {/* Link */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Link</label>
-            <input
-              value={form.link}
-              onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40"
-              placeholder="https://..."
-            />
+            {/* Description */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40"
+                placeholder="Mô tả ngắn"
+              />
+            </div>
+
+            {/* Link */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Link</label>
+              <input
+                value={form.link}
+                onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40"
+                placeholder="https://..."
+              />
+            </div>
+
+            {/* Position */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vị trí (Position)</label>
+              <input
+                type="number"
+                value={form.position}
+                onChange={(e) => setForm((f) => ({ ...f, position: parseInt(e.target.value) || 0 }))}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40"
+              />
+            </div>
+
+            {/* Status */}
+            <div className="flex items-center gap-2 pt-6">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={form.is_active}
+                onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))}
+                className="w-4 h-4 text-[#9e005a] border-gray-300 rounded focus:ring-[#9e005a]"
+              />
+              <label htmlFor="is_active" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Kích hoạt (Active)
+              </label>
+            </div>
           </div>
 
           {/* Actions */}
@@ -419,7 +469,7 @@ export default function PopupPage() {
               Hủy
             </Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Đang lưu..." : editingIndex !== null ? "Lưu thay đổi" : "Thêm Slide"}
+              {saving ? "Đang lưu..." : editingId !== null ? "Lưu thay đổi" : "Thêm Slide"}
             </Button>
           </div>
         </div>
@@ -427,21 +477,21 @@ export default function PopupPage() {
 
       {/* Delete confirm */}
       <Modal
-        open={deleteConfirm !== null}
-        onClose={() => setDeleteConfirm(null)}
+        open={deleteConfirmId !== null}
+        onClose={() => setDeleteConfirmId(null)}
         title="Xóa Slide"
       >
         <p className="text-sm text-gray-600 mb-5">
-          Bạn có chắc muốn xóa slide này? Hành động này không thể hoàn tác và sẽ cập nhật ngay lên server.
+          Bạn có chắc muốn xóa slide này? Hành động này không thể hoàn tác.
         </p>
         <div className="flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
+          <Button variant="secondary" onClick={() => setDeleteConfirmId(null)}>
             Hủy
           </Button>
           <Button
             variant="danger"
             disabled={saving}
-            onClick={() => deleteConfirm !== null && handleDelete(deleteConfirm)}
+            onClick={() => deleteConfirmId !== null && handleDelete(deleteConfirmId)}
           >
             {saving ? "Đang xóa..." : "Xóa"}
           </Button>

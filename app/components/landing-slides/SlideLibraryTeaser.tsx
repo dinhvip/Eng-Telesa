@@ -57,6 +57,7 @@ interface SlideLibraryTeaserProps {
   onMenuOpen: () => void;
   onCtaClick: () => void;
   onScrollToTop: () => void;
+  slides?: any[];
 }
 
 export default function SlideLibraryTeaser({
@@ -64,10 +65,22 @@ export default function SlideLibraryTeaser({
   onMenuOpen,
   onCtaClick,
   onScrollToTop,
+  slides: customSlides,
 }: SlideLibraryTeaserProps) {
   const router = useRouter();
   const isKid = variant === "kid";
-  const slides = isKid ? kidLibraryTeaserSlides : adultLibraryTeaserSlides;
+
+  // Use custom slides if provided, otherwise fallback to static data
+  const slides = customSlides && customSlides.length > 0
+    ? customSlides.map(s => ({
+      image: s.image,
+      title: s.title,
+      href: s.link || "#",
+      objectClassName: "object-center",
+      desktopTitleClassName: "",
+    }))
+    : (isKid ? kidLibraryTeaserSlides : adultLibraryTeaserSlides);
+
   const logoSrc = isKid ? "/assets/logo.png" : "/assets/svg/logo.png";
   const logoAlt = isKid ? "Telesa English Kids logo" : "Telesa English logo";
 

@@ -34,11 +34,14 @@ export interface Book {
 }
 
 export interface Banner {
-  index: number;          // vị trí trong mảng (0, 1, 2, ...)
-  image: string;          // URL ảnh từ server
-  section: string;        // home_section_a | home_section_b
-  text: string;
+  id: number;
+  image: string;
+  title: string;
+  description: string;
+  section: string;
   link: string;
+  position: number;
+  is_active: boolean;
 }
 
 export interface Settings {

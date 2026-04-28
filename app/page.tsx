@@ -15,6 +15,7 @@ import Toast from "./components/Toast";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
 import { sendConsultationMail } from "../lib/api/sendConsultationMail";
 import { fetchAllSettings } from "../lib/api/AllsettingsAPI";
+import { fetchPublicBanners } from "../lib/api/banner";
 
 // GSAP – loaded dynamically to avoid SSR issues
 type GsapModule = typeof import("gsap");
@@ -42,6 +43,8 @@ export default function LandingPage() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [siteData, setSiteData] = useState<any>(null);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  const [bannerSlidesA, setBannerSlidesA] = useState<any[]>([]);
+  const [bannerSlidesB, setBannerSlidesB] = useState<any[]>([]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -61,7 +64,23 @@ export default function LandingPage() {
       }
     };
 
+    const fetchBanners = async () => {
+      try {
+        const res = await fetchPublicBanners();
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isSubscribed) {
+          const sectionA = list.filter((b: any) => b.section === "home_section_a" && b.is_active);
+          setBannerSlidesA(sectionA);
+          const sectionB = list.filter((b: any) => b.section === "home_section_b" && b.is_active);
+          setBannerSlidesB(sectionB);
+        }
+      } catch (error) {
+        console.error("Lỗi tải banners:", error);
+      }
+    };
+
     fetchData();
+    fetchBanners();
     return () => { isSubscribed = false; };
   }, []);
 
@@ -1175,6 +1194,7 @@ export default function LandingPage() {
               onMenuOpen={() => setIsMenuOpen(true)}
               onCtaClick={goToTest}
               onScrollToTop={scrollToTop}
+              slides={bannerSlidesA}
             />
             <SlideStats
               variant={selectedAge}
@@ -1187,6 +1207,7 @@ export default function LandingPage() {
               onMenuOpen={() => setIsMenuOpen(true)}
               onCtaClick={goToTest}
               onScrollToTop={scrollToTop}
+              slides={bannerSlidesB}
             />
             <SlideTestimonials
               variant={selectedAge}

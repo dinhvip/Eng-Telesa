@@ -52,6 +52,7 @@ interface Slide3CarouselProps {
   onMenuOpen: () => void;
   onCtaClick: () => void;
   onScrollToTop: () => void;
+  slides?: any[];
 }
 
 export default function Slide3Carousel({
@@ -59,9 +60,20 @@ export default function Slide3Carousel({
   onMenuOpen,
   onCtaClick,
   onScrollToTop,
+  slides: customSlides,
 }: Slide3CarouselProps) {
   const isKid = variant === "kid";
-  const slides = isKid ? kidSlidesData : adultSlidesData;
+
+  // Use custom slides if provided, otherwise fallback to static data
+  const slides = customSlides && customSlides.length > 0
+    ? customSlides.map(s => ({
+      image: s.image,
+      alt: s.title,
+      title: s.title,
+      description: s.description
+    }))
+    : (isKid ? kidSlidesData : adultSlidesData);
+
   const logoSrc = isKid ? "/assets/logo.png" : "/assets/svg/logo.png";
   const logoAlt = isKid ? "Telesa English Kids logo" : "Telesa English logo";
 
