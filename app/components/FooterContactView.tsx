@@ -4,10 +4,6 @@ import Image from "next/image";
 import type { SVGProps } from "react";
 import MobileFloatingActions from "./MobileFloatingActions";
 import MobileHeader from "./MobileHeader";
-// Import hook và hàm lấy dữ liệu mới
-import { useState, useEffect } from "react";
-import { fetchAllSettings } from "../../lib/api/AllsettingsAPI";
-
 type FooterVariant = "kid" | "adult";
 
 const EmailIcon = (props: SVGProps<SVGSVGElement>) => (
@@ -87,6 +83,8 @@ type FooterContactViewProps = {
   desktopFullHeight?: boolean;
   desktopSnap?: boolean;
   snapStart?: boolean;
+  email?: string;
+  phone?: string;
 };
 
 export default function FooterContactView({
@@ -102,38 +100,13 @@ export default function FooterContactView({
   desktopFullHeight = false,
   desktopSnap = false,
   snapStart = true,
+  email,
+  phone,
 }: FooterContactViewProps) {
 
-  // 1. State lưu trữ dữ liệu từ API
-  const [siteData, setSiteData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // 2. Lấy dữ liệu khi mount
-  useEffect(() => {
-    let isSubscribed = true;
-
-    const fetchData = async () => {
-      try {
-        // Gọi hàm getAllSettings
-        const result = await fetchAllSettings();
-
-        if (isSubscribed && result) {
-          setSiteData(result);
-        }
-      } catch (error) {
-        console.error("Lỗi tải footer:", error);
-      } finally {
-        if (isSubscribed) setIsLoading(false);
-      }
-    };
-
-    fetchData();
-    return () => { isSubscribed = false; };
-  }, []);
-
-  // Trích xuất thông tin liên hệ từ cấu trúc dữ liệu mới: data.general.email
-  const contactEmail = isLoading ? "Đang tải..." : (siteData?.general?.email || "");
-  const contactPhone = isLoading ? "" : (siteData?.general?.phone || "");
+  // Trích xuất thông tin liên hệ từ props
+  const contactEmail = email || "";
+  const contactPhone = phone || "";
 
   const brandAlt = variant === "kid" ? "Telesa English Kids logo" : "Telesa English logo";
   const desktopFullHeightClass = desktopFullHeight ? "lg:h-[100dvh]" : "lg:h-auto";

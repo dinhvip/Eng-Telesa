@@ -25,14 +25,26 @@ export async function updateSiteSettings(data: { email: string, phone: string })
         formData.append("email", data.email);
         formData.append("phone", data.phone);
 
-        const res = await apiClient.post('/admin/site-settings', formData, {
+        return await apiClient.post('/admin/site-settings', formData, {
             headers: {
                 "Content-Type": "multipart/form-data"
             }
         });
-        return res;
     } catch (error) {
         console.error("❌ Lỗi cập nhật API Site Settings:", error);
+        throw error;
+    }
+}
+
+export async function updateSiteSettingsRaw(formData: FormData): Promise<any> {
+    try {
+        return await apiClient.post('/admin/site-settings', formData, {
+            headers: {
+                "Content-Type": "multipart/form-data"
+            }
+        });
+    } catch (error) {
+        console.error("❌ Lỗi cập nhật API Site Settings (Raw):", error);
         throw error;
     }
 }

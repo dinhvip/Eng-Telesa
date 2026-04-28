@@ -33,15 +33,12 @@ export interface Book {
   publishedAt: string;
 }
 
-export interface Popup {
-  id: string;
-  title: string;
-  content: string;
-  type: "Banner" | "Modal" | "Toast";
-  targetPage: string;
-  isActive: boolean;
-  startDate: string;
-  endDate: string;
+export interface Banner {
+  index: number;          // vị trí trong mảng (0, 1, 2, ...)
+  image: string;          // URL ảnh từ server
+  section: string;        // home_section_a | home_section_b
+  text: string;
+  link: string;
 }
 
 export interface Settings {

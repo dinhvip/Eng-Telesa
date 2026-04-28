@@ -1,4 +1,5 @@
-import type { Course, Book, Popup, Settings } from "../_types";
+import type { Course, Book, Settings } from "../_types";
+
 
 // ─── Mock Courses ─────────────────────────────────────────────────────────────
 
@@ -185,40 +186,6 @@ export const MOCK_BOOKS: Book[] = [
   },
 ];
 
-// ─── Mock Popups ──────────────────────────────────────────────────────────────
-
-export const MOCK_POPUPS: Popup[] = [
-  {
-    id: "p1",
-    title: "Giảm học phí tháng 6",
-    content: "Ưu đãi lên đến 13% cho tất cả lớp học tiếng Anh!",
-    type: "Modal",
-    targetPage: "Homepage",
-    isActive: true,
-    startDate: "2026-06-01",
-    endDate: "2026-06-30",
-  },
-  {
-    id: "p2",
-    title: "Đăng ký học thử miễn phí",
-    content: "Trải nghiệm lớp học 1-1 miễn phí 7 ngày.",
-    type: "Banner",
-    targetPage: "All Pages",
-    isActive: true,
-    startDate: "2026-04-01",
-    endDate: "2026-12-31",
-  },
-  {
-    id: "p3",
-    title: "Khóa học mới",
-    content: "IELTS & Communication class vừa mở đăng ký!",
-    type: "Toast",
-    targetPage: "Courses Page",
-    isActive: false,
-    startDate: "2026-03-01",
-    endDate: "2026-04-01",
-  },
-];
 
 // ─── Mock Settings ────────────────────────────────────────────────────────────
 

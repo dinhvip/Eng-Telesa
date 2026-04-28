@@ -1,377 +1,449 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import type { Popup, TableColumn } from "../_types";
-import { MOCK_POPUPS } from "../_data/mock";
-import Table from "../_components/Table";
+import React, { useState, useEffect, useRef } from "react";
+import type { Banner } from "../_types";
 import Button from "../_components/Button";
 import Modal from "../_components/Modal";
-import StatusBadge from "../_components/StatusBadge";
-import ImageUpload from "../_components/ImageUpload";
+import { fetchSiteSettings, updateSiteSettingsRaw } from "../../../lib/api/setting";
 
-type PopupForm = Omit<Popup, "id"> & { image?: string };
-
-const emptyForm: PopupForm = {
-  title: "",
-  content: "",
-  type: "Modal",
-  targetPage: "",
-  isActive: false,
-  startDate: "",
-  endDate: "",
-  image: "",
+// ─── Types ────────────────────────────────────────────────────────────────────
+type SlideForm = {
+  text: string;
+  link: string;
+  image: string;       // URL hiện tại (từ server)
+  image_file?: File;   // File mới (nếu người dùng chọn)
 };
 
-export default function PopupPage() {
-  const [popups, setPopups] = useState<Popup[]>(MOCK_POPUPS);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<PopupForm>(emptyForm);
-  const [errors, setErrors] = useState<Partial<Record<keyof PopupForm, string>>>({});
-  const [search, setSearch] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+const emptyForm: SlideForm = {
+  text: "",
+  link: "",
+  image: "",
+  image_file: undefined,
+};
 
-  const filtered = useMemo(
-    () =>
-      popups.filter(
-        (p) =>
-          p.title.toLowerCase().includes(search.toLowerCase()) ||
-          p.type.toLowerCase().includes(search.toLowerCase())
-      ),
-    [popups, search]
+const SECTIONS = [
+  { key: "home_section_a", label: "Section A" },
+  { key: "home_section_b", label: "Section B" },
+];
+
+// ─── ImagePicker ──────────────────────────────────────────────────────────────
+function ImagePicker({
+  previewUrl,
+  onFileChange,
+  onClear,
+}: {
+  previewUrl: string;
+  onFileChange: (file: File) => void;
+  onClear: () => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">Hình ảnh</label>
+      <div className="flex items-center gap-4">
+        <div
+          className="relative h-32 w-48 shrink-0 overflow-hidden rounded-lg border border-gray-300 bg-gray-100 cursor-pointer group"
+          onClick={() => ref.current?.click()}
+        >
+          {previewUrl ? (
+            <img src={previewUrl} alt="preview" className="h-full w-full object-cover transition-opacity group-hover:opacity-80" />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center text-gray-400 text-xs gap-1">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span>Chọn ảnh</span>
+            </div>
+          )}
+        </div>
+        {previewUrl && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-xs text-red-500 hover:text-red-700 hover:underline"
+          >
+            Xóa ảnh
+          </button>
+        )}
+        <input
+          ref={ref}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onFileChange(file);
+          }}
+        />
+      </div>
+    </div>
   );
+}
 
-  function handleCreate() {
-    setEditingId(null);
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function ToastMsg({ message, type }: { message: string; type: "success" | "error" }) {
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-xl text-sm font-medium transition-all animate-in slide-in-from-bottom-4 duration-300 ${
+        type === "success" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
+      }`}
+    >
+      {type === "success" ? (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      )}
+      {message}
+    </div>
+  );
+}
+
+// ─── SlideCard ────────────────────────────────────────────────────────────────
+function SlideCard({
+  slide,
+  onEdit,
+  onDelete,
+}: {
+  slide: Banner;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="relative group flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow w-44 shrink-0">
+      {/* Image */}
+      <div className="h-24 bg-gray-100 flex items-center justify-center overflow-hidden">
+        {slide.image ? (
+          <img src={slide.image} alt={slide.text} className="w-full h-full object-cover" />
+        ) : (
+          <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="px-3 py-2 flex-1">
+        <p className="text-xs font-medium text-gray-800 line-clamp-2 min-h-[2rem]">
+          {slide.text || <span className="text-gray-400 italic">Chưa có nội dung</span>}
+        </p>
+        {slide.link && (
+          <p className="text-[10px] text-blue-500 truncate mt-1">{slide.link}</p>
+        )}
+      </div>
+
+      {/* Actions overlay */}
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+        <button
+          onClick={onEdit}
+          className="bg-white text-gray-800 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shadow"
+        >
+          Sửa
+        </button>
+        <button
+          onClick={onDelete}
+          className="bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-600 transition-colors shadow"
+        >
+          Xóa
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── AddSlideButton ───────────────────────────────────────────────────────────
+function AddSlideButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center justify-center w-44 h-[136px] shrink-0 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-[#9e005a] hover:text-[#9e005a] hover:bg-[#9e005a]/5 transition-all group"
+    >
+      <div className="w-10 h-10 rounded-full border-2 border-dashed border-current flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </div>
+      <span className="text-xs font-medium">Thêm slide</span>
+    </button>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function PopupPage() {
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("");
+  const [form, setForm] = useState<SlideForm>(emptyForm);
+  const [formPreview, setFormPreview] = useState<string>("");
+  const [errors, setErrors] = useState<Partial<Record<keyof SlideForm, string>>>({});
+
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
+  // ── Fetch banners ──────────────────────────────────────────────────────────
+  async function fetchBanners() {
+    setLoading(true);
+    try {
+      const data = await fetchSiteSettings();
+      // API trả về: { data: { banner_slides: [...] } }
+      const rawSlides: Banner[] = data?.banner_slides ?? [];
+      setBanners(rawSlides.map((b, i) => ({ ...b, index: i })));
+    } catch {
+      showToast("Không thể tải dữ liệu banner.", "error");
+      setBanners([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchBanners(); }, []);
+
+  // ── Submit toàn bộ banners lên server ─────────────────────────────────────
+  async function submitBanners(updatedList: (Banner & { _file?: File })[]) {
+    setSaving(true);
+    try {
+      const formData = new FormData();
+      formData.append("_method", "PUT");
+
+      updatedList.forEach((b, i) => {
+        formData.append(`banner_slides[${i}][text]`, b.text);
+        formData.append(`banner_slides[${i}][section]`, b.section);
+        formData.append(`banner_slides[${i}][link]`, b.link ?? "");
+        if (b._file) {
+          formData.append(`banner_slides[${i}][image]`, b._file, b._file.name);
+        } else if (b.image) {
+          formData.append(`banner_slides[${i}][image]`, b.image);
+        }
+      });
+
+      await updateSiteSettingsRaw(formData);
+      showToast("Đã lưu banner thành công!", "success");
+      await fetchBanners();
+    } catch {
+      showToast("Lưu thất bại. Vui lòng thử lại.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── Open modal to add slide for a section ─────────────────────────────────
+  function handleAddSlide(sectionKey: string) {
+    setEditingIndex(null);
+    setActiveSection(sectionKey);
     setForm(emptyForm);
+    setFormPreview("");
     setErrors({});
     setModalOpen(true);
   }
 
-  function handleEdit(popup: Popup & { image?: string }) {
-    setEditingId(popup.id);
-    setForm({
-      title: popup.title,
-      content: popup.content,
-      type: popup.type,
-      targetPage: popup.targetPage,
-      isActive: popup.isActive,
-      startDate: popup.startDate,
-      endDate: popup.endDate,
-      image: popup.image || "",
-    });
+  // ── Open modal to edit existing slide ─────────────────────────────────────
+  function handleEdit(banner: Banner) {
+    setEditingIndex(banner.index);
+    setActiveSection(banner.section);
+    setForm({ text: banner.text, link: banner.link, image: banner.image });
+    setFormPreview(banner.image);
     setErrors({});
     setModalOpen(true);
   }
 
   function validate(): boolean {
-    const e: typeof errors = {};
-    if (!form.title.trim()) e.title = "Title is required";
-    if (!form.content.trim()) e.content = "Content is required";
-    if (!form.targetPage.trim()) e.targetPage = "Target page is required";
-    if (!form.startDate) e.startDate = "Start date is required";
-    if (!form.endDate) e.endDate = "End date is required";
-    if (form.startDate && form.endDate && form.endDate < form.startDate) {
-      e.endDate = "End date must be after start date";
-    }
+    const e: Partial<Record<keyof SlideForm, string>> = {};
+    if (!form.text.trim()) e.text = "Nội dung không được để trống";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!validate()) return;
 
-    if (editingId) {
-      setPopups((prev) =>
-        prev.map((p) => (p.id === editingId ? { ...p, ...form } : p))
+    let updatedList: (Banner & { _file?: File })[];
+
+    if (editingIndex !== null) {
+      updatedList = banners.map((b) =>
+        b.index === editingIndex
+          ? { ...b, text: form.text, link: form.link, image: form.image, _file: form.image_file }
+          : b
       );
     } else {
-      const newPopup: Popup = {
-        ...form,
-        id: `p${Date.now()}`,
+      const newSlide: Banner & { _file?: File } = {
+        index: banners.length,
+        text: form.text,
+        section: activeSection,
+        link: form.link,
+        image: form.image,
+        _file: form.image_file,
       };
-      setPopups((prev) => [newPopup, ...prev]);
+      updatedList = [...banners, newSlide];
     }
+
     setModalOpen(false);
+    await submitBanners(updatedList);
   }
 
-  function handleToggleActive(id: string) {
-    setPopups((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, isActive: !p.isActive } : p))
-    );
-  }
-
-  function handleDelete(id: string) {
-    setPopups((prev) => prev.filter((p) => p.id !== id));
+  async function handleDelete(index: number) {
+    const updatedList = banners
+      .filter((b) => b.index !== index)
+      .map((b, i) => ({ ...b, index: i }));
     setDeleteConfirm(null);
+    await submitBanners(updatedList);
   }
 
-  const columns: TableColumn<Popup & { image?: string }>[] = [
-    {
-      key: "title",
-      label: "Popup",
-      render: (p) => (
-        <div className="flex items-center gap-3">
-          {/* Cập nhật Table để hiển thị Thumbnail ảnh */}
-          {p.image ? (
-            <img src={p.image} alt={p.title} className="w-10 h-10 rounded-md object-cover bg-gray-100 border border-gray-200" />
-          ) : (
-            <div className="w-10 h-10 rounded-md bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          )}
-          <div>
-            <p className="font-medium text-gray-900">{p.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5 max-w-xs truncate">{p.content}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "type",
-      label: "Type",
-      render: (p) => (
-        <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
-          {p.type}
-        </span>
-      ),
-    },
-    { key: "targetPage", label: "Target" },
-    {
-      key: "startDate",
-      label: "Period",
-      render: (p) => (
-        <span className="text-xs tabular-nums text-gray-600">
-          {p.startDate} → {p.endDate}
-        </span>
-      ),
-    },
-    {
-      key: "isActive",
-      label: "Status",
-      render: (p) => (
-        <StatusBadge
-          label={p.isActive ? "Active" : "Inactive"}
-          variant={p.isActive ? "success" : "neutral"}
-        />
-      ),
-    },
-    {
-      key: "actions",
-      label: "",
-      width: "180px",
-      render: (p) => (
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleToggleActive(p.id)}
-            className={p.isActive ? "!text-amber-600 hover:!bg-amber-50" : "!text-emerald-600 hover:!bg-emerald-50"}
-          >
-            {p.isActive ? "Disable" : "Enable"}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(p)}>
-            Edit
-          </Button>
-          <Button variant="ghost" size="sm" className="!text-red-500 hover:!bg-red-50" onClick={() => setDeleteConfirm(p.id)}>
-            Delete
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {/* Toast */}
+      {toast && <ToastMsg message={toast.message} type={toast.type} />}
+
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Popups</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Banners</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Create and manage promotional popups, banners, and toasts.
+            Quản lý banner hiển thị trên các trang của website.
           </p>
         </div>
-        <Button
-          onClick={handleCreate}
-          icon={
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-          }
-        >
-          Add Popup
-        </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-        </svg>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search popups..."
-          className="w-full pl-10 pr-4 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 transition-shadow"
-        />
-      </div>
+      {/* Loading */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20 text-gray-400">
+          <svg className="w-6 h-6 animate-spin mr-3" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Đang tải...
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {SECTIONS.map((sec) => {
+            const slides = banners.filter((b) => b.section === sec.key);
+            return (
+              <div key={sec.key} className="bg-white rounded-2xl border border-gray-200 p-5">
+                {/* Section header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-[#9e005a]/10 text-[#9e005a] text-xs font-semibold">
+                      {sec.label}
+                    </span>
+                    <code className="text-xs text-gray-400 font-mono">{sec.key}</code>
+                    <span className="text-xs text-gray-400">
+                      {slides.length} slide{slides.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                </div>
 
-      {/* Table */}
-      <Table
-        columns={columns}
-        data={filtered}
-        emptyTitle="No popups yet"
-        emptyDescription="Create your first popup to engage visitors."
-        onAdd={handleCreate}
-      />
+                {/* Slides row */}
+                <div className="flex items-start gap-3 overflow-x-auto pb-2">
+                  {slides.map((slide) => (
+                    <SlideCard
+                      key={slide.index}
+                      slide={slide}
+                      onEdit={() => handleEdit(slide)}
+                      onDelete={() => setDeleteConfirm(slide.index)}
+                    />
+                  ))}
+
+                  {/* Add button */}
+                  <AddSlideButton onClick={() => handleAddSlide(sec.key)} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Create / Edit modal */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingId ? "Edit Popup" : "New Popup"}
+        title={editingIndex !== null ? "Chỉnh sửa Slide" : `Thêm Slide — ${SECTIONS.find((s) => s.key === activeSection)?.label ?? activeSection}`}
         maxWidth="max-w-xl"
       >
         <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-1">
-          <ImageUpload
-            label="Course Image"
-            value={form.image}
-            onChange={(url) => setForm(f => ({ ...f, image: url }))}
+          {/* Image picker */}
+          <ImagePicker
+            previewUrl={formPreview}
+            onFileChange={(file) => {
+              const preview = URL.createObjectURL(file);
+              setFormPreview(preview);
+              setForm((f) => ({ ...f, image_file: file, image: preview }));
+            }}
+            onClear={() => {
+              setFormPreview("");
+              setForm((f) => ({ ...f, image_file: undefined, image: "" }));
+            }}
           />
-          {/* Title */}
+
+          {/* Text */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nội dung <span className="text-red-400">*</span>
+            </label>
             <input
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.title ? "border-red-300" : "border-gray-200"}`}
-              placeholder="Popup title"
+              value={form.text}
+              onChange={(e) => setForm((f) => ({ ...f, text: e.target.value }))}
+              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${
+                errors.text ? "border-red-300" : "border-gray-200"
+              }`}
+              placeholder="Nội dung hiển thị trên slide"
             />
-            {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
+            {errors.text && <p className="text-xs text-red-500 mt-1">{errors.text}</p>}
           </div>
 
-          {/* Content */}
+          {/* Link */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-            <textarea
-              value={form.content}
-              onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-              rows={3}
-              className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 resize-none ${errors.content ? "border-red-300" : "border-gray-200"}`}
-              placeholder="Popup content / message"
+            <label className="block text-sm font-medium text-gray-700 mb-1">Link</label>
+            <input
+              value={form.link}
+              onChange={(e) => setForm((f) => ({ ...f, link: e.target.value }))}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40"
+              placeholder="https://..."
             />
-            {errors.content && <p className="text-xs text-red-500 mt-1">{errors.content}</p>}
-          </div>
-
-          {/* Type + Target Page */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as Popup["type"] }))}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 bg-white"
-              >
-                <option>Banner</option>
-                <option>Modal</option>
-                <option>Toast</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Target Page</label>
-              <input
-                value={form.targetPage}
-                onChange={(e) => setForm((f) => ({ ...f, targetPage: e.target.value }))}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.targetPage ? "border-red-300" : "border-gray-200"}`}
-                placeholder="e.g. Homepage, All Pages"
-              />
-              {errors.targetPage && <p className="text-xs text-red-500 mt-1">{errors.targetPage}</p>}
-            </div>
-          </div>
-
-          {/* Date range */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.startDate ? "border-red-300" : "border-gray-200"}`}
-              />
-              {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                className={`w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#9e005a]/20 focus:border-[#9e005a]/40 ${errors.endDate ? "border-red-300" : "border-gray-200"}`}
-              />
-              {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate}</p>}
-            </div>
-          </div>
-
-          {/* Active toggle */}
-          <div className="flex items-center gap-3 py-1">
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))}
-              className={`
-                relative w-10 h-[22px] rounded-full transition-colors duration-200 cursor-pointer
-                ${form.isActive ? "bg-[#9e005a]" : "bg-gray-300"}
-              `}
-            >
-              <span
-                className={`
-                  absolute top-[2px] left-[2px] w-[18px] h-[18px] bg-white rounded-full shadow-sm
-                  transition-transform duration-200
-                  ${form.isActive ? "translate-x-[18px]" : "translate-x-0"}
-                `}
-              />
-            </button>
-            <span className="text-sm text-gray-700">
-              {form.isActive ? "Active" : "Inactive"}
-            </span>
           </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>
-              Cancel
+              Hủy
             </Button>
-            <Button onClick={handleSave}>
-              {editingId ? "Save Changes" : "Create Popup"}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Đang lưu..." : editingIndex !== null ? "Lưu thay đổi" : "Thêm Slide"}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Delete confirmation */}
+      {/* Delete confirm */}
       <Modal
         open={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        title="Delete Popup"
+        title="Xóa Slide"
       >
         <p className="text-sm text-gray-600 mb-5">
-          Are you sure you want to delete this popup? This action cannot be undone.
+          Bạn có chắc muốn xóa slide này? Hành động này không thể hoàn tác và sẽ cập nhật ngay lên server.
         </p>
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setDeleteConfirm(null)}>
-            Cancel
+            Hủy
           </Button>
-          <Button variant="danger" onClick={() => deleteConfirm && handleDelete(deleteConfirm)}>
-            Delete
+          <Button
+            variant="danger"
+            disabled={saving}
+            onClick={() => deleteConfirm !== null && handleDelete(deleteConfirm)}
+          >
+            {saving ? "Đang xóa..." : "Xóa"}
           </Button>
         </div>
       </Modal>

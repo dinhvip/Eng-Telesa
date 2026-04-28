@@ -14,6 +14,7 @@ import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSe
 import Toast from "./components/Toast";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
 import { sendConsultationMail } from "../lib/api/sendConsultationMail";
+import { fetchAllSettings } from "../lib/api/AllsettingsAPI";
 
 // GSAP – loaded dynamically to avoid SSR issues
 type GsapModule = typeof import("gsap");
@@ -39,6 +40,30 @@ export default function LandingPage() {
   const [isAgeSwitchLocked, setIsAgeSwitchLocked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [siteData, setSiteData] = useState<any>(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const fetchData = async () => {
+      try {
+        // Gọi hàm getAllSettings
+        const result = await fetchAllSettings();
+
+        if (isSubscribed && result) {
+          setSiteData(result);
+        }
+      } catch (error) {
+        console.error("Lỗi tải footer:", error);
+      } finally {
+        if (isSubscribed) setIsDataLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => { isSubscribed = false; };
+  }, []);
 
   useEffect(() => {
     const isLogged = document.cookie.includes("auth_token=");
@@ -1214,6 +1239,8 @@ export default function LandingPage() {
               onMenuOpen={() => setIsMenuOpen(true)}
               onScrollToTop={scrollToTop}
               onCtaClick={goToTest}
+              email={siteData?.general?.email}
+              phone={siteData?.general?.phone}
               onNavigate={(key) => {
                 if (key === "home") scrollToTop();
                 // if (key === "products") router.push(`/product?variant=${selectedAge ?? "kid"}`);
