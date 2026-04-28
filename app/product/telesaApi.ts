@@ -65,24 +65,4 @@ function computeOriginalPrice(price: number, discountPercent: number) {
   return Math.round(price / (1 - discountPercent / 100));
 }
 
-export function mapApiCourseToViewModel(course: ApiCourse): CourseProductViewModel {
-  const price = course.price ?? 0;
-  const discount = course.discount ?? 0;
-  const original = computeOriginalPrice(price, discount);
-  const descriptionText = course.description ? stripHtmlToText(course.description) : "";
-
-  return {
-    id: String(course.id),
-    banner: course.banner || "/assets/course-1.jpg",
-    title: course.name,
-    subtitle: descriptionText ? `${descriptionText.slice(0, 92)}${descriptionText.length > 92 ? "…" : ""}` : "",
-    students: "—",
-    rating: course.total_rate && course.total_rate > 0 ? String(course.total_rate) : "—",
-    price: formatVnd(price),
-    originalPrice: formatVnd(original),
-    duration: course.total_time ? String(course.total_time) : "—",
-    include: discount > 0 ? `Giảm ${discount}%` : "—",
-  };
-}
-
 export type CourseProductViewModel = ListCourseProduct;
