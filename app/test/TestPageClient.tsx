@@ -8,7 +8,7 @@ import MobileHeader from "../components/MobileHeader";
 import MobileMenuDrawer from "../components/MobileMenuDrawer";
 import ArrowUpIcon from "../components/ArrowUpIcon";
 import { useWheelStepSnap } from "../components/useWheelStepSnap";
-import { sendConsultationMail } from "../lib/sendConsultationMail";
+import { sendConsultationMail } from "../../lib/api/sendConsultationMail";
 import Toast from "../components/Toast";
 
 export default function TestPageClient() {
@@ -95,18 +95,16 @@ export default function TestPageClient() {
         name: infoName,
         phone,
         email,
-        job: infoJob || `test-${variant}`,
-        contact_channel: consultContactMethod,
-        consult_topic: consultTopic || "Tư vấn sau kiểm tra",
-        notes: [
-          `source=test`,
-          `variant=${variant}`,
-          `country=${infoCountry}`,
-          `contact_method=${consultContactMethod}`,
-          `zalo_country=${consultZaloCountry}`,
-          `zalo_or_phone=${zaloOrPhone}`,
-          `time_slot=${consultTimeSlot}`,
-          `page_url=${pageUrl}`,
+        contact_method: consultContactMethod,
+        consultation_content: [
+          `Vấn đề tư vấn: ${consultTopic || "Tư vấn sau kiểm tra"}`,
+          `Nghề nghiệp: ${infoJob || `test-${variant}`}`,
+          `Nguồn: test-${variant}`,
+          `Quốc gia: ${infoCountry}`,
+          `Zalo Country: ${consultZaloCountry}`,
+          `Zalo/Phone: ${zaloOrPhone}`,
+          `Time Slot: ${consultTimeSlot}`,
+          `URL: ${pageUrl}`,
         ].join("\n"),
       });
 

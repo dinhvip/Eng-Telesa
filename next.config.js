@@ -9,7 +9,7 @@ const nextConfig = {
     ];
   },
   images: {
-    domains: ['dev-admin.telesaenglish.com'],
+    domains: ['dev-admin.telesaenglish.com', 's3.ap-southeast-2.amazonaws.com'],
   },
 };
 

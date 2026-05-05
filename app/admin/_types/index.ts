@@ -33,15 +33,15 @@ export interface Book {
   publishedAt: string;
 }
 
-export interface Popup {
-  id: string;
+export interface Banner {
+  id: number;
+  image: string;
   title: string;
-  content: string;
-  type: "Banner" | "Modal" | "Toast";
-  targetPage: string;
-  isActive: boolean;
-  startDate: string;
-  endDate: string;
+  description: string;
+  section: string;
+  link: string;
+  position: number;
+  is_active: boolean;
 }
 
 export interface Settings {

@@ -303,7 +303,7 @@ export default function CoursesPage() {
       dataIndex: "name",
       sorter: (a: any, b: any) => a.name.localeCompare(b.name),
       render: (text: string, record: any) => (
-        <div className="font-medium text-slate-900">{text}</div>
+        <div className="font-medium text-slate-900 line-clamp-2" style={{ minWidth: 0 }}>{text}</div>
       ),
     },
     // {
@@ -403,7 +403,7 @@ export default function CoursesPage() {
             showSizeChanger: true,
             showTotal: (total, range) => `Hiển thị ${range[0]}-${range[1]} trên tổng số ${total} sản phẩm`,
           }}
-          scroll={{ x: 1000 }} // Enable horizontal scroll nếu có nhiều cột
+          scroll={undefined}
         />
       </div>
 

@@ -13,7 +13,9 @@ import type { PreloadedBackgroundVideoSetHandle } from "./components/PreloadedBa
 import PreloadedBackgroundVideoSet from "./components/PreloadedBackgroundVideoSet";
 import Toast from "./components/Toast";
 import { useWheelStepSnap } from "./components/useWheelStepSnap";
-import { sendConsultationMail } from "./lib/sendConsultationMail";
+import { sendConsultationMail } from "../lib/api/sendConsultationMail";
+import { fetchAllSettings } from "../lib/api/AllsettingsAPI";
+import { fetchPublicBanners } from "../lib/api/banner";
 
 // GSAP – loaded dynamically to avoid SSR issues
 type GsapModule = typeof import("gsap");
@@ -39,6 +41,48 @@ export default function LandingPage() {
   const [isAgeSwitchLocked, setIsAgeSwitchLocked] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
+  const [siteData, setSiteData] = useState<any>(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [bannerSlidesA, setBannerSlidesA] = useState<any[]>([]);
+  const [bannerSlidesB, setBannerSlidesB] = useState<any[]>([]);
+
+  useEffect(() => {
+    let isSubscribed = true;
+
+    const fetchData = async () => {
+      try {
+        // Gọi hàm getAllSettings
+        const result = await fetchAllSettings();
+
+        if (isSubscribed && result) {
+          setSiteData(result);
+        }
+      } catch (error) {
+        console.error("Lỗi tải footer:", error);
+      } finally {
+        if (isSubscribed) setIsDataLoading(false);
+      }
+    };
+
+    const fetchBanners = async () => {
+      try {
+        const res = await fetchPublicBanners();
+        const list = Array.isArray(res) ? res : (res?.data ?? []);
+        if (isSubscribed) {
+          const sectionA = list.filter((b: any) => b.section === "home_section_a" && b.is_active);
+          setBannerSlidesA(sectionA);
+          const sectionB = list.filter((b: any) => b.section === "home_section_b" && b.is_active);
+          setBannerSlidesB(sectionB);
+        }
+      } catch (error) {
+        console.error("Lỗi tải banners:", error);
+      }
+    };
+
+    fetchData();
+    fetchBanners();
+    return () => { isSubscribed = false; };
+  }, []);
 
   useEffect(() => {
     const isLogged = document.cookie.includes("auth_token=");
@@ -692,15 +736,12 @@ export default function LandingPage() {
         name,
         phone: phoneOrZalo,
         email,
-        job: `landing-${variant}`,
-        contact_channel: kidConsultContactMethod,
-        consult_topic: kidConsultTopic || "Tư vấn khóa học",
-        notes: [
-          `source=landing`,
-          `variant=${variant}`,
-          `contact_method=${kidConsultContactMethod}`,
-          `zalo_country=${kidConsultZaloCountry}`,
-          `page_url=${pageUrl}`,
+        contact_method: kidConsultContactMethod,
+        consultation_content: [
+          `Vấn đề tư vấn: ${kidConsultTopic || "Tư vấn khóa học"}`,
+          `Nguồn: landing-${variant}`,
+          `Zalo Country: ${kidConsultZaloCountry}`,
+          `URL: ${pageUrl}`,
         ].join("\n"),
       });
 
@@ -1153,6 +1194,7 @@ export default function LandingPage() {
               onMenuOpen={() => setIsMenuOpen(true)}
               onCtaClick={goToTest}
               onScrollToTop={scrollToTop}
+              slides={bannerSlidesA}
             />
             <SlideStats
               variant={selectedAge}
@@ -1165,6 +1207,7 @@ export default function LandingPage() {
               onMenuOpen={() => setIsMenuOpen(true)}
               onCtaClick={goToTest}
               onScrollToTop={scrollToTop}
+              slides={bannerSlidesB}
             />
             <SlideTestimonials
               variant={selectedAge}
@@ -1217,6 +1260,8 @@ export default function LandingPage() {
               onMenuOpen={() => setIsMenuOpen(true)}
               onScrollToTop={scrollToTop}
               onCtaClick={goToTest}
+              email={siteData?.general?.email}
+              phone={siteData?.general?.phone}
               onNavigate={(key) => {
                 if (key === "home") scrollToTop();
                 // if (key === "products") router.push(`/product?variant=${selectedAge ?? "kid"}`);

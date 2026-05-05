@@ -132,48 +132,49 @@ export default function SlideConsultation({
       </div>
 
       {/* ─── DESKTOP ─── */}
-      <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(4vh,32px)] lg:flex">
+      <div className="relative z-10 mt-[80px] hidden h-[calc(100dvh-80px)] w-full flex-col items-center justify-center px-[8vw] py-[min(2vh,16px)] lg:flex">
         <div className="w-full max-w-[920px] text-center">
           <h2 className="text-[clamp(29px,4vh,37px)] font-extrabold leading-[1.05] tracking-tight text-white">
             Form Đăng Ký Tư Vấn
           </h2>
-          <p className="mx-auto mt-[min(1.45vh,9px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
+          <p className="mx-auto mt-[min(1vh,6px)] max-w-[760px] text-[clamp(12px,1.75vh,14px)] font-medium leading-relaxed text-white/90">
             Để lại thông tin của bạn, chúng tôi sẽ liên hệ để tư vấn ngay!
           </p>
         </div>
 
         <form
-          className="mt-[min(2.9vh,22px)] flex w-full max-w-[920px] flex-col gap-[min(1.7vh,14px)]"
+          className="mt-[min(1.5vh,12px)] flex w-full max-w-[920px] flex-col gap-[min(1.2vh,10px)]"
           onSubmit={onSubmit}
         >
-          <div className="space-y-2 text-left">
+          <div className="space-y-1 text-left">
             <label className="block text-[13px] font-semibold text-white">Tên</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nhập tên của bạn"
-              className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+              className="h-[clamp(32px,3.8vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
             />
           </div>
 
-          <div className="space-y-2 text-left">
+          <div className="space-y-1 text-left">
             <label className="block text-[13px] font-semibold text-white">Email</label>
             <input
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               inputMode="email"
-              className="h-[clamp(35px,4.2vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+              className="h-[clamp(32px,3.8vh,40px)] w-full rounded-[16px] bg-white/55 px-4 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
             />
           </div>
 
-          <div className="space-y-2 text-left">
+          <div className="space-y-1 text-left">
             <label className="block text-[13px] font-semibold text-white">Hình thức liên hệ</label>
             <div className="relative">
               <select
                 value={contactMethod}
                 onChange={(e) => setContactMethod(e.target.value as any)}
-                className="h-[clamp(35px,4.2vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
+                className="h-[clamp(32px,3.8vh,40px)] w-full appearance-none rounded-[16px] bg-white/55 px-4 pr-9 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md focus:bg-white/70"
               >
                 <option value="zalo">Zalo</option>
                 <option value="phone">Điện thoại</option>
@@ -185,9 +186,9 @@ export default function SlideConsultation({
             </div>
           </div>
 
-          <div className="space-y-2 text-left">
+          <div className="space-y-1 text-left">
             <label className="block text-[13px] font-semibold text-white">Số Zalo</label>
-            <div className="flex h-[clamp(35px,4.2vh,40px)] w-full overflow-hidden rounded-[16px] bg-white/55 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-md">
+            <div className="flex h-[clamp(32px,3.8vh,40px)] w-full overflow-hidden rounded-[16px] bg-white/55 shadow-[0_12px_28px_rgba(0,0,0,0.22)] backdrop-blur-md">
               <div className="flex items-center gap-2 px-4 text-[13px] text-slate-700">
                 <select
                   value={zaloCountry}
@@ -212,32 +213,32 @@ export default function SlideConsultation({
             </div>
           </div>
 
-          <div className="space-y-2 text-left">
+          <div className="space-y-1 text-left">
             <label className="text-[13px] font-semibold text-white">Vấn đề cần tư vấn</label>
             <textarea
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               placeholder="Bạn muốn chúng tôi hỗ trợ thêm về vấn đề gì"
-              rows={3}
-              className="h-[clamp(64px,12.5vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
+              rows={2}
+              className="h-[clamp(48px,10vh,92px)] w-full resize-none rounded-[16px] bg-white/55 px-4 py-2.5 text-left text-[13px] text-slate-700 shadow-[0_12px_28px_rgba(0,0,0,0.22)] outline-none backdrop-blur-md placeholder:text-slate-500 focus:bg-white/70"
             />
           </div>
 
-          <label className="mt-1 flex items-start gap-3 text-left text-[13px] text-white/90">
+          <label className="mt-[min(0.5vh,4px)] flex items-start gap-2 text-left text-[13px] text-white/90">
             <input
               type="checkbox"
               checked={agree}
               onChange={(e) => setAgree(e.target.checked)}
-              className="mt-1 h-[18px] w-[18px] rounded-md border-2 border-white/80 bg-transparent accent-white"
+              className="mt-[2px] h-[16px] w-[16px] rounded-md border-2 border-white/80 bg-transparent accent-white"
             />
             <span className="leading-snug">Bạn đồng ý với tất cả điều khoản bảo mật của Telesa</span>
           </label>
 
-          <div className="mt-3 flex justify-center">
+          <div className="mt-[min(1.5vh,12px)] flex justify-center">
             <button
               type="submit"
               disabled={!agree || isSubmitting}
-              className={`h-[clamp(40px,5.3vh,44px)] w-full max-w-[506px] rounded-[16px] text-center text-[15px] font-extrabold text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95 ${isKid ? "bg-[#FFC000]" : "bg-[#C1077B]"}`}
+              className={`h-[clamp(36px,4.8vh,44px)] w-full max-w-[506px] rounded-[16px] text-center text-[15px] font-extrabold text-white shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition-transform hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-100 disabled:brightness-95 ${isKid ? "bg-[#FFC000]" : "bg-[#C1077B]"}`}
             >
               {isSubmitting ? "Đang gửi..." : "Gửi"}
             </button>
