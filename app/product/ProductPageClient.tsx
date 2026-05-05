@@ -41,30 +41,6 @@ function StarIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function DocumentIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-      <path
-        d="M7 3h7l3 3v15a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M14 3v4a2 2 0 002 2h4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8 12h8M8 16h8"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function CoinIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -84,24 +60,6 @@ function CoinIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function GlobeIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-      <path
-        d="M12 21c5 0 9-4 9-9s-4-9-9-9-9 4-9 9 4 9 9 9z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path d="M3 12h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M12 3c2.4 2.6 3.8 5.6 3.8 9s-1.4 6.4-3.8 9c-2.4-2.6-3.8-5.6-3.8-9S9.6 5.6 12 3z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 function ClockIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -231,10 +189,23 @@ export default function ProductPageClient() {
 
   const desktopItemsPerPage = 12;
   const mobileItemsPerPage = 3;
+  // ID của category_course từ API
+  const BOOK_CATEGORY_ID = 7;
+  const AUDIO_CATEGORY_ID = 8;
+
   const baseProducts = useMemo(() => {
-    if (category === "book") return [];
-    if (category === "audio") return [];
-    return apiCourseProducts ?? [];
+    const all = apiCourseProducts ?? [];
+    if (category === "book") {
+      return all.filter((p: any) => p.category_course?.id === BOOK_CATEGORY_ID);
+    }
+    if (category === "audio") {
+      return all.filter((p: any) => p.category_course?.id === AUDIO_CATEGORY_ID);
+    }
+    // "course": tất cả items KHÔNG phải sách và KHÔNG phải audio
+    return all.filter((p: any) =>
+      p.category_course?.id !== BOOK_CATEGORY_ID &&
+      p.category_course?.id !== AUDIO_CATEGORY_ID
+    );
   }, [apiCourseProducts, category]);
 
   const filteredProducts = useMemo(() => {
@@ -604,204 +575,23 @@ export default function ProductPageClient() {
                 ref={mobileCarouselRef}
               >
                 {pagedMobileProducts.map((product) => {
-                  if (category === "book") {
-                    const book = product as any;
-                    const bookImageSrc = variant === "adult" ? "/assets/book-adult.jpg" : book.image;
-                    return (
-                      <article
-                        key={book.id}
-                        className="flex w-[86%] shrink-0 snap-start flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]"
-                      >
-                        <div className="relative h-[30vh] w-full shrink-0 overflow-hidden bg-white">
-                          <Image
-                            src={bookImageSrc}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 86vw, 420px"
-                            className="object-contain"
-                            priority={false}
-                          />
-                        </div>
+                  const item = product as any;
 
-                        <div
-                          className={[
-                            "flex-1 px-4 pb-3 pt-3.5",
-                          ].join(" ")}
-                        >
-                          <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-700">
-                            {book.title}
-                          </h3>
-                          <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                            {book.subtitle}
-                          </p>
-
-                          <div className="mt-3.5 space-y-2 text-[14px] text-slate-700">
-                            <div className="flex items-center gap-3">
-                              <PersonIcon className="h-4 w-4 text-slate-500" />
-                              <span>{book.author}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <DocumentIcon className="h-4 w-4 text-slate-500" />
-                              <span>{book.format}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <CoinIcon className="h-4 w-4 text-slate-500" />
-                              <div className="flex items-baseline gap-3">
-                                <span className="font-semibold text-red-500">{book.price}</span>
-                                <span className="text-slate-400 line-through">{book.originalPrice}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <GlobeIcon className="h-4 w-4 text-slate-500" />
-                              <span>{book.language}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 bg-white px-4 pb-4">
-                          <div className="flex flex-wrap items-center justify-start gap-3">
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700"
-                            >
-                              <Image src="/assets/svg/heart.svg" alt="" width={14} height={14} unoptimized />
-                              Thích
-                            </button>
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700"
-                            >
-                              <Image src="/assets/svg/cart.svg" alt="" width={14} height={14} unoptimized />
-                              Thêm vào giỏ
-                            </button>
-                          </div>
-
-                          <div className="mt-2.5 flex items-center justify-center">
-                            <button
-                              type="button"
-                              className={[
-                                "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1.5 text-[10px] font-semibold text-white shadow-sm",
-                                primaryBgClass,
-                              ].join(" ")}
-                            >
-                              <Image src="/assets/svg/buy-all.svg" alt="" width={14} height={14} unoptimized />
-                              Mua ngay
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  }
-
-                  if (category === "audio") {
-                    const audio = product as any;
-                    return (
-                      <article
-                        key={audio.id}
-                        className="flex w-[86%] shrink-0 snap-start flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]"
-                      >
-                        <div className="relative h-[20vh] w-full shrink-0 overflow-hidden bg-white">
-                          <Image
-                            src={audio.image}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 86vw, 420px"
-                            className="object-contain"
-                            priority={false}
-                          />
-                        </div>
-
-                        <div
-                          className={[
-                            "flex-1 px-4 pb-3 pt-3.5",
-                          ].join(" ")}
-                        >
-                          <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-700">
-                            {audio.title}
-                          </h3>
-                          <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                            {audio.subtitle}
-                          </p>
-
-                          <div className="mt-3.5 space-y-2 text-[14px] text-slate-700">
-                            <div className="flex items-center gap-3">
-                              <PersonIcon className="h-4 w-4 text-slate-500" />
-                              <span>{audio.author}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <StarIcon className="h-4 w-4 text-slate-500" />
-                              <span className="font-semibold text-red-500">{audio.rating}</span>
-                              <span className="text-slate-700">({audio.reviewCount})</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <DocumentIcon className="h-4 w-4 text-slate-500" />
-                              <span>{audio.format}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <CoinIcon className="h-4 w-4 text-slate-500" />
-                              <div className="flex items-baseline gap-3">
-                                <span className="font-semibold text-red-500">{audio.price}</span>
-                                <span className="text-slate-400 line-through">{audio.originalPrice}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <GlobeIcon className="h-4 w-4 text-slate-500" />
-                              <span>{audio.language}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="shrink-0 bg-white px-4 pb-4">
-                          <div className="flex flex-wrap items-center justify-start gap-3">
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700"
-                            >
-                              <Image src="/assets/svg/heart.svg" alt="" width={14} height={14} unoptimized />
-                              Thích
-                            </button>
-                            <button
-                              type="button"
-                              className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-semibold text-slate-700"
-                            >
-                              <Image src="/assets/svg/cart.svg" alt="" width={14} height={14} unoptimized />
-                              Thêm vào giỏ
-                            </button>
-                          </div>
-
-                          <div className="mt-2.5 flex items-center justify-center">
-                            <button
-                              type="button"
-                              className={[
-                                "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-6 py-1.5 text-[10px] font-semibold text-white shadow-sm",
-                                primaryBgClass,
-                              ].join(" ")}
-                            >
-                              <Image src="/assets/svg/month.svg" alt="" width={14} height={14} unoptimized />
-                              Mua ngay
-                            </button>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  }
-
-                  const course = product as ListCourseProduct;
                   return (
                     <article
-                      key={course.id}
+                      key={item.id}
                       className="flex w-[86%] shrink-0 snap-start flex-col overflow-hidden rounded-[24px] bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]"
                       role="button"
                       tabIndex={0}
-                      onClick={() => router.push(`/product/${course.id}?variant=${variant}`)}
+                      onClick={() => router.push(`/product/${item.id}?variant=${variant}`)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ")
-                          router.push(`/product/${course.id}?variant=${variant}`);
+                          router.push(`/product/${item.id}?variant=${variant}`);
                       }}
                     >
                       <div className="relative aspect-[40/27] w-full shrink-0 overflow-hidden bg-slate-100">
                         <Image
-                          src={course.banner}
+                          src={item.banner}
                           alt=""
                           fill
                           sizes="(max-width: 768px) 86vw, 420px"
@@ -810,41 +600,39 @@ export default function ProductPageClient() {
                         />
                       </div>
 
-                      <div
-                        className={[
-                          "flex-1 px-4 pb-3 pt-3.5",
-                        ].join(" ")}
-                      >
+                      <div className="flex-1 px-4 pb-3 pt-3.5">
                         <h3 className="text-[16px] font-semibold leading-[1.15] tracking-tight text-slate-700">
-                          {course.title}
+                          {item.title}
                         </h3>
                         <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                          {course.subtitle}
+                          {item.subtitle}
                         </p>
 
                         <div className="mt-3.5 space-y-2 text-[14px] text-slate-700">
                           <div className="flex items-center gap-3">
                             <PersonIcon className="h-4 w-4 text-slate-500" />
-                            <span>{course.students}</span>
+                            <span>{item.students}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <StarIcon className="h-4 w-4 text-slate-500" />
-                            <span>{course.rating}</span>
+                            <span>{item.rating}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <CoinIcon className="h-4 w-4 text-slate-500" />
                             <div className="flex items-baseline gap-3">
-                              <span className="font-semibold text-red-500">{course.price}</span>
-                              <span className="text-slate-400 line-through">{course.originalPrice}</span>
+                              <span className="font-semibold text-red-500">{item.price}</span>
+                              <span className="text-slate-400 line-through">{item.originalPrice}</span>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <ClockIcon className="h-4 w-4 text-slate-500" />
-                            <span>{course.duration}</span>
-                          </div>
+                          {category !== "book" && (
+                            <div className="flex items-center gap-3">
+                              <ClockIcon className="h-4 w-4 text-slate-500" />
+                              <span>{item.duration}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-3">
                             <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
-                            <span>{course.include}</span>
+                            <span>{item.include}</span>
                           </div>
                         </div>
                       </div>
@@ -869,28 +657,17 @@ export default function ProductPageClient() {
                           </button>
                         </div>
 
-                        <div className="mt-2.5 flex w-full items-stretch gap-2.5">
+                        <div className="mt-2.5 flex items-center justify-center">
                           <button
                             type="button"
                             className={[
-                              "inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 py-1.5 text-[9px] font-semibold text-white shadow-sm",
-                              primaryBgClass,
-                            ].join(" ")}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Image src="/assets/svg/month.svg" alt="" width={14} height={14} unoptimized />
-                            Đăng ký theo tháng
-                          </button>
-                          <button
-                            type="button"
-                            className={[
-                              "inline-flex min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-full px-2 py-1.5 text-[9px] font-semibold text-white shadow-sm",
+                              "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1.5 text-[10px] font-semibold text-white shadow-sm",
                               primaryBgClass,
                             ].join(" ")}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Image src="/assets/svg/buy-all.svg" alt="" width={14} height={14} unoptimized />
-                            Mua trọn khóa
+                            Mua ngay
                           </button>
                         </div>
                       </div>
@@ -1122,209 +899,107 @@ export default function ProductPageClient() {
             <div className="mx-auto w-full max-w-[1700px] px-[3vw] pb-16 pt-8">
               <div className="grid grid-cols-3 gap-7 2xl:grid-cols-4">
                 {pagedProducts.map((product) => {
-                  if (category === "course") {
-                    const course = product as CourseProduct;
-                    return (
-                      <article
-                        key={`desktop-${course.id}`}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => router.push(`/product/${course.id}?variant=${variant}`)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ")
-                            router.push(`/product/${course.id}?variant=${variant}`);
-                        }}
-                        className="cursor-pointer flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
-                      >
-                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
-                          <Image
-                            src={course.banner}
-                            alt=""
-                            fill
-                            sizes="(min-width: 1024px) 22vw, 420px"
-                            className="object-cover"
-                          />
-                        </div>
-
-                        <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                          <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
-                            {course.title}
-                          </h3>
-                          <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                            {course.subtitle}
-                          </p>
-
-                          <div className="mt-4 space-y-2 text-[13px] text-slate-700">
-                            <div className="flex items-center gap-3">
-                              <PersonIcon className="h-4 w-4 text-slate-500" />
-                              <span>{course.students}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <StarIcon className="h-4 w-4 text-slate-500" />
-                              <span>{course.rating}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <CoinIcon className="h-4 w-4 text-slate-500" />
-                              <div className="flex items-baseline gap-3">
-                                <span className="font-semibold text-red-500">{course.price}</span>
-                                <span className="text-slate-400 line-through">
-                                  {course.originalPrice}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <ClockIcon className="h-4 w-4 text-slate-500" />
-                              <span>{course.duration}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
-                              <span>{course.include}</span>
-                            </div>
-                          </div>
-
-                          <div className="mt-auto pt-4">
-                            <div className="flex flex-wrap items-center justify-start gap-3">
-                              <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
-                              >
-                                <Image src="/assets/svg/heart.svg" alt="" width={16} height={16} unoptimized />
-                                Thích
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
-                              >
-                                <Image src="/assets/svg/cart.svg" alt="" width={16} height={16} unoptimized />
-                                Thêm vào giỏ
-                              </button>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap items-center justify-start gap-3">
-                              <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className={[
-                                  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
-                                  primaryBgClass,
-                                ].join(" ")}
-                              >
-                                <Image src="/assets/svg/month.svg" alt="" width={16} height={16} unoptimized />
-                                Đăng ký theo tháng
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className={[
-                                  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
-                                  primaryBgClass,
-                                ].join(" ")}
-                              >
-                                <Image src="/assets/svg/buy-all.svg" alt="" width={16} height={16} unoptimized />
-                                Mua trọn khóa
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  }
-
-                  if (category === "book") {
-                    const book = product as any;
-                    const bookImageSrc = variant === "adult" ? "/assets/book-adult.jpg" : book.image;
-                    return (
-                      <article
-                        key={`desktop-${book.id}`}
-                        className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200"
-                      >
-                        <div className="relative aspect-[4/3] w-full overflow-hidden bg-white">
-                          <Image src={bookImageSrc} alt="" fill className="object-contain" />
-                        </div>
-                        <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
-                          <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
-                            {book.title}
-                          </h3>
-                          <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                            {book.subtitle}
-                          </p>
-                          <div className="mt-4 space-y-2 text-[13px] text-slate-700">
-                            <div className="flex items-center gap-3">
-                              <PersonIcon className="h-4 w-4 text-slate-500" />
-                              <span>{book.author}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <DocumentIcon className="h-4 w-4 text-slate-500" />
-                              <span>{book.format}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <CoinIcon className="h-4 w-4 text-slate-500" />
-                              <div className="flex items-baseline gap-3">
-                                <span className="font-semibold text-red-500">{book.price}</span>
-                                <span className="text-slate-400 line-through">
-                                  {book.originalPrice}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <GlobeIcon className="h-4 w-4 text-slate-500" />
-                              <span>{book.language}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </article>
-                    );
-                  }
-
-                  const audio = product as any;
+                  const item = product as any;
+                  // Dùng chung card layout cho cả "course" và "book" vì đều lấy từ cùng 1 API
                   return (
                     <article
-                      key={`desktop-${audio.id}`}
-                      className="flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200"
+                      key={`desktop-${item.id}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(`/product/${item.id}?variant=${variant}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ")
+                          router.push(`/product/${item.id}?variant=${variant}`);
+                      }}
+                      className="cursor-pointer flex flex-col overflow-hidden rounded-[22px] bg-white shadow-md ring-1 ring-slate-200 transition-transform hover:-translate-y-0.5"
                     >
-                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-white">
-                        <Image src={audio.image} alt="" fill className="object-contain" />
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+                        <Image
+                          src={item.banner}
+                          alt=""
+                          fill
+                          sizes="(min-width: 1024px) 22vw, 420px"
+                          className="object-cover"
+                        />
                       </div>
+
                       <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
                         <h3 className="text-[16px] font-semibold leading-snug text-slate-700">
-                          {audio.title}
+                          {item.title}
                         </h3>
                         <p className="mt-2 text-[13px] leading-relaxed text-slate-500">
-                          {audio.subtitle}
+                          {item.subtitle}
                         </p>
+
                         <div className="mt-4 space-y-2 text-[13px] text-slate-700">
                           <div className="flex items-center gap-3">
                             <PersonIcon className="h-4 w-4 text-slate-500" />
-                            <span>{audio.author}</span>
+                            <span>{item.students}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <StarIcon className="h-4 w-4 text-slate-500" />
-                            <span className="font-semibold text-red-500">{audio.rating}</span>
-                            <span className="text-slate-700">({audio.reviewCount})</span>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <DocumentIcon className="h-4 w-4 text-slate-500" />
-                            <span>{audio.format}</span>
+                            <span>{item.rating}</span>
                           </div>
                           <div className="flex items-center gap-3">
                             <CoinIcon className="h-4 w-4 text-slate-500" />
                             <div className="flex items-baseline gap-3">
-                              <span className="font-semibold text-red-500">{audio.price}</span>
+                              <span className="font-semibold text-red-500">{item.price}</span>
                               <span className="text-slate-400 line-through">
-                                {audio.originalPrice}
+                                {item.originalPrice}
                               </span>
                             </div>
                           </div>
+                          {category !== "book" && (
+                            <div className="flex items-center gap-3">
+                              <ClockIcon className="h-4 w-4 text-slate-500" />
+                              <span>{item.duration}</span>
+                            </div>
+                          )}
                           <div className="flex items-center gap-3">
-                            <GlobeIcon className="h-4 w-4 text-slate-500" />
-                            <span>{audio.language}</span>
+                            <Image src="/assets/svg/gift.svg" alt="" width={16} height={16} unoptimized />
+                            <span>{item.include}</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-auto pt-4">
+                          <div className="flex flex-wrap items-center justify-start gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
+                            >
+                              <Image src="/assets/svg/heart.svg" alt="" width={16} height={16} unoptimized />
+                              Thích
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-2 text-[13px] font-semibold text-slate-700"
+                            >
+                              <Image src="/assets/svg/cart.svg" alt="" width={16} height={16} unoptimized />
+                              Thêm vào giỏ
+                            </button>
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center justify-start gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => e.stopPropagation()}
+                              className={[
+                                "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-[13px] font-semibold text-white shadow-sm",
+                                primaryBgClass,
+                              ].join(" ")}
+                            >
+                              <Image src="/assets/svg/buy-all.svg" alt="" width={16} height={16} unoptimized />
+                              Mua ngay
+                            </button>
                           </div>
                         </div>
                       </div>
                     </article>
                   );
+
+
                 })}
               </div>
 
